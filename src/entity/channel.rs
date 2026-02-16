@@ -37,8 +37,8 @@ pub struct Channel {
     pub date: u64,
 
     //一些备注信息,错误信息等
-    pub remark: string,
+    pub remark: String,
 
     //错误信息
-    pub error: string,
+    pub error: String,
 }

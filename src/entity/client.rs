@@ -7,16 +7,16 @@ pub struct Client {
     pub id: u64,
 
     //名称
-    pub name: string,
+    pub name: String,
 
     //版本号
-    pub version: string,
+    pub version: String,
 
     //连接认证秘钥
-    pub key: string,
+    pub key: String,
 
     //ip地址
-    pub ip: string,
+    pub ip: String,
 
     //入网流量
     pub in_data: u64,
@@ -37,5 +37,5 @@ pub struct Client {
     pub date: u64,
 
     //一些备注信息,错误信息等
-    pub remark: string,
+    pub remark: String,
 }

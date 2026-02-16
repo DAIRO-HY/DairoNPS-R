@@ -89,6 +89,7 @@ impl TCPBridge {
             }
             client_writer.write_all(&buf[..n]).await?;
         }
+        client_writer.shutdown().await?;
         Ok(())
     }
 
@@ -101,6 +102,7 @@ impl TCPBridge {
             }
             proxy_writer.write_all(&buf[..n]).await?;
         }
+        proxy_writer.shutdown().await?;
         Ok(())
     }
 
