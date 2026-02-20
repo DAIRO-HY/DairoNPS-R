@@ -13,6 +13,7 @@ use tokio::{io, try_join};
  * @param clientSocket 与客户端的连接
  */
 pub struct ClientSession {
+    // pub session_tag: &'a str,//会话标识,由当前时间戳和随机数生成,保证唯一性
     pub client: Client,
     pub tcp: TcpStream,
 
@@ -40,15 +41,14 @@ impl ClientSession {
         &mut self,
         mut external_rx: Receiver<Bytes>,
     ) -> io::Result<()> {
-        let mut tcp_stream = &mut self.tcp;
+        let tcp_stream = &mut self.tcp;
 
         //将客户端id发送给NPC客户端
-        Self::send_head(
-            &mut tcp_stream,
+        let header_data = header_util::make_header_data(
             header_util::SERVER_TO_CLIENT_ID,
             &self.client.id.to_string(),
-        )
-        .await?;
+        );
+        tcp_stream.write_all(header_data.as_ref()).await?;
 
         // 将加密秘钥发送到客户端
         tcp_stream
@@ -80,6 +80,10 @@ impl ClientSession {
         //开启一个异步任务,专门负责将从其他地方发送过来的数据写入到客户端连接中
         let external_receive_task = async move {
             while let Some(bytes) = external_rx.recv().await {
+                println!(
+                    "-->收到外部发送的数据,准备发送给客户端,数据长度: {}",
+                    bytes.len()
+                );
                 _tx.send(bytes).await.unwrap();
             }
             io::Result::Ok(())
@@ -123,16 +127,16 @@ impl ClientSession {
         }
     }
 
-    /**
-     * 往客户端发送数据
-     * @param flag 头部标记
-     * @param message 头部消息
-     */
-    async fn send_head(tcp_stream: &mut TcpStream, flag: u8, message: &str) -> io::Result<()> {
-        tcp_stream.write_all(&[flag, message.len() as u8]).await?;
-        tcp_stream.write_all(message.as_bytes()).await?;
-        Ok(())
-    }
+    // /**
+    //  * 往客户端发送数据
+    //  * @param flag 头部标记
+    //  * @param message 头部消息
+    //  */
+    // async fn send_head(tcp_stream: &mut TcpStream, flag: u8, message: &str) -> io::Result<()> {
+    //     tcp_stream.write_all(&[flag, message.len() as u8]).await?;
+    //     tcp_stream.write_all(message.as_bytes()).await?;
+    //     Ok(())
+    // }
 
     // /**
     //  * 往客户端发送数据

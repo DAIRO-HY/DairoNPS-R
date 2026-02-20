@@ -23,8 +23,9 @@ pub const STATISTICS_DATA_SIZE_TIMER: u64 = 60;
 //const val RECYLE_UDP_TIME = 1 * 10 * 1000L
 pub const RECYLE_UDP_TIME: u64 = 1 * 60 * 1000;
 
-// 每隔一段时间回收长时间不用的连接池（毫秒）
-pub const RECYLE_POOL_TIME_OUT: u64 = 3 * 60 * 1000;
+// 每隔一段时间回收长时间不用的连接池（秒）
+// pub const RECYLE_POOL_TIME_OUT: usize = 3 * 60;
+pub const RECYLE_POOL_TIME_OUT: u64 = 180;
 
 //const RECYLE_POOL_TIME_OUT = 5 * 1000
 
@@ -62,7 +63,7 @@ pub const MIN_POOL_COUNT: u64 = 1;
 /**
  * 连接池不足时,一次性创建连接数
  */
-pub const ADD_POOL_COUNT: u64 = 3;
+pub const ADD_POOL_COUNT: u8 = 1;
 
 /**
  * 系统配置

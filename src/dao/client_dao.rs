@@ -1,5 +1,5 @@
 
-use super::super::entity::client::Client;
+use crate::entity::client::Client;
 
 // // Add 添加一条客户端数据
 // func Add(dto *dto.ClientDto) {

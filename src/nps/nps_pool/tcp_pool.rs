@@ -8,6 +8,6 @@ use tokio::net::TcpStream;
 pub struct TCPPool {
 	pub tcp: TcpStream,
 
-	// 创建时间(毫秒)
+	// 创建时间(秒)
 	pub create_time:u64,
 }

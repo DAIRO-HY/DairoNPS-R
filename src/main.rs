@@ -1,39 +1,53 @@
+mod constant;
+mod dao;
+mod entity;
+mod nps;
+mod util;
+mod model;
+
 use tokio::{io, try_join};
 
-mod nps;
-mod entity;
-mod dao;
-mod util;
-mod constant;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+    sync::{Mutex, Notify},
+};
+
+use entity::channel::Channel;
+use std::collections::HashMap;
+use std::pin;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, OnceLock};
+use dashmap::DashMap;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
     util::security_util::init();
     nps::init();
-    nps::nps_client::tcp_client::tcp_client_accept::accept().await.unwrap();
 
-    // let task1 = async{
-    //     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-    //     println!("task 1 finished");
-    //     tokio::io::Result::Ok(())
-    // };
-    // let task2 = async{
-    //     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-    //     println!("task 2 finished");
-    //     tokio::io::Result::Ok(())
-    // };
-    // // let task3 = async{
-    // //     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-    // //     println!("task 3 finished");
-    // //     tokio::io::Result::Err(io::Error::new(io::ErrorKind::Other, "task 3 error"))
-    // // };
-    // tokio::try_join!(task1, task2, task4())?;
+    tokio::spawn(async {
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            let hm = nps::BRIDGE_INFO.get().unwrap().lock().await;
+            let Some(bridge_map) = hm.get(&0) else {
+                println!("-->准备中");
+                continue;
+            };
+            println!(
+                "-->当前桥接数量: {}",bridge_map.len()
+            );
+
+            for it in bridge_map.iter() {
+                let data_total = it.value().data_total.clone();
+                println!("桥接ID: {} 入流量统计: {} 出流量统计: {}", it.key(), data_total.load_in(),data_total.load_out());
+            }
+            // nps::nps_pool::tcp_pool_manager::shutdown_by_client(0).await;
+        }
+    });
+
+
+    println!("-->START<--");
+    nps::nps_client::tcp_client::tcp_client_accept::accept().await?;
     println!("-->FINISH<--");
     Ok(())
-}
-
-async fn task4() -> io::Result<()> {
-    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-    println!("task 3 finished");
-    tokio::io::Result::Err(io::Error::new(io::ErrorKind::Other, "task 3 error"))
 }

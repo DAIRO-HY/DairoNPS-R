@@ -10,7 +10,7 @@ pub struct Channel {
     pub name: String,
 
     //隧道模式, 1:TCP  2:UDP
-    pub mode: u64,
+    pub mode: u8,
 
     //服务端端口
     pub server_port: u64,
@@ -28,7 +28,7 @@ pub struct Channel {
     pub enable_state: u64,
 
     //是否加密传输
-    pub security_state: u64,
+    pub security_state: u8,
 
     //黑白名单开启状态 0:关闭 1:白名单 2:黑名单
     pub acl_state: u64,
