@@ -1,0 +1,33 @@
+[package]
+name = "DairoNPS-R"
+version = "0.1.0"
+edition = "2024"
+
+# build.rs 专用的依赖
+[build-dependencies]
+source_gen = { path = "../source_gen" }
+
+[dependencies]
+#lazy_static = "1.5"
+once_cell  = "1"
+chrono = "0.4" # 日期时间处理
+serde = { version = "1", features = ["derive","rc"] }
+source_gen = { path = "../source_gen" }
+regex = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+mime_guess = "2"
+rand = { version = "0.10", features = ["std"] }
+bytes = "1.11.1"
+dashmap = "6.1.0"
+rusqlite = { version = "0.38", features = ["bundled"] }
+rust-embed = "8" #嵌入文件
+axum = { version = "0.8.8", features = [
+    "macros",      # 可选：便捷宏（如 routing 宏）
+    "http1",       # 一般需要
+    "http2",       # 若要 h2
+    "json",        # 用到 Json 提取/响应
+    "multipart",   # 用到 Multipart
+] }
+
+#表单验证
+validator = { version = "0.20", features = ["derive"] }

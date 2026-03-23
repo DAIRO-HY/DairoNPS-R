@@ -1,0 +1,107 @@
+use mime_guess::mime;
+use std::{
+    env, fs, io,
+    path::{Path, PathBuf},
+};
+
+fn main() {
+    make_static_routes()
+}
+
+/// 生成静态资源路由代码块，并写入 OUT_DIR 以供 include! 使用
+fn make_static_routes() {
+    // // 读取并做替换（按需改造成循环/正则）
+    // let mut content = fs::read_to_string("assets/templates/index.html").expect("read assets/demo.txt failed");
+    // content = content.replace("{{name}}", "周 隆権");
+    // content = content.replace("{{year}}", "2026");
+
+    const ROUTE_ITEM_TEMPLATE: &str = r##"
+    .route("/[PATH]", get(async || -> Response {
+        (
+            StatusCode::OK,
+            [
+                (header::CONTENT_TYPE, "[MIME]"),
+                (
+                    header::CACHE_CONTROL,
+                    CACHE_CONTROL,
+                ),
+            ], 
+            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/[PATH]"))
+        ).into_response()
+    }))"##;
+
+    let mut route = String::new();
+    loop_files(Path::new("assets/static/"), &mut |p| {
+        // println!("{}", p.display());
+
+        let file_path = p.to_string_lossy().replace("\\", "/"); // Windows 路径分隔符替换为 URL 斜杠
+
+        // 根据文件名猜测 content-type；找不到则 application/octet-stream
+        let mime = mime_guess::from_path(&file_path).first_or_octet_stream();
+        let item_src = &ROUTE_ITEM_TEMPLATE
+            .replace("[PATH]", &file_path)
+            // .replace("[CONTENT]", &format!("include_str!(\"{}\")", file_path))
+            .replace("[MIME]", &mime.as_ref().to_string());
+        route.push_str(item_src);
+    })
+    .unwrap();
+
+    //设置路由函数代码
+    let set_routes_fnuc_template = r##"
+/// 设置静态资源路由
+fn set_static_routes(app: Router) -> Router {
+    const CACHE_CONTROL: &str = "public, max-age=86400, immutable"; // 1 天缓存，且内容不变（适合版本化资源）
+    return app[ROUTER_ITEMS];
+}"##;
+    let set_routes_fnuc = set_routes_fnuc_template.replace("[ROUTER_ITEMS]", &route);
+
+    // 写到 OUT_DIR
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let out_path = out_dir.join("static_routes_set.rs.block");
+
+    println!(
+        "cargo:warning=Processed file will be written to: {}",
+        out_path.display()
+    );
+    fs::write(&out_path, set_routes_fnuc).expect("write processed file failed");
+
+    // 追踪输入文件变化
+    println!("cargo:rerun-if-changed=assets/static/");
+}
+
+/// 遍历 dir 下的所有子孙“文件”（不含目录），对每个文件调用回调 f。
+fn loop_files<F>(dir: &Path, f: &mut F) -> io::Result<()>
+where
+    F: FnMut(&Path),
+{
+    // read_dir 返回的是 Iterator<Item = io::Result<DirEntry>>
+    for entry_res in fs::read_dir(dir)? {
+        let entry = entry_res?; // 传播 read_dir 内部错误
+        let path = entry.path();
+
+        // 注意：symlink_metadata 不会跟随符号链接；metadata 会跟随
+        let metadata = fs::symlink_metadata(&path)?;
+
+        if metadata.is_dir() {
+            // 递归进入子目录
+            loop_files(&path, f)?;
+        } else if metadata.is_file() {
+            // 仅对文件回调
+            f(&path);
+        } else {
+            // 其他类型（符号链接、设备文件等），按需处理或忽略
+            // 如果想把指向文件的符号链接也当作文件，可改用 metadata() 并判断 is_file()
+        }
+    }
+    Ok(())
+}
+
+// fn main() -> io::Result<()> {
+//     let root = Path::new("./some_root_dir");
+
+//     visit_files_recursively(root, &mut |p: &Path| {
+//         println!("{}", p.display());
+//     })?;
+
+//     Ok(())
+// }

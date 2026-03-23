@@ -1,0 +1,83 @@
+mod constant;
+mod dao;
+mod entity;
+mod extension;
+mod util;
+use extension::SelectSingleExt;
+use util::db_util::connection;
+use dao::macuro_demo::MacuroDemo;
+
+// 放在某个模块或crate的lib.rs/mod.rs中
+#[macro_export]
+macro_rules! make_string_struct {
+    ($name:ident, $field:ident) => {
+        pub struct $name {
+            $field: String,
+        }
+
+        impl $name {
+            pub fn new() -> Self {
+                Self {
+                    $field: String::new(),
+                }
+            }
+
+            pub fn from(value: String) -> Self {
+                Self { $field: value }
+            }
+
+            // pub fn get_value(&self) -> String {
+            //     self.$field.clone()
+            // }
+        }
+    };
+}
+
+#[tokio::main]
+async fn main() -> tokio::io::Result<()> {
+    // 使用宏生成与你需求一致的代码
+    make_string_struct!(MacuroDemo, value);
+
+    let mc = MacuroDemo::from("123".to_string());
+
+    println!("MacuroDemo value: {}", mc.get_value());
+
+    // util::db_util::init().await;
+    // let conn = connection().await;
+    // conn.execute(
+    //     "INSERT INTO user (name, age) VALUES (?1, ?2)",
+    //     ("Alice", 30),
+    // )
+    // .unwrap();
+    // let mut stmt = conn
+    //     .prepare("SELECT id, name AS username, age FROM user")
+    //     .unwrap();
+
+    // // 这里使用 MappedRows（query_map），在闭包中通过列名取值
+    // let rows = stmt
+    //     .query_map([], |row| {
+    //         // 通过列名（字符串）索引
+    //         let id: i64 = row.get("id")?;
+    //         let name: String = row.get("username")?; // 支持使用 SQL 中的别名
+    //         let age: Option<i32> = row.get("age")?;
+
+    //         Ok((id, name, age))
+    //     })
+    //     .unwrap();
+
+    // for r in rows {
+    //     println!("{:?}", r.unwrap());
+    // }
+    // drop(stmt);
+    // drop(conn);
+
+    // // common_dao::CommonDao::new().add(1, 100, 200).await;
+
+    // let count: i64 = connection()
+    //     .await
+    //     .select_single("SELECT COUNT(*) FROM channel_data_size", []);
+    // println!("User count: {}", count);
+
+    // println!("Hello, world!");
+    Ok(())
+}
