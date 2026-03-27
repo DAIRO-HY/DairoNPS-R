@@ -1,0 +1,8 @@
+{
+  // 让 RA 跑一次 build.rs，从而拿到 OUT_DIR
+  "rust-analyzer.cargo.buildScripts.enable": true,
+  // 从 cargo check 的结果里加载生成目录，解决 include!(env!("OUT_DIR"))
+  "rust-analyzer.cargo.loadOutDirsFromCheck": true,
+  // 若你用到过程宏，最好也开
+  "rust-analyzer.procMacro.enable": true
+}

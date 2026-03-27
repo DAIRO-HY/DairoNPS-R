@@ -10,9 +10,10 @@ fn main() {
     make_resource_route::make("assets/resources", 86400);
 
     // 生成 DAO 相关的代码块
-    source_gen::make_dao::make("assets/sql");
+    source_gen::make_dao::make("assets/sql", "assets/mapper");
 
     // 追踪输入文件变化
     println!("cargo:rerun-if-changed=assets/resources/");
     println!("cargo:rerun-if-changed=assets/sql/");
+    println!("cargo:rerun-if-changed=assets/mapper/");
 }

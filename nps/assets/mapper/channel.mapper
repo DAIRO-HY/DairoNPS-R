@@ -1,0 +1,2 @@
+select channel.* from channel left join client on channel.client_id = client.id where channel.client_id = ? and client.enable_state = 1 and channel.enable_state = 1
+fn select_active_by_client_id(client_id: i64) -> Vec<Channel>;

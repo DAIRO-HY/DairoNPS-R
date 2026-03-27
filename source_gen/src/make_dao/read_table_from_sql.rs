@@ -1,3 +1,4 @@
+use super::mapper_info::MapperInfo;
 use super::table_info::{ColumnInfo, TableInfo};
 use std::fs;
 use std::path::Path;
@@ -37,6 +38,7 @@ fn read_table_info_from_sql(sql_path: &Path) -> Option<TableInfo> {
         nick: "".to_string(),
         columns: column_list,
         comment: "".to_string(),
+        mappers: Vec::new(),
     })
 }
 
@@ -86,7 +88,7 @@ fn read_column_info_from_line(line: &str) -> Option<ColumnInfo> {
     while line.contains("  ") {
         line = line.replace("  ", " ");
     }
-    if line.to_uppercase().contains("CREATE TABLE"){
+    if line.to_uppercase().contains("CREATE TABLE") {
         return None; // 跳过表定义行
     }
 
@@ -108,7 +110,10 @@ fn read_column_info_from_line(line: &str) -> Option<ColumnInfo> {
 
     // 提取数据类型
     let line = line[next_space_index..].trim().to_string();
-    let next_space_index = line.find(' ').unwrap_or(line.len()).min(line.find(',').unwrap_or(line.len()));
+    let next_space_index = line
+        .find(' ')
+        .unwrap_or(line.len())
+        .min(line.find(',').unwrap_or(line.len()));
     let data_type = &line[..next_space_index];
 
     let line = line[next_space_index..].trim().to_string().to_uppercase();
@@ -127,6 +132,7 @@ fn read_column_info_from_line(line: &str) -> Option<ColumnInfo> {
         comment,
     })
 }
+
 
 /// 遍历 dir 下的所有子孙“文件”（不含目录），对每个文件调用回调 f。
 fn loop_files<F>(dir: &Path, f: &mut F) -> std::io::Result<()>

@@ -141,6 +141,9 @@ function initGlobelData(){
  * 重启服务
  */
 function onRestartClick(){
+    if (!confirm("重启可能需要花几秒的时间，确定重启?")) {
+        return
+    }
     $.ajaxByData("/common/restart").sync().success(data=>{
         initGlobelData()
     }).put()

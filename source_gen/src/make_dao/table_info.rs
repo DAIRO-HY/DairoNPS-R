@@ -1,5 +1,6 @@
 use crate::utils;
 use serde::Serialize;
+use super::mapper_info::MapperInfo;
 
 /// 数据库表信息
 #[derive(Debug, Serialize)]
@@ -15,6 +16,9 @@ pub struct TableInfo {
 
     // 表注释
     pub comment: String,
+
+    // 映射信息列表
+    pub mappers: Vec<MapperInfo>,
 }
 
 impl TableInfo {
