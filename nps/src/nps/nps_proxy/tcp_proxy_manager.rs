@@ -1,5 +1,5 @@
 use crate::dao::channel_dao;
-use crate::entity::channel::Channel;
+use crate::dao::channel_dao::Channel;
 use crate::model::data_total::DataTotal;
 use crate::nps;
 use crate::nps::nps_proxy::tcp_proxy_accept::TCPProxyAccept;
@@ -89,16 +89,12 @@ async fn accept_channel(channel: Channel) {
 
     //保存关闭通知器
     CHANNEL_CLOSE_NOTIFY
-        .get()
-        .unwrap()
         .lock()
         .await
         .insert(channel_id, notify.clone());
 
     //初始化隧道数据总量
     CHANNEL_DATA_TOTAL
-        .get()
-        .unwrap()
         .lock()
         .await
         .insert(channel_id, data_total);
@@ -106,12 +102,7 @@ async fn accept_channel(channel: Channel) {
         let _ = proxy_tcp_accept.accept().await;
 
         //接受到accept结束的通知,说明监听已经停止,可以安全地删除关闭通知器
-        CHANNEL_CLOSE_NOTIFY
-            .get()
-            .unwrap()
-            .lock()
-            .await
-            .remove(&channel_id);
+        CHANNEL_CLOSE_NOTIFY.lock().await.remove(&channel_id);
     });
 }
 
@@ -128,8 +119,6 @@ async fn shutdown_by_channel(channel_id: i64) {
     loop {
         //等待隧道代理监听停止,否则可能导致下次监听同一端口失败
         if let Some(notify) = CHANNEL_CLOSE_NOTIFY
-            .get()
-            .unwrap()
             .lock()
             .await
             .get(&channel_id)
@@ -188,7 +177,7 @@ async fn channel_data_stats() {
     }
     loop {
         tokio::time::sleep(tokio::time::Duration::from_millis(STATS_INTERVAL)).await;
-        let data_map = CHANNEL_DATA_TOTAL.get().unwrap().lock().await;
+        let data_map = CHANNEL_DATA_TOTAL.lock().await;
         for (channel_id, data_total) in data_map.iter() {
             if let Some(last_total) = last_total_map.get(channel_id)
                 && last_total == data_total
@@ -203,7 +192,10 @@ async fn channel_data_stats() {
 
             //这里可以将统计数据保存到数据库或者发送到监控系统
             crate::dao::channel_data_dao::add(&conn, channel_id.clone(), in_data, out_data);
-            last_total_map.insert(*channel_id, DataTotal::from(in_data as u64, out_data as u64));
+            last_total_map.insert(
+                *channel_id,
+                DataTotal::from(in_data as u64, out_data as u64),
+            );
         }
     }
 }

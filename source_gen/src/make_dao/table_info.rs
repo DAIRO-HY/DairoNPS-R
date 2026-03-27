@@ -126,6 +126,8 @@ impl TableInfo {
         let mut insert_columns: Vec<&str> = Vec::new(); // 构建插入列列表
         let mut insert_params_replace: Vec<&str> = Vec::new(); // 构建插入参数占位符列表
         let mut insert_params: Vec<String> = Vec::new(); // 构建插入参数列表
+
+        let mut need_now = false; // 是否需要生成获取当前时间的代码
         self.columns
             .iter()
             .filter(|it| {
@@ -141,15 +143,6 @@ impl TableInfo {
                 if it.name == "deleted" {
                     return false;
                 }
-                if it.name == "updated_at" {
-                    return false;
-                }
-                if it.name == "updated_by" {
-                    return false;
-                }
-                if it.name == "created_at" {
-                    return false;
-                }
                 if it.name == "version" {
                     return false;
                 }
@@ -159,9 +152,11 @@ impl TableInfo {
                 insert_columns.push(it.name.as_str());
                 insert_params_replace.push("?");
                 if it.name == "created_at" {
-                    insert_params.push("std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64".to_string());
+                    need_now = true;
+                    insert_params.push("timestamp".to_string());
                 } else if it.name == "updated_at" {
-                    insert_params.push("std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64".to_string());
+                    need_now = true;
+                    insert_params.push("timestamp".to_string());
                 } else {
                     insert_params.push(format!("entity.{}", it.name));
                 }
@@ -180,12 +175,14 @@ impl TableInfo {
             r##"
             /// 插入数据
             pub fn insert(conn: &rusqlite::Connection, entity: [ENTITY]) -> rusqlite::Result<i64,rusqlite::Error> {
+                [TIME_CODE]
                 const SQL: &str = "[SQL];";
                 conn.query_row(SQL, ([PARAM]), |it|it.get(0))
             }"##
         } else {
             r##"
             pub fn insert(conn: &rusqlite::Connection, entity: [ENTITY]) -> Option<rusqlite::Error> {
+                [TIME_CODE]
                 const SQL: &str = "[SQL];";
                 if let Err(e) = conn.execute(
                     SQL,
@@ -196,7 +193,14 @@ impl TableInfo {
                 None
             }"##
         };
+
+        let time_code = if need_now {
+            "let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64;"
+        } else {
+            ""
+        };
         fn_template
+            .replace("[TIME_CODE]", time_code)
             .replace("[SQL]", &insert_sql)
             .replace("[PARAM]", &(insert_params.join(", ")))
             .replace("[ENTITY]", &utils::snake_to_pascal(&self.name, "_"))

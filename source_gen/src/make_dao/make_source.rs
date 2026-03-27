@@ -41,21 +41,21 @@ pub fn make(tables: Vec<TableInfo>) {
         //生成物理删除函数的源代码
         dao_src.push_str(&table.make_purge_func());
 
-        dao_src.insert_str(0, &format!("// Generated at {}\n", chrono::Local::now().to_rfc3339()));
+        dao_src.insert_str(
+            0,
+            &format!("// Generated at {}\n", chrono::Local::now().to_rfc3339()),
+        );
 
-        
-    // 解析成 syn AST
-    let rust_src: syn::File = syn::parse_str(dao_src.as_str()).unwrap();
+        // 解析成 syn AST
+        let rust_src: syn::File = syn::parse_str(dao_src.as_str()).unwrap();
 
-    // 使用 prettyplease 格式化
-    let formatted_rust_src = prettyplease::unparse(&rust_src);
-
-
+        // 使用 prettyplease 格式化
+        let formatted_rust_src = prettyplease::unparse(&rust_src);
 
         let file_path = &save_path.join(format!("{}_dao.rs", table.name));
         fs::write(&file_path, formatted_rust_src).unwrap();
         println!(
-            "Generated DAO source for table '{}' at '{}'",
+            "cargo:warning=Generated DAO source for table '{}' at '{}'",
             table.name,
             file_path.display()
         );

@@ -1,23 +1,24 @@
 ﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    {{template "head" .}}
+    {{template include/head.tpl}}
     <title>隧道编辑/添加</title>
 </head>
 <body>
-{{template "top-bar" .}}
-{{template "data_size_chart" .}}
-{{template "speed_chart" .}}
+{{template include/top-bar.tpl}}
+{{template include/data_size_chart.tpl}}
+{{template include/speed_chart.tpl}}
 <div class="m-3 p-2 bg-white rounded">
-    <form action="/channel_list/channel_edit/edit">
-        <input type="hidden" name="ClientId">
-        <input type="hidden" name="Id">
+    <form action="/channel/edit">
+        <input type="hidden" name="clientId">
+        <input type="hidden" name="id" value="0">
+        <input type="hidden" id="version" name="version" value="0">
         <div class="row row-cols-1 row-cols-sm-2">
             <div class="col mt-2">
                 <div class="row">
                     <label class="col-4 col-form-label text-end">客户端</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="ClientName" disabled>
+                        <input type="text" class="form-control" name="clientName" disabled>
                     </div>
                 </div>
             </div>
@@ -25,7 +26,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">隧道名</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="Name" autocomplete="off">
+                        <input type="text" class="form-control" name="name" autocomplete="off">
                     </div>
                 </div>
             </div>
@@ -34,12 +35,12 @@
                     <label class="col-4 col-form-label text-end">隧道模式</label>
                     <div class="col-8 pt-2">
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="Mode" id="typeTcp"
+                            <input class="form-check-input" type="radio" name="mode" id="typeTcp"
                                    value="1">
                             <label class="form-check-label" for="typeTcp">TCP</label>
                         </div>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="Mode" id="typeUdp"
+                            <input class="form-check-input" type="radio" name="mode" id="typeUdp"
                                    value="2">
                             <label class="form-check-label" for="typeUdp">UDP</label>
                         </div>
@@ -51,12 +52,12 @@
                     <label class="col-4 col-form-label text-end">加密传输</label>
                     <div class="col-8 pt-2">
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="SecurityState" id="securityState0"
+                            <input class="form-check-input" type="radio" name="securityState" id="securityState0"
                                    value="0">
                             <label class="form-check-label" for="securityState0">否</label>
                         </div>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="SecurityState" id="securityState1"
+                            <input class="form-check-input" type="radio" name="securityState" id="securityState1"
                                    value="1">
                             <label class="form-check-label" for="securityState1">是</label>
                         </div>
@@ -67,7 +68,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">服务端口</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="ServerPort" number="true" autocomplete="off">
+                        <input type="text" class="form-control" name="serverPort" number="true" autocomplete="off">
                     </div>
                 </div>
             </div>
@@ -75,7 +76,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">目标端口(ip:端口)</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="TargetPort" autocomplete="off">
+                        <input type="text" class="form-control" name="targetPort" autocomplete="off">
                     </div>
                 </div>
             </div>
@@ -83,7 +84,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">入网流量</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="InData" disabled>
+                        <input type="text" class="form-control" name="inData" disabled>
                     </div>
                 </div>
             </div>
@@ -91,7 +92,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">出网流量</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="OutData" disabled>
+                        <input type="text" class="form-control" name="outData" disabled>
                     </div>
                 </div>
             </div>
@@ -99,7 +100,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">启用状态</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="EnableState" disabled>
+                        <input type="text" class="form-control" name="enableState" disabled>
                     </div>
                 </div>
             </div>
@@ -107,7 +108,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">创建时间</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="Date" disabled>
+                        <input type="text" class="form-control" name="createdAt" disabled>
                     </div>
                 </div>
             </div>
@@ -115,7 +116,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">备注</label>
                     <div class="col-8">
-                        <textarea class="form-control" name="Remark"></textarea>
+                        <textarea class="form-control" name="remark"></textarea>
                     </div>
                 </div>
             </div>
@@ -130,11 +131,11 @@
 <input id="initAclIp" type="hidden" th:value="${aclIp}">
 <script th:inline="javascript">
     $(function () {
-        const channelId = getParam("id")
-        if (channelId !== "") {//网速统计报表显示
-            showDataSizeChart(0, channelId, 0)
-            showSpeedChart("N" + channelId)
-        }
+        // const channelId = getParam("id")
+        // if (channelId !== "") {//网速统计报表显示
+        //     showDataSizeChart(0, channelId, 0)
+        //     showSpeedChart("N" + channelId)
+        // }
 
         //初始化数据
         init()
@@ -144,15 +145,19 @@
      * 初始化数据
      */
     function init() {
-        $.ajaxByData("/channel_list/channel_edit/info")
+        let id = getParam("id")
+        if (id === ""){
+            id = "0"
+        }
+        $.ajaxByData("/channel/detail")
             .addAll({
-                Id: getParam("id"),
-                ClientId: getParam("clientId")
+                id: id,
+                clientId: getParam("clientId")
             })
             .success(data => {
                 $("form").bindValue(data)
             })
-            .post()
+            .get()
     }
 
     /**
@@ -160,7 +165,7 @@
      */
     function onSubmitClick() {
         $("form").ajaxByForm().success(() => {
-            window.location = document.referrer
+            window.location = "/channel_list.html"
         }).post()
     }
 </script>

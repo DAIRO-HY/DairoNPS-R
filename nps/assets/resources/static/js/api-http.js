@@ -12,9 +12,21 @@ class ApiHttp {
         //默认显示等待加载框
         this.isShowWaiting = true
 
+        //是否异步请求,默认为true
+        this.isAsync = true
+
         this.finishFunc = () => {
             //默认结束后什么也不做
         }
+    }
+
+    /**
+     * 设置为同步请求
+     * @returns 
+     */
+    sync(){
+        this.isAsync = false
+        return this
     }
 
     /**
@@ -95,6 +107,20 @@ class ApiHttp {
     }
 
     /**
+     * 发起DELETE请求
+     */
+    delete() {
+        this.request("DELETE")
+    }
+
+    /**
+     * 发起PUT请求
+     */
+    put() {
+        this.request("PUT")
+    }
+
+    /**
      * 发起请求
      * @param method 请求方式
      */
@@ -103,7 +129,7 @@ class ApiHttp {
         let urlParam = "_clientFlag=0&_version=0&"
         for (let key in this.param) {
             const value = this.param[key]
-            if (value == null || value === "") {
+            if (value == null) {
                 continue
             }
             if (Array.isArray(value)) {//如果这是一个数组
@@ -123,6 +149,7 @@ class ApiHttp {
             method: method,
             data: urlParam,
             dataType: "TEXT",
+            async: this.isAsync,   // 根据isAsync属性设置请求是否异步
             success: resText => {
                 this.removeMask()
                 let data = null
@@ -151,15 +178,15 @@ class ApiHttp {
                     alert(resText)
                     return
                 }
-                if (data.Code === undefined) {//非业务错误
+                if (data.code === undefined) {//非业务错误
                     alert(resText)
                     return
                 }
-                if (data.Code === 5) {
+                if (data.code === 5) {
                     window.location.href = "/login"
                     return
                 }
-                if (data.Code === 2) {//单项目检查错误
+                if (data.code === 2) {//单项目检查错误
                     const fieldError = data.data
                     this.addFiledError(fieldError)
                     return

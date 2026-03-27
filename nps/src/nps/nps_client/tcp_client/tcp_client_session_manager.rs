@@ -25,8 +25,6 @@ pub async fn hold_on_client(client: Client, tcp: TcpStream) -> io::Result<()> {
     shutdown(client_id).await?;
     let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(1024);
     CLIENT_SESSION
-        .get()
-        .unwrap()
         .lock()
         .await
         .insert(client_id, tx);
@@ -93,7 +91,7 @@ pub async fn send_tcp_pool_request(client_id: i64, count: u8) {
  */
 async fn send(client_id: i64, flag: u8, message: &str) {
     let tx_option = {
-        let session_map = CLIENT_SESSION.get().unwrap().lock().await;
+        let session_map = CLIENT_SESSION.lock().await;
         session_map.get(&client_id).cloned()
     };
     if let Some(tx) = tx_option {
@@ -109,8 +107,6 @@ pub async fn remove_session(client_id: i64) {
 
     //移除连接
     CLIENT_SESSION
-        .get()
-        .unwrap()
         .lock()
         .await
         .remove(&client_id);
@@ -144,7 +140,7 @@ async fn shutdown_proxy_and_pool_and_bridge(client_id: i64) {
 // 关闭一个客户端
 pub async fn shutdown(client_id: i64) -> io::Result<()> {
     let old_session_tx = {
-        let session_map = CLIENT_SESSION.get().unwrap().lock().await;
+        let session_map = CLIENT_SESSION.lock().await;
         session_map.get(&client_id).cloned()
     };
     if let Some(tx) = old_session_tx {
@@ -160,8 +156,6 @@ pub async fn shutdown(client_id: i64) -> io::Result<()> {
 
         // 等待一段时间让旧连接关闭
         while CLIENT_SESSION
-            .get()
-            .unwrap()
             .lock()
             .await
             .contains_key(&client_id)

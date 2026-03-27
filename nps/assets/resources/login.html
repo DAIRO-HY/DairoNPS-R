@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     {{template include/head.tpl}}
@@ -10,11 +10,12 @@
         <div class="d-table-cell align-middle">
             <div class="d-inline-block border rounded bg-white p-3" style="width: 300px;">
                 <span class="fs-4">管理员登录</span>
-                <input name="Name" class="form-control mt-3" type="text" placeholder="用户名" autocomplete="off"
+                <input name="name" class="form-control mt-3" type="text" placeholder="用户名" autocomplete="off"
                        required>
-                <input name="Pwd" class="form-control mt-3" type="password" placeholder="密码" autocomplete="off"
+                <input name="age" class="form-control mt-3" type="password" placeholder="密码" autocomplete="off"
                        required>
                 <button type="button" onclick="onLoginClick()" class="btn btn-primary w-100 mt-4">登录</button>
+                <button type="button" onclick="onTestClick()" class="btn btn-primary w-100 mt-4">TEST</button>
                 <div class="text-end mt-2"><a class="text-muted small" href="javascript:void(0);"
                                               onclick="onForgetClick();">忘记密码</a></div>
             </div>
@@ -28,8 +29,30 @@
      */
     function onLoginClick() {
         $("form").ajaxByForm().success(() => {
-            location.href = "/index"
+            location.href = "/index.html"
         }).post()
+    }
+    /**
+     * 登录按钮点击事件
+     */
+    function onTestClick() {
+        fetch("/json", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            name: "Tom"
+        })
+        })
+        .then(response => response.json())
+        .then(data => {
+        console.log("服务端返回：", data);
+        })
+        .catch(error => {
+        console.error("请求失败：", error);
+        });
+
     }
 
     /**

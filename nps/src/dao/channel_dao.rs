@@ -1,6 +1,6 @@
-use crate::entity::channel::Channel;
-
 use std::vec;
+
+include!(concat!(env!("OUT_DIR"), "/dao/channel_dao.rs"));
 
 // func init() {
 // 	ClearError()
@@ -127,24 +127,19 @@ use std::vec;
  * 获取所有激活的隧道列表
  */
 pub fn select_active_by_client_id(client_id: i64) -> Vec<Channel> {
-	// sql := "select channel.* from channel left join client on channel.clientId = client.id where channel.clientId = ? and client.enableState = 1 and channel.enableState = 1"
-	// return DBUtil.SelectList[dto.ChannelDto](sql, clientId)
-	vec![Channel {
+    // sql := "select channel.* from channel left join client on channel.clientId = client.id where channel.clientId = ? and client.enableState = 1 and channel.enableState = 1"
+    // return DBUtil.SelectList[dto.ChannelDto](sql, clientId)
+
+    let cc = Channel {
         id: 0,
         client_id: client_id,
         name: "name".to_string(),
         mode: 1,
         server_port: 9081,
         target_port: "wadoh.ad.ogis-ri.co.jp:8080".to_string(),
-        in_data: 0,
-        out_data: 0,
-        enable_state: 0,
-        security_state: 0,
-        acl_state: 0,
-        date: 1111111,
-        remark: String::new(),
-        error: String::new(),
-    }]
+        ..Channel::default()
+    };
+    vec![cc]
 }
 
 // /**
@@ -168,11 +163,11 @@ pub fn select_active_by_client_id(client_id: i64) -> Vec<Channel> {
 // 	return ids
 // }
 
-// // 设置可用状态
-// func SetEnableState(id int, state int) {
-// 	sql := "update channel set enableState = ? where id = ?"
-// 	DBUtil.ExecIgnoreError(sql, state, id)
-// }
+// 设置可用状态
+pub fn toggle_enable(conn: &rusqlite::Connection, id: i64, state: i8) {
+    const SQL: &str = "update channel set enable_state = ? where id = ?";
+    let _ = conn.execute(SQL, rusqlite::params!(state, id));
+}
 
 // // 设置错误信息
 // func SetError(id int, error *string) {

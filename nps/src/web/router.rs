@@ -1,14 +1,30 @@
 use crate::extension::ResponseEmptyExt;
+use crate::web::extract::{AppForm, AppJson, AppPath, AppQuery};
 use axum::{
-    Router,
+    Json, Router,
+    extract::Path,
+    extract::Query,
     http::{StatusCode, header},
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{delete, get, post, put},
 };
+use serde::{Deserialize, Serialize};
 use std::env;
+use tokio::sync::Notify;
+use once_cell::sync::Lazy;
+use std::sync::Arc;
+
+/// 用来接收关闭通知的全局异步通知器
+pub static SHUTDOWN_NOTIFY: Lazy<Arc<Notify>> = Lazy::new(|| Arc::new(Notify::const_new()));
 
 /// 导入set_html_routes函数
 include!(concat!(env!("OUT_DIR"), "/resource_routes.rs.block"));
+
+/// 从查询参数中提取id
+#[derive(Deserialize, Serialize, Debug)]
+pub struct IdQuery {
+    pub id: i64,
+}
 
 pub fn ready() {
     tokio::spawn(init_router());
@@ -17,14 +33,39 @@ pub fn ready() {
 async fn init_router() {
     let app = set_html_routes(Router::new())
         .route("/", get(super::index::index))
+        .route("/common/global", get(super::controller::common::global))
+        .route("/common/restart", put(super::controller::common::restart))
+        .route(
+            "/common/dropdown/{tag}",
+            get(super::controller::common::dropdown),
+        )
+        .route("/login/do_login", post(super::controller::login::do_login))
+        .route("/client/list", get(super::controller::client::list))
+        .route("/client/detail", get(super::controller::client::detail))
+        .route("/client/edit", post(super::controller::client::edit))
+        .route("/client/delete", delete(super::controller::client::delete))
+        .route(
+            "/client/toggle_enable",
+            put(super::controller::client::toggle_enable),
+        )
+        .route("/channel/list", get(super::controller::channel::list))
+        .route("/channel/detail", get(super::controller::channel::detail))
+        .route("/channel/edit", post(super::controller::channel::edit))
+        .route(
+            "/channel/delete",
+            delete(super::controller::channel::delete),
+        )
+        .route(
+            "/channel/toggle_enable",
+            put(super::controller::channel::toggle_enable),
+        )
         .route(
             "/test",
             get(async || -> Response {
                 let logged_info = crate::web::controller::login::LOGGED_INFO.read().await;
-                Response::ok(logged_info.token.clone())
+                Response::text(logged_info.token.clone())
             }),
         )
-        .route("/login/do_login", post(super::controller::login::do_login))
         // .route("/", get(async || -> Response {
         //     static_file_res("content", "mime.as_ref().to_string()")
         //     // // 你可以按需增加更多头：Cache-Control / ETag / Last-Modified 等
@@ -39,11 +80,22 @@ async fn init_router() {
         //     // (StatusCode::OK, headers, "content".to_string()).into_response()
         //  }))
         // .route("/static/{*path}", get(super::static_file::handler))
-        .route("/hello", get(hello));
+        .route("/hello", get(hello))
+        .route("/query", get(query_test))
+        .route("/path/{id}", get(path_test))
+        .route("/json", post(json));
 
     // run our app with hyper, listening globally on port 1880
     let listener = tokio::net::TcpListener::bind("0.0.0.0:1880").await.unwrap();
-    axum::serve(listener, app).await;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async move {
+            SHUTDOWN_NOTIFY.notified().await;
+            
+            // 标记axum已经退出
+            crate::application::IS_AXUM_DROP.store(true, std::sync::atomic::Ordering::Release);
+        })
+        .await;
+
 }
 
 /// 处理静态文件请求
@@ -67,4 +119,20 @@ pub async fn handler(content: &str) -> Response {
 
 async fn hello() -> &'static str {
     "Hello, World!"
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct QueryParams {
+    pub name: String,
+    pub age: u32,
+}
+async fn query_test(AppQuery(q): AppQuery<QueryParams>) -> Response {
+    (StatusCode::INTERNAL_SERVER_ERROR, Json(q)).into_response()
+}
+
+async fn json(AppJson(q): AppJson<QueryParams>) -> Response {
+    (StatusCode::INTERNAL_SERVER_ERROR, Json(q)).into_response()
+}
+async fn path_test(AppPath(id): AppPath<i64>) -> Response {
+    (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", id)).into_response()
 }

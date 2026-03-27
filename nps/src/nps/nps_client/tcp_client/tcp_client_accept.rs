@@ -2,40 +2,41 @@ use super::super::header_util;
 use super::tcp_client_session_manager;
 use crate::dao::client_dao;
 use crate::nps::nps_pool::tcp_pool_manager;
+use once_cell::sync::Lazy;
+use std::sync::Arc;
 use tokio::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::select;
+use tokio::sync::Notify;
+
+/// 用来接收关闭通知的全局异步通知器
+pub static SHUTDOWN_NOTIFY: Lazy<Arc<Notify>> = Lazy::new(|| Arc::new(Notify::const_new()));
 
 // 监听客户端连接
 pub async fn accept() -> io::Result<()> {
-    //listen, err := net.Listen("tcp", ":"+NPSConstant.TCPPort)
     let listener = TcpListener::bind("0.0.0.0:1781").await?;
-    // if err != nil {
-    //     LogUtil.Error(fmt.Sprintf("监听客户端监听失败，请参考错误信息。err:%q", err))
-    //     log.Fatal(err)
-    // }
-    // defer listen.Close()
-    // LogUtil.Info(fmt.Sprintf("端口:%s监听成功。\n", NPSConstant.TCPPort))
     loop {
-        // LogUtil.Debug(fmt.Sprintf("监听客户端连接,端口:%s监听成功。", NPSConstant.TCPPort))
-        // println!("监听客户端连接,端口:{}监听成功。", 1781);
-
-        //等待客户端连接
-        // tcp, err := listen.Accept()
-        let (tcp_stream, _) = listener.accept().await?;
-        // if err != nil {
-        //     LogUtil.Error(fmt.Sprintf("监听客户端结束,端口:%s", NPSConstant.TCPPort))
-        //     log.Fatal(err)
-        // }
-        // LogUtil.Debug(fmt.Sprintf("接收到客户端连接请求,端口:%s监听成功。", NPSConstant.TCPPort))
-        println!("接收到客户端连接请求,端口:{}监听成功。", 1781);
-        tokio::spawn(async {
-            if handle_accept(tcp_stream).await.is_err() {
-                println!("处理客户端连接发生错误。");
-            }
-            println!("客户端连接处理结束。");
-        });
+        select! {
+        _ = SHUTDOWN_NOTIFY.notified() => {
+            drop(listener);
+            crate::application::IS_NPS_SERVER_DROP.store(true, std::sync::atomic::Ordering::Release);
+            break;
+        }
+        acc = listener.accept() => {//等待客户端连接
+                       let (tcp_stream, _) = acc?;
+                       println!("接收到客户端连接请求,端口:{}监听成功。", 1781);
+                       tokio::spawn(async {
+                           if handle_accept(tcp_stream).await.is_err() {
+                               println!("处理客户端连接发生错误。");
+                           }
+                           println!("客户端连接处理结束。");
+                       });
+                   }
+                   }
     }
+    println!("NPS服务端监听已关闭。");
+    Ok(())
 }
 
 /**

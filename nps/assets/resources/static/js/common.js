@@ -49,6 +49,7 @@ Date.prototype.format = function (pattern = "yyyy-MM-dd hh:mm:ss") {
 }
 
 $(function () {
+    initGlobelData()
     initDropdown()
     if ($(".navbar").length > 0) {
         initTopBar();
@@ -109,21 +110,38 @@ function getParam(key) {
  * 初始化dropdown数据
  */
 function initDropdown(){
-    let query = ""
-    $.each($("select[dropdown-tag]"),(_,obj)=>{
-        query += $(obj).attr("dropdown-tag") + "=1&"
-    })
-    if(query === ""){
-        return
-    }
-    $.ajaxByData("common/dropdown?" + query).success(data=>{
-        console.log(data)
-        for(const key in data){
-            const $select = $(`select[dropdown-tag="${key}"]`)
-            const options = data[key]
-            options.forEach(item=>{
-                $select.append(`<option value="${item.Value}">${item.Label}</option>`)
+    $("select[dropdown-tag]").each((_,obj)=>{
+        const $obj = $(obj)
+        const tag = $obj.attr("dropdown-tag")
+        $.ajaxByData("common/dropdown/" + tag).sync().success(data=>{
+            data.forEach(item=>{
+                $obj.append(`<option value="${item.value}">${item.label}</option>`)
             })
+        }).get()
+    })
+}
+
+function initGlobelData(){
+    $.ajaxByData("/common/global").sync().success(data=>{
+        if(data.isNeedRestart){
+            $("#restartDiv").show();
+        } else {
+            $("#restartDiv").hide();
         }
-    }).post()
+        
+        if(data.isRestarting){
+            $("#restartingDiv").show();
+        } else {
+            $("#restartingDiv").hide();
+        }
+    }).get()
+}
+
+/**
+ * 重启服务
+ */
+function onRestartClick(){
+    $.ajaxByData("/common/restart").sync().success(data=>{
+        initGlobelData()
+    }).put()
 }

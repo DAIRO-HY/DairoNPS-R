@@ -1,5 +1,7 @@
 include!(concat!(env!("OUT_DIR"), "/dao/client_dao.rs"));
 
+
+
 // // Add 添加一条客户端数据
 // func Add(dto *dto.ClientDto) {
 // 	sql := "insert into client(name,key,remark)values(?,?,?)"
@@ -80,11 +82,12 @@ pub fn select_by_key(key: &str) -> Option<Client> {
 // 	DBUtil.ExecIgnoreError(sql, remark, id)
 // }
 //
-// // 设置可用状态
-// func SetEnableState(id int, state int) {
-// 	sql := "update client set enableState = ? where id = ?"
-// 	DBUtil.ExecIgnoreError(sql, state, id)
-// }
+
+// 设置可用状态
+pub fn toggle_enable(conn: &rusqlite::Connection, id: i64, state: i8) {
+    const SQL: &str = "update client set enable_state = ? where id = ?";
+    let _ = conn.execute(SQL, rusqlite::params!(state, id));
+}
 //
 // /**
 //  * 获取所有客户端列表

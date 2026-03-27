@@ -30,7 +30,7 @@ pub fn init() {
 
 // 获取某个客户端连接池数量
 pub async fn get_pool_count(client_id: &i64) -> usize {
-    return POOL_MAP.get().unwrap().lock().await.get(&client_id).map_or(0, |it| it.len());
+    return POOL_MAP.lock().await.get(&client_id).map_or(0, |it| it.len());
 }
 
 /**
@@ -39,7 +39,7 @@ pub async fn get_pool_count(client_id: &i64) -> usize {
  */
 pub async fn init_empty_pool_by_client(client_id: i64) {
     //移除旧的连接池并创建新的连接池
-    POOL_MAP.get().unwrap().lock().await.insert(client_id, Vec::new());
+    POOL_MAP.lock().await.insert(client_id, Vec::new());
 }
 
 // 添加TCP连接池
@@ -49,7 +49,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<()> {
     let client_id_str = header_util::get_header(&mut tcp).await?;
     let client_id: i64 = client_id_str.parse().unwrap();
 
-    let mut pool_map = POOL_MAP.get().unwrap().lock().await;
+    let mut pool_map = POOL_MAP.lock().await;
 
     //得到客户端连接池列表
     let Some(pools) = pool_map.get_mut(&client_id) else{
@@ -83,7 +83,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<()> {
  * @param clientID 客户端ID
  */
 async fn get(client_id:i64)-> Option<(TcpStream,usize)> {
-    let mut pool_map = POOL_MAP.get().unwrap().lock().await;
+    let mut pool_map = POOL_MAP.lock().await;
     let Some(pools) = pool_map.get_mut(&client_id) else {
         return None;
     };
@@ -131,7 +131,7 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
 //  * @param clientID 客户端ID
 //  */
 // async fn pool_request(client_id: u64, count: u8) {
-//     let mut pool_map = POOL_MAP.get().unwrap().lock().await;
+//     let mut pool_map = POOL_MAP.lock().await;
 
 //     //得到客户端连接池列表
 //     let pools = pool_map.get(&client_id);
@@ -150,7 +150,7 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
  * @param clientID 客户端ID
  */
 pub async fn shutdown_by_client(client_id: i64) {
-    POOL_MAP.get().unwrap().lock().await.remove(&client_id);
+    POOL_MAP.lock().await.remove(&client_id);
     println!("tcp连接池被关闭了...");
 }
 
@@ -162,7 +162,7 @@ async fn timeout_check() {
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_secs();
-        let mut pool_map = POOL_MAP.get().unwrap().lock().await;
+        let mut pool_map = POOL_MAP.lock().await;
 
         //用来记录连接池被清空的客户端ID,用于请求创建新的连接池
         let mut empty_pool_clients = Vec::new();

@@ -12,24 +12,31 @@ struct Assets;
 const VERSION: i32 = 1;
 
 //由于对数据操作比较少，全局一个连接池就够了
-pub static CONN: OnceLock<Mutex<Connection>> = OnceLock::new();
-pub async fn connection() -> tokio::sync::MutexGuard<'static, Connection> {
-    CONN.get().unwrap().lock().await
-}
+// pub static CONN: OnceLock<Mutex<Connection>> = OnceLock::new();
+// pub async fn connection() -> tokio::sync::MutexGuard<'static, Connection> {
+//     CONN.get().unwrap().lock().await
+// }
 
 // 初始化数据库连接和表结构
 pub async fn init() {
-    create_connection().await;
+    // create_connection().await;
+
+    let conn = new_connection();
+
+    //升级数据库（如果需要）
+    upgrade(&conn);
+
+    // 初始化数据库
+    init_data(&conn);
 }
 
 // 获取数据库连接
-async fn create_connection() {
-    let conn = new_connection();
-    upgrade(&conn);
-    conn.busy_timeout(std::time::Duration::from_millis(10000))
-        .unwrap();
-    CONN.set(Mutex::new(conn)).ok();
-}
+// async fn create_connection() {
+//     let conn = new_connection();
+//     conn.busy_timeout(std::time::Duration::from_millis(10000))
+//         .unwrap();
+//     CONN.set(Mutex::new(conn)).ok();
+// }
 
 pub fn new_connection() -> Connection {
     rusqlite::Connection::open(crate::constant::nps_constant::SQLITE_FILE).unwrap()
@@ -61,9 +68,25 @@ fn upgrade(conn: &Connection) {
         .unwrap();
 }
 
+// 初始化数据库
+fn init_data(conn: &Connection){
+    const SQL: &str = r#"
+        delete from client where deleted = 1;
+        delete from channel where deleted = 1;
+        delete from channel where client_id not in (select id from client);
+        delete from channel_data_size where channel_id not in (select id from channel);
+        "#;
+    let _ = conn.execute(SQL, []);
+}
+
 // 创建表
 fn create_table(conn: &Connection) {
-    for sql_file in ["xxx.sql", "client.sql", "channel_data_size.sql"] {
+    for sql_file in [
+        "xxx.sql",
+        "client.sql",
+        "channel.sql",
+        "channel_data_size.sql",
+    ] {
         execute_sql_file(conn, sql_file);
     }
 }

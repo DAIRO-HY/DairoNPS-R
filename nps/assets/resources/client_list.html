@@ -1,35 +1,34 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    {{template "head" .}}
+    {{template include/head.tpl}}
     <title>客户端</title>
 </head>
 <body>
-{{template "top-bar" .}}
+{{template include/top-bar.tpl}}
 <div class="mx-0 mt-3">
     <div id="list" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-0">
     </div>
 </div>
-<th:block th:include="admin/include/js :: js"/>
 <script>
     $(function(){
         addNavBtn("添加", () => {
-            window.location.href = "/client_list/client_edit"
+            window.location.href = "/client_edit.html"
         });
         init()
     });
 
     function init() {
-        $.ajaxByData("/client_list/init").success(data => {
+        $.ajaxByData("/client/list").success(data => {
             fillData(data)
-        }).post()
+        }).get()
     }
 
     /**
      * 填充数据
      */
     function fillData(data){
-        const $list = $("#list")
+        const $list = $("#list").empty()
         data.forEach(item=>{
             $list.append(`
               <div class="col px-0 pb-3 px-3">
@@ -37,25 +36,26 @@
                     <div style="position: absolute;top:0;right:8px;font-size: 40px;color: #0000001c;">
 
                         <!--在线状态-->
-                        <i class="bi opacity-50 ${item.IsOnline ? "bi-wifi text-success" : "bi-wifi-off text-danger"}"></i>
+                        <i class="bi opacity-50 ${item.isOnline ? "bi-wifi text-success" : "bi-wifi-off text-danger"}"></i>
                     </div>
-                    <div class="text-center fs-5"><span>${item.Name}</span></div>
-                    <div>版本:<span>${item.Version}</span></div>
-                    <div>秘钥:<span>${item.Key}</span></div>
-                    <div>IP:<span>${item.Ip}</span></div>
-                    <div>入网:<span>${item.InData}</span> &nbsp;&nbsp;出网<span>${item.OutData}</span></div>
+                    <div class="text-center fs-5"><span>${item.name}</span></div>
+                    <div>版本:<span>${item.clientVersion}</span></div>
+                    <div>秘钥:<span>${item.key}</span></div>
+                    <div>IP:<span>${item.ip}</span></div>
+                    <div>入网:<span>${item.inData}</span> &nbsp;&nbsp;出网<span>${item.outData}</span></div>
                     <div class="text-end">
-                        <button class="btn btn-sm btn-outline-danger" onclick="onSetStateClick(${item.Id})">
-                            <i class="bi ${item.EnableState === 1 ? "bi-pause-fill" : "bi-play-fill"}"></i>
+                        <button class="btn btn-sm btn-outline-danger" onclick="onToggleEnableClick(${item.id})">
+                            <i class="bi ${item.enableState === 1 ? "bi-pause-fill" : "bi-play-fill"}"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="onDeleteClick(${item.Id})">
+                        <button class="btn btn-sm btn-outline-danger" onclick="onDeleteClick(${item.id})">
                             <i class="bi bi-trash3"></i>
                         </button>
                         <a class="btn btn-sm btn-outline-primary"
-                          href="/client_list/client_edit?id=${item.Id}"><i
+                          href="/client_edit.html?id=${item.id}"><i
                                 class="bi bi-pencil-square"></i></a>
-                        <a class="btn btn-sm btn-outline-primary"
-                           href="/channel_list?clientId=${item.Id}">隧道</a>
+                        <button class="btn btn-sm btn-outline-primary" onclick="onToChannelListClick(${item.id})">
+                            隧道
+                        </button>
                     </div>
                 </div>
               </div>`
@@ -72,19 +72,24 @@
         if (!confirm("确定删除?")) {
             return
         }
-        $.ajaxByData("/client_list/delete?id=" + id).success(() => {
-            history.go(0)
-        }).post()
+        $.ajaxByData("/client/delete?id=" + id).success(() => {
+            init()
+        }).delete()
     }
 
     /**
      * 修改可用状态
      * @param id
      */
-    function onSetStateClick(id) {
-        $.ajaxByData("/client_list/set_state?id=" + id).success(() => {
-            history.go(0)
-        }).post()
+    function onToggleEnableClick(id) {
+        $.ajaxByData("/client/toggle_enable?id=" + id).success(() => {
+            init()
+        }).put()
+    }
+
+    function onToChannelListClick(clientId) {
+        sessionStorage.setItem("channelListSearchData", `{"clientId":"${clientId}", "mode":""}`)
+        window.location.href = "/channel_list.html?clientId=" + clientId
     }
 </script>
 </body>

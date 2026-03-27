@@ -12,9 +12,8 @@ CREATE TABLE IF NOT EXISTS client
     enable_state     INT8        NOT NULL DEFAULT 1,                              -- 启用状态 1:开启  0:停止
     last_login_date  BIGINT      NOT NULL DEFAULT (strftime('%s', 'now') * 1000), -- 最后一次连接时间
     created_at       BIGINT      NOT NULL DEFAULT 0,                              -- 创建时间
+    updated_at       BIGINT      NOT NULL DEFAULT 0,                              -- 更新时间
     remark           TEXT,                                                        -- 一些备注信息,错误信息等
     version          BIGINT      NOT NULL DEFAULT 0,                              -- 用作乐观排他
-    deleted          BIGINT      NOT NULL DEFAULT 0,                              -- 逻辑删除标志 0:未删除 1:已删除
-    deleted_at       BIGINT,                                                      -- 删除时间
-    deleted_by       VARCHAR(30)                                                  -- 删除者
+    deleted          INT8        NOT NULL DEFAULT 0                               -- 删除标记 1:已删除 0:未删除
 );

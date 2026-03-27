@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use dashmap::DashMap;
 use super::tcp_bridge::{TCPBridge, TCPBridgeInfo};
-use crate::entity::channel::Channel;
+use crate::dao::channel_dao::Channel;
 use crate::model::data_total::DataTotal;
 use crate::nps::nps_pool::tcp_pool_manager;
 use tokio::net::TcpStream;
