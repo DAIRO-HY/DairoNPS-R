@@ -32,8 +32,11 @@ pub async fn accept_client(client_id: i64) {
     // //加载统计数据
     // ChannelStatisticsUtil.Init()
 
+    let conn = crate::util::db_util::new_connection();
+
     //开启NPS客户端ID下所有的隧道
-    let active_list = channel_dao::select_active_by_client_id(client_id);
+    let active_list = channel_dao::select_active_by_client_id(&conn, client_id).unwrap();
+    drop(conn);
     for it in active_list {
         if it.mode == 1 {
             //只监听TCP隧道

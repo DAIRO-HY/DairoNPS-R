@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+sqlparser = "0.61"
 syn = { version = "2", features = ["full", "extra-traits", "parsing", "visit"] }
 prettyplease = "0.2" #代码格式化
 mime_guess = "2"

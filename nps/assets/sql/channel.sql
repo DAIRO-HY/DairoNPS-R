@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS channel
     client_id      INTEGER     NOT NULL,                                        -- 客户端id
     name          VARCHAR(32) NOT NULL,
     mode          INT8     NOT NULL,                                        -- 隧道模式, 1:TCP  2:UDP
-    server_port    INT16     NOT NULL UNIQUE,                                 -- 服务器端端口
+    server_port    INT16     NOT NULL,                                 -- 服务器端端口
     target_port    VARCHAR(32) NOT NULL,                                        -- 目标端口(ip:端口)
     in_data        BIGINT      NOT NULL DEFAULT 0,                              -- 入网流量
     out_data       BIGINT      NOT NULL DEFAULT 0,                              -- 出网流量
@@ -19,3 +19,6 @@ CREATE TABLE IF NOT EXISTS channel
     version       BIGINT      NOT NULL DEFAULT 0,                             -- 用作乐观排他
     deleted       INT8        NOT NULL DEFAULT 0                               -- 删除标记 1:已删除 0:未删除
 );
+
+-- 服务器端端口不允许重复
+CREATE UNIQUE INDEX channel_idx_unique_server_port ON channel (server_port) where deleted = 0;

@@ -123,25 +123,6 @@ include!(concat!(env!("OUT_DIR"), "/dao/channel_dao.rs"));
 // 	return DBUtil.SelectList[dto.ChannelSearchDto](sql)
 // }
 
-/**
- * 获取所有激活的隧道列表
- */
-pub fn select_active_by_client_id(client_id: i64) -> Vec<Channel> {
-    // sql := "select channel.* from channel left join client on channel.clientId = client.id where channel.clientId = ? and client.enableState = 1 and channel.enableState = 1"
-    // return DBUtil.SelectList[dto.ChannelDto](sql, clientId)
-
-    let cc = Channel {
-        id: 0,
-        client_id: client_id,
-        name: "name".to_string(),
-        mode: 1,
-        server_port: 9081,
-        target_port: "wadoh.ad.ogis-ri.co.jp:8080".to_string(),
-        ..Channel::default()
-    };
-    vec![cc]
-}
-
 // /**
 //  * 获取客户端下所有的隧道id列表
 //  */

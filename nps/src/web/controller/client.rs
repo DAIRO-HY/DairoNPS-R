@@ -86,7 +86,10 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
 
     let conn = db_util::new_connection();
     let mut client = if form.id == 0 {
-        Default::default()
+        Client{
+            enable_state:1,
+            ..Default::default()
+        }
     } else {
         if let Ok(it) = client_dao::select_one(&conn, form.id) {
             it

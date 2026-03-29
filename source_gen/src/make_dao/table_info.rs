@@ -47,13 +47,18 @@ impl TableInfo {
         self.columns.iter().filter(|it| it.is_primary_key)
     }
 
+    /// 获取实体类名称
+    pub fn get_entity_name(&self) -> String {
+        utils::snake_to_pascal(&self.name, "_")
+    }
+
     /// 生成实体类的源代码
     pub fn make_entity_src(&self) -> String {
         let mut entity_src = String::new();
         entity_src.push_str("#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]\n");
         entity_src.push_str(&format!(
             "pub struct {} {{\n",
-            utils::snake_to_pascal(&self.name, "_")
+            self.get_entity_name()
         ));
         self.columns.iter().for_each(|column| {
             let mut field_type = Self::map_data_type_to_rust_type(&column.data_type).to_string();
@@ -721,6 +726,15 @@ impl TableInfo {
         .replace("[SQL]", &delete_sql)
         .replace("[PARAM]", &sql_params.join(", "))
         .replace("[FUNC_PARAMS]", &func_params.join(", "))
+    }
+
+    /// 生成映射函数的源代码
+    pub fn make_mapper_func(&self) -> String {
+        let mut func_src = String::new();
+        self.mappers.iter().for_each(|mapper| {
+            func_src.push_str(&mapper.make_mapper_source(self));
+        });
+        func_src
     }
 }
 

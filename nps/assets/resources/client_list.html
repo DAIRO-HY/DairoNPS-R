@@ -73,6 +73,7 @@
             return
         }
         $.ajaxByData("/client/delete?id=" + id).success(() => {
+            initGlobelData()
             init()
         }).delete()
     }
@@ -83,6 +84,7 @@
      */
     function onToggleEnableClick(id) {
         $.ajaxByData("/client/toggle_enable?id=" + id).success(() => {
+            initGlobelData()
             init()
         }).put()
     }

@@ -88,6 +88,9 @@ fn read_column_info_from_line(line: &str) -> Option<ColumnInfo> {
     while line.contains("  ") {
         line = line.replace("  ", " ");
     }
+    if line.trim().to_uppercase().starts_with("CREATE "){
+        return None;
+    }
     if line.to_uppercase().contains("CREATE TABLE") {
         return None; // 跳过表定义行
     }

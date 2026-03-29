@@ -49,7 +49,7 @@ pub async fn restart() {
         }
     }
     println!("NPS服务端监听已关闭");
-    
+
     println!("准备重启...");
     let exe = env::current_exe().expect("获取程序路径失败");
     let mut args: Vec<String> = env::args().skip(1).collect();

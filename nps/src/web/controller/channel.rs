@@ -125,7 +125,10 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
 
     let conn = db_util::new_connection();
     let mut channel = if form.id == 0 {
-        Default::default()
+        Channel{
+            enable_state:1,
+            ..Default::default()
+        }
     } else {
         if let Ok(it) = channel_dao::select_one(&conn, form.id) {
             it
