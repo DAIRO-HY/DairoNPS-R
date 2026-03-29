@@ -1,6 +1,10 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 use rusqlite::Connection;
 
+
+include!(concat!(env!("OUT_DIR"), "/dao/channel_data_dao.rs"));
+
+
 // func init() {
 
 // 	//指定删除时间戳
@@ -19,7 +23,7 @@ use rusqlite::Connection;
         //当前时间戳（秒）
         let date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
         let sql =
-            "insert into channel_data_size(channel_id,date,in_data,out_data)values(?,?,?,?)";
+            "insert into channel_data(channel_id,date,in_data,out_data)values(?,?,?,?)";
             
         // let mut conn = connection().await;
         // let tx = conn.transaction().unwrap();
@@ -86,3 +90,4 @@ use rusqlite::Connection;
 // 	sql := "delete from date_data_size where channelId in (select id from channel where clientId = ?)"
 // 	DBUtil.ExecIgnoreError(sql, clientId)
 // }
+

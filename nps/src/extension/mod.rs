@@ -3,16 +3,13 @@ pub mod number;
 use crate::web::model::ResultData;
 use axum::{
     Json,
-    body::Body,
-    extract::Form,
     http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 use maplit::hashmap;
 use rusqlite::types::FromSql;
 use rusqlite::{Connection, Params};
-use serde_json::json;
-use std::{collections::HashMap, fmt::format};
+use std::{collections::HashMap};
 
 // 这个模块提供了一个扩展 trait，用于简化查询单个值的操作
 pub trait SelectSingleExt {

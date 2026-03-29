@@ -1,8 +1,9 @@
-use crate::extension::SelectSingleExt;
-use rusqlite::Connection;
+use std::error::Error;
+// use crate::extension::SelectSingleExt;
 use rust_embed::RustEmbed;
-use std::sync::OnceLock;
-use tokio::sync::Mutex;
+use std::sync::LazyLock;
+use sqlx::sqlite::SqlitePoolOptions;
+use sqlx::{Sqlite, SqlitePool, Transaction};
 
 #[derive(RustEmbed)]
 #[folder = "assets/sql/"]
@@ -17,17 +18,25 @@ const VERSION: i32 = 1;
 //     CONN.get().unwrap().lock().await
 // }
 
-// 初始化数据库连接和表结构
-pub async fn init() {
-    // create_connection().await;
+/// 全局数据库连接池
+pub static DB_CONN: LazyLock<SqlitePool> = LazyLock::new(||{
+    SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect_lazy("sqlite://dairo-nps.sqlite?mode=rwc")
+        .unwrap()
+});
 
-    let conn = new_connection();
+// 初始化数据库连接和表结构
+pub async fn init()   -> Result<(), Box<dyn Error>>{
+    let mut tx =  DB_CONN.clone().begin().await?;
 
     //升级数据库（如果需要）
-    upgrade(&conn);
+    upgrade(&mut tx).await?;
 
     // 初始化数据库
-    init_data(&conn);
+    init_data(&mut tx).await?;
+    tx.commit().await?;
+    Ok(())
 }
 
 // 获取数据库连接
@@ -38,14 +47,17 @@ pub async fn init() {
 //     CONN.set(Mutex::new(conn)).ok();
 // }
 
-pub fn new_connection() -> Connection {
-    rusqlite::Connection::open(crate::constant::nps_constant::SQLITE_FILE).unwrap()
-}
+// pub fn new_connection() -> Connection {
+//     rusqlite::Connection::open(crate::constant::nps_constant::SQLITE_FILE).unwrap()
+// }
 
 // 数据库升级
-fn upgrade(conn: &Connection) {
-    let version: i32 = conn.select_single("PRAGMA USER_VERSION", []);
-    if version == 0 {
+async fn upgrade(tx: &mut Transaction<'_, Sqlite>)  -> Result<(), Box<dyn Error>>{
+    let version: Result<i32, sqlx::Error> = sqlx::query_scalar("PRAGMA USER_VERSION").fetch_one(&mut **tx).await;
+    if let Err(e) = version {
+        return Err(e.into());
+    }
+    if version? == 0 {
         // // 设置 WAL（返回值是实际模式，可能被 SQLite 调整）
         // conn.execute_batch("PRAGMA journal_mode = WAL;").unwrap();
 
@@ -56,7 +68,7 @@ fn upgrade(conn: &Connection) {
         // conn.execute_batch("PRAGMA wal_autocheckpoint = 1000;")
         //     .unwrap();
 
-        create_table(conn);
+        create_table(tx).await?;
 
         //第一次创建数据库时往系统配置表插入一条数据
         //ExecIgnoreError("insert into system_config(inData, outData) values (0, 0);")
@@ -64,41 +76,44 @@ fn upgrade(conn: &Connection) {
     }
 
     //设置数据库版本号
-    conn.execute(&(format!("PRAGMA USER_VERSION = {}", VERSION)), [])
-        .unwrap();
+    sqlx::query(&(format!("PRAGMA USER_VERSION = {}", VERSION))).execute(&mut **tx).await?;
+    Ok(())
 }
 
 // 初始化数据库
-fn init_data(conn: &Connection){
+async fn init_data(tx:  &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>> {
     const SQL: &str = r#"
         delete from client where deleted = 1;
-        delete from channel where deleted = 1;
         delete from channel where client_id not in (select id from client);
-        delete from channel_data_size where channel_id not in (select id from channel);
         "#;
-    let _ = conn.execute(SQL, []);
+    sqlx::query(SQL).execute(&mut **tx).await?;
+    Ok(())
 }
 
 // 创建表
-fn create_table(conn: &Connection) {
+async fn create_table(tx: &mut Transaction<'_, Sqlite>)  -> Result<(), Box<dyn Error>> {
     for sql_file in [
         "xxx.sql",
         "client.sql",
         "channel.sql",
-        "channel_data_size.sql",
+        "channel_data.sql",
     ] {
-        execute_sql_file(conn, sql_file);
+        execute_sql_file(tx, sql_file).await?;
     }
+    Ok(())
 }
 
 // 执行 SQL 文件中的多条 SQL 语句
-fn execute_sql_file(conn: &Connection, sql_file: &str) {
-    let sql_mbed = Assets::get(sql_file).unwrap();
-    let sql_str = std::str::from_utf8(sql_mbed.data.as_ref()).unwrap();
+async fn execute_sql_file(tx: &mut Transaction<'_, Sqlite>, sql_file: &str)  -> Result<(), Box<dyn Error>> {
+    let Some(sql_mbed) = Assets::get(sql_file) else {
+        return Err(From::from(format!("{} not found", sql_file)));
+    };
+    let sql_str = std::str::from_utf8(sql_mbed.data.as_ref())?;
     for s in sql_str.split(";") {
         if s.trim().is_empty() {
             continue;
         }
-        conn.execute(s, []).unwrap();
+        sqlx::query(s).execute(&mut **tx).await?;
     }
+    Ok(())
 }

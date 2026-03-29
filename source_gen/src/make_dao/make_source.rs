@@ -51,7 +51,11 @@ pub fn make(tables: Vec<TableInfo>) {
         let file_path = &save_path.join(format!("{}_dao.rs", table.name));
 
         // 解析成 syn AST
-        let rust_src: syn::File = syn::parse_str(dao_src.as_str()).unwrap();
+        let rust_src = syn::parse_str(dao_src.as_str()).unwrap_or_else(|it|{
+            eprintln!("cargo:warning=解析{}文件出错:{}", file_path.display(), it);
+            eprintln!("cargo:warning=文件内容:\n{}", dao_src);
+            panic!("文件解析失败");
+        });
 
         // 使用 prettyplease 格式化
         let formatted_rust_src = prettyplease::unparse(&rust_src);

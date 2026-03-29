@@ -46,7 +46,7 @@ pub async fn accept_client(client_id: i64) {
 }
 
 // 开始监听某个隧道
-async fn accept_channel(channel: Channel) {
+pub async fn accept_channel(channel: Channel) {
     // proxyAcceptLock.Lock()
     // oldProxyTCPAccept := proxyAcceptMap[channel.Id]
     // if oldProxyTCPAccept != nil { //若该隧道已经在监听,则先停止
@@ -55,10 +55,10 @@ async fn accept_channel(channel: Channel) {
 
     //关闭隧道正在通信的连接
     shutdown_by_channel(channel.id).await;
-    println!(
-        "-->开始监听隧道: {} 代理端口: {} 目标端口: {}",
-        channel.id, channel.server_port, channel.target_port
-    );
+    // println!(
+    //     "-->开始监听隧道: {} 代理端口: {} 目标端口: {}",
+    //     channel.id, channel.server_port, channel.target_port
+    // );
     let tcp_listener = TcpListener::bind(format!("0.0.0.0:{}", channel.server_port))
         .await
         .unwrap();
@@ -111,7 +111,7 @@ async fn accept_channel(channel: Channel) {
 
 // 关闭监听
 // - channelId 隧道id
-async fn shutdown_by_channel(channel_id: i64) {
+pub async fn shutdown_by_channel(channel_id: i64) {
     // proxyAcceptLock.Lock()
     // proxyTCPAccept := proxyAcceptMap[channelId]
     // if proxyTCPAccept != nil {
@@ -126,11 +126,11 @@ async fn shutdown_by_channel(channel_id: i64) {
             .await
             .get(&channel_id)
         {
-            println!(
-                "-->等待隧道代理监听停止,否则可能导致下次监听同一端口失败。channelId: {}",
-                channel_id
-            );
-            let _ = notify.notify_one();
+            // println!(
+            //     "-->等待隧道代理监听停止,否则可能导致下次监听同一端口失败。channelId: {}",
+            //     channel_id
+            // );
+            let _ = notify.notify_waiters();
             tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
         } else {
             return;

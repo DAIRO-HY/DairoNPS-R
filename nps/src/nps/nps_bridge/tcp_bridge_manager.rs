@@ -1,11 +1,11 @@
-use std::sync::Arc;
-use dashmap::DashMap;
 use super::tcp_bridge::{TCPBridge, TCPBridgeInfo};
 use crate::dao::channel_dao::Channel;
 use crate::model::data_total::DataTotal;
 use crate::nps::nps_pool::tcp_pool_manager;
+use dashmap::DashMap;
+use std::sync::Arc;
 use tokio::net::TcpStream;
-
+use tokio::sync::Notify;
 //TCP桥接会话管理
 
 // // 当前正在通信的桥接
@@ -39,7 +39,13 @@ use tokio::net::TcpStream;
  * @param proxySocket 代理服务端Socket
  * @param clientSocket 内网穿透客户端Socket
  */
-pub async fn make_bridge(bridge_info_map:Arc<DashMap<u64,TCPBridgeInfo>>,channel: &Channel, proxy_tcp: TcpStream, data_total: DataTotal) {
+pub async fn make_bridge(
+    bridge_info_map: Arc<DashMap<u64, TCPBridgeInfo>>,
+    channel: &Channel,
+    proxy_tcp: TcpStream,
+    data_total: DataTotal,
+    close_notify: Arc<Notify>,
+) {
     //NPS客户端Socket
     let npc_pool_tcp = tcp_pool_manager::get_and_add_pool(channel.client_id).await;
     if npc_pool_tcp.is_none() {
@@ -57,6 +63,7 @@ pub async fn make_bridge(bridge_info_map:Arc<DashMap<u64,TCPBridgeInfo>>,channel
         proxy_tcp,
         client_tcp: npc_pool_tcp,
         channel_data_total: data_total,
+        close_notify
     };
     tokio::spawn(bridge.start());
 }

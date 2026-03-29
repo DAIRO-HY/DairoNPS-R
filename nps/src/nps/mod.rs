@@ -4,31 +4,31 @@ pub mod nps_pool;
 pub mod nps_proxy;
 
 use std::collections::HashMap;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 use bytes::Bytes;
 use dashmap::DashMap;
-use tokio::sync::{Mutex,MutexGuard, Notify};
+use tokio::sync::{Mutex, Notify};
 use tokio::sync::mpsc::Sender;
 use crate::model::data_total::DataTotal;
 use crate::nps::nps_bridge::tcp_bridge::TCPBridgeInfo;
 use crate::nps::nps_pool::tcp_pool::TCPPool;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 
 //每个隧道ID对应一个关闭通知器,用于通知TCPProxyAccept停止监听
-pub static CHANNEL_CLOSE_NOTIFY: Lazy<Mutex<HashMap<i64, Arc<Notify>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+pub static CHANNEL_CLOSE_NOTIFY: LazyLock<Mutex<HashMap<i64, Arc<Notify>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 //隧道数据总量
-pub static CHANNEL_DATA_TOTAL: Lazy<Mutex<HashMap<i64, DataTotal>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+pub static CHANNEL_DATA_TOTAL: LazyLock<Mutex<HashMap<i64, DataTotal>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 //客户端连接池
-pub static POOL_MAP: Lazy<Mutex<HashMap<i64, Vec<TCPPool>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+pub static POOL_MAP: LazyLock<Mutex<HashMap<i64, Vec<TCPPool>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 //客户端ID对应的Socket连接
-pub static CLIENT_SESSION: Lazy<Mutex<HashMap<i64, Sender<Bytes>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+pub static CLIENT_SESSION: LazyLock<Mutex<HashMap<i64, Sender<Bytes>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 //当前正在通信的桥接信息
-pub static BRIDGE_INFO: Lazy<Mutex<HashMap<i64, Arc<DashMap<u64,TCPBridgeInfo>>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+pub static BRIDGE_INFO: LazyLock<Mutex<HashMap<i64, Arc<DashMap<u64,TCPBridgeInfo>>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 // NPS模块初始化
 pub fn init() {

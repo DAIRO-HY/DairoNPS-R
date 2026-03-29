@@ -16,9 +16,5 @@ CREATE TABLE IF NOT EXISTS channel
     updated_at    BIGINT      NOT NULL DEFAULT 0,                              -- 更新时间
     remark        TEXT,                                                        -- 一些备注信息,错误信息等
     error         TEXT,                                                         -- 错误信息
-    version       BIGINT      NOT NULL DEFAULT 0,                             -- 用作乐观排他
-    deleted       INT8        NOT NULL DEFAULT 0                               -- 删除标记 1:已删除 0:未删除
+    version       BIGINT      NOT NULL DEFAULT 0                             -- 用作乐观排他
 );
-
--- 服务器端端口不允许重复
-CREATE UNIQUE INDEX channel_idx_unique_server_port ON channel (server_port) where deleted = 0;

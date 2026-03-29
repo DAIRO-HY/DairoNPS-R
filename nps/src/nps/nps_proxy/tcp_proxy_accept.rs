@@ -49,7 +49,13 @@ impl TCPProxyAccept {
                 accept_res = self.tcp_listener.accept() => {
                     let (proxy_tcp,_) = accept_res?;
                     println!("-->监听到代理隧道: {} 服务端口: {} 目标端口: {}", self.channel.id, self.channel.server_port, self.channel.target_port);
-                    tcp_bridge_manager::make_bridge(bridge_info_map.clone(),&(self.channel), proxy_tcp, self.data_total.clone()).await;
+                    tcp_bridge_manager::make_bridge(
+                        bridge_info_map.clone(),
+                        &(self.channel),
+                        proxy_tcp,
+                        self.data_total.clone(),
+                        self.notify.clone(),
+                    ).await;
                 }
             }
         }

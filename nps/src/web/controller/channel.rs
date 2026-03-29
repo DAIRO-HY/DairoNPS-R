@@ -1,4 +1,4 @@
-use crate::dao::channel_dao;
+use crate::dao::{channel_dao, channel_data_dao};
 use crate::dao::channel_dao::Channel;
 use crate::dao::client_dao;
 use crate::dao::client_dao::Client;
@@ -16,6 +16,7 @@ use axum::{
 };
 use std::collections::HashMap;
 use validator::Validate;
+use crate::nps::nps_proxy::tcp_proxy_manager;
 
 ///  隧道列表
 pub async fn list() -> Response {
@@ -170,15 +171,26 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
 }
 
 /// 通过id删除一个隧道
-pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
-    let conn = db_util::new_connection();
+pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
+    let mut conn = db_util::new_connection();
 
-    //关闭代理监听
-    // tcp_proxy.ShutdownByChannel(id)
-    // udp_proxy.ShutdownByChannel(id)
-    // DateDataSizeDao.DeleteByChannelId(id)
-    channel_dao::delete_ignore_version(&conn, query.id);
-    crate::application::restart_mark();//标记需要重启
+    let Ok(tx) = conn.transaction() else{
+        return biz_error!("开启事务失败");
+    };
+    if let Some(e) = channel_dao::purge(&tx, query.id){
+        return biz_errorf!("删除失败:{}", e);
+    }
+    // channel_data_dao::delete_by_channel_id(&tx, query.id).unwrap();
+
+    //提交事务
+    let _ = tx.commit();
+    // drop(conn);
+
+    // //关闭代理监听
+    // udp_proxy.ShutdownByChannel(channel.Id)
+    tcp_proxy_manager::shutdown_by_channel(query.id).await;
+    // crate::application::restart_mark();//标记需要重启
+    Response::empty()
 }
 
 /// 修改可用状态
@@ -186,21 +198,23 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     let conn = db_util::new_connection();
 	let channel = channel_dao::select_one(&conn, query.id).unwrap();
 	let to = if channel.enable_state == 0 {
+        if crate::nps::CLIENT_SESSION.lock().await.contains_key(&channel.client_id){//如果当前客户端在线
+            tcp_proxy_manager::accept_channel(channel).await;//开启隧道监听
+        }
         1
 		// clientDto := ClientDao.SelectOne(channel.ClientId)
 		// if tcp_client.IsOnline(clientDto.Id) {
-		// 	tcp_proxy.AcceptClient(clientDto) //重新开启监听该客户端
 		// 	udp_proxy.AcceptClient(clientDto) //重新开启监听该客户端
 		// }
 	} else {
-        0
 
-		// //关闭代理监听
-		// tcp_proxy.ShutdownByChannel(channel.Id)
-		// udp_proxy.ShutdownByChannel(channel.Id)
+        // //关闭代理监听
+        // udp_proxy.ShutdownByChannel(channel.Id)
+        tcp_proxy_manager::shutdown_by_channel(query.id).await;
+        0
 	};
     channel_dao::toggle_enable(&conn, query.id, to);
-    crate::application::restart_mark();//标记需要重启
+    // crate::application::restart_mark();//标记需要重启
 }
 
 // // 表单验证

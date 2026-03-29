@@ -153,7 +153,7 @@ impl MapperInfo {
                         const SQL: &str = r#"[SQL]"#;
                         let mut stmt = conn.prepare(SQL)?;
                         stmt.query_map([[SQL_PARAM]], |row| {
-                            Ok(Channel {
+                            Ok([ENTITY] {
                                 [ROW_TO_STRUCT]
                                 ..Default::default()
                             })
@@ -166,7 +166,7 @@ impl MapperInfo {
                         const SQL: &str = r#"[SQL]"#;
                         let mut stmt = conn.prepare(SQL)?;
                         stmt.query_one(rusqlite::params!([SQL_PARAM]), |row| {
-                            Ok(Channel {
+                            Ok([ENTITY] {
                                 [ROW_TO_STRUCT]
                                 ..Default::default()
                             })
@@ -191,6 +191,7 @@ impl MapperInfo {
             .replace("[SQL_PARAM]", sql_params.join(", ").as_str())
             .replace("[RETURN_TYPE]", self.return_type.as_str())
             .replace("[SQL]", sql.as_str())
+            .replace("[ENTITY]", entity_name.as_str())
             .replace("[ROW_TO_STRUCT]", row_to_struct.as_str())
     }
 }

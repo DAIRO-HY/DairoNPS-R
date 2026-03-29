@@ -72,15 +72,19 @@ async fn validate_session(mut tcp_stream: TcpStream) -> io::Result<()> {
 
     //得到客户端key
     let key = headers[0];
-    let client = client_dao::select_by_key(key);
-    if client.is_none() {
-        println!("客户端：{}不存在,IP:%s", key);
+    let conn = crate::util::db_util::new_connection();
+    let client = client_dao::select_by_key(&conn, key);
+    drop(conn);
+    if let Err(e) = client {
+        if e != rusqlite::Error::QueryReturnedNoRows{
+            println!("客户端：{}获取失败:{}", key,e);
+        }
         tcp_stream.shutdown().await?;
         return Ok(());
     }
     let client = client.unwrap();
     if client.enable_state == 0 {
-        println!("客户端：{}已被停止服务,IP:%s", key);
+        // println!("客户端：{}已被停止服务,IP:%s", key);
         tcp_stream.shutdown().await?;
         return Ok(());
     }

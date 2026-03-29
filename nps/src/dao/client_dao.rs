@@ -24,21 +24,20 @@ include!(concat!(env!("OUT_DIR"), "/dao/client_dao.rs"));
  * @param key 认证秘钥
  * @return 客户端Dto
  */
-pub fn select_by_key(key: &str) -> Option<Client> {
-	// sql := "select * from client where key = ?"
-	// return DBUtil.SelectOne[dto.ClientDto](sql, key)
-	Some(Client{
-		name:String::new(),
-		key:"key".to_string(),
-		in_data:0,
-		out_data:0,
-		last_login_date:0,
-		enable_state:1,
-		online_state: 0,
-		..Default::default()
-	})
-}
-
+// pub fn select_by_key(key: &str) -> Option<Client> {
+// 	// sql := "select * from client where key = ?"
+// 	// return DBUtil.SelectOne[dto.ClientDto](sql, key)
+// 	Some(Client{
+// 		name:String::new(),
+// 		key:"key".to_string(),
+// 		in_data:0,
+// 		out_data:0,
+// 		last_login_date:0,
+// 		enable_state:1,
+// 		online_state: 0,
+// 		..Default::default()
+// 	})
+// }
 // /**
 //  * 更新一条数据
 //  */
