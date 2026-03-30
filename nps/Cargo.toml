@@ -5,9 +5,12 @@ edition = "2024"
 
 # build.rs 专用的依赖
 [build-dependencies]
+pollster = "0.3"
+db = { path = "../db" }
 source_gen = { path = "../source_gen" }
 
 [dependencies]
+db = { path = "../db" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros"] }
 

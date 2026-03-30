@@ -97,12 +97,25 @@ impl TableInfo {
 
     /// 将数据库数据类型映射为Rust类型
     fn map_data_type_to_rust_type(data_type: &str) -> &str {
+        // match data_type.to_uppercase().as_str() {
+        //     "INTEGER" | "INT" => "i64",
+        //     "BIGINT" => "i64",
+        //     "INT8" => "i8",
+        //     "INT16" => "i16",
+        //     "INT32" => "i32",
+        //     "INT64" => "i64",
+        //     "VARCHAR" | "TEXT" => "String",
+        //     "BOOLEAN" => "bool",
+        //     "FLOAT" => "f32",
+        //     "DOUBLE" => "f64",
+        //     _ => "String", // 默认使用String类型
+        // }
         match data_type.to_uppercase().as_str() {
             "INTEGER" | "INT" => "i64",
             "BIGINT" => "i64",
-            "INT8" => "i8",
-            "INT16" => "i16",
-            "INT32" => "i32",
+            "INT8" => "i64",
+            "INT16" => "i64",
+            "INT32" => "i64",
             "INT64" => "i64",
             "VARCHAR" | "TEXT" => "String",
             "BOOLEAN" => "bool",
@@ -179,28 +192,27 @@ impl TableInfo {
             insert_params_replace.join(", ")
         );
 
-        let fn_template = if let Some(key) = self.auto_increment_and_primary_column() {
+        let fn_template = if let Some(key) = self.auto_increment_and_primary_column() {// 如果有自增且主键的列则在插入时返回该列的值以方便后续操作
             insert_sql.push_str(&format!(" RETURNING {}", key));
-            r##"
+            r#"
             /// 插入数据
-            pub fn insert(conn: &rusqlite::Connection, entity: [ENTITY]) -> rusqlite::Result<i64,rusqlite::Error> {
+            pub async fn insert<'e, E>(executor: E, entity: [ENTITY]) -> Result<i64, sqlx::Error>
+            where
+                E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+            {
                 [TIME_CODE]
-                const SQL: &str = "[SQL];";
-                conn.query_row(SQL, ([PARAM]), |it|it.get(0))
-            }"##
+                sqlx::query_scalar!("[SQL]", [PARAM]).fetch_one(executor).await
+            }"#
         } else {
-            r##"
-            pub fn insert(conn: &rusqlite::Connection, entity: [ENTITY]) -> Option<rusqlite::Error> {
+            r#"
+            /// 插入数据
+            pub async fn insert<'e, E>(executor: E, entity: [ENTITY]) -> Option<sqlx::Error>
+            where
+                E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+            {
                 [TIME_CODE]
-                const SQL: &str = "[SQL];";
-                if let Err(e) = conn.execute(
-                    SQL,
-                    ([PARAM]),
-                ) {
-                    return Some(e);
-                }
-                None
-            }"##
+                sqlx::query_scalar!("[SQL]", [PARAM]).execute(executor).await.err()
+            }"#
         };
 
         let time_code = if need_now {

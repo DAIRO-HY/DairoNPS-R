@@ -2,25 +2,21 @@ use super::super::header_util;
 use super::tcp_client_session_manager;
 use crate::dao::client_dao;
 use crate::nps::nps_pool::tcp_pool_manager;
-use once_cell::sync::Lazy;
-use std::sync::Arc;
 use tokio::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
-use tokio::sync::Notify;
-
-/// 用来接收关闭通知的全局异步通知器
-pub static SHUTDOWN_NOTIFY: Lazy<Arc<Notify>> = Lazy::new(|| Arc::new(Notify::const_new()));
+use crate::application;
+use std::sync::atomic::Ordering;
 
 // 监听客户端连接
 pub async fn accept() -> io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:1781").await?;
     loop {
         select! {
-        _ = SHUTDOWN_NOTIFY.notified() => {
+        _ = application::SHUTDOWN_NOTIFY.notified() => {
             drop(listener);
-            crate::application::IS_NPS_SERVER_DROP.store(true, std::sync::atomic::Ordering::Release);
+            application::IS_NPS_SERVER_DROP.store(true, Ordering::Release);
             break;
         }
         acc = listener.accept() => {//等待客户端连接

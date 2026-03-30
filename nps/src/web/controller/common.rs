@@ -13,8 +13,8 @@ use crate::application;
 /// 获取全局数据API
 pub async fn global() -> impl IntoResponse {
     Json(model::GlobalData {
-        is_need_restart: application::is_need_restart(),
-        is_restarting: application::is_restarting(),
+        is_need_restart: application::IS_NEED_RESTART.load(std::sync::atomic::Ordering::Acquire),
+        is_restarting: application::IS_RESTARTING.load(std::sync::atomic::Ordering::Acquire),
     })
     .into_response()
 }

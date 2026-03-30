@@ -15,6 +15,8 @@ use axum::{
 };
 use rand::distr::{Alphanumeric, SampleString};
 use validator::Validate;
+use std::sync::atomic::Ordering;
+use crate::application;
 
 /// 客户端列表
 pub async fn list() -> Response {
@@ -122,7 +124,7 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
         }
         return biz_error!(e.to_string());
     }
-    crate::application::restart_mark();//标记需要重启
+    crate::application::IS_NEED_RESTART.store(true, std::sync::atomic::Ordering::Release);//标记需要重启
     Response::empty()
 }
 
@@ -130,7 +132,7 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
 pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
     let conn = db_util::new_connection();
     client_dao::delete_ignore_version(&conn, query.id);
-    crate::application::restart_mark();//标记需要重启
+    crate::application::IS_NEED_RESTART.store(true, std::sync::atomic::Ordering::Release);//标记需要重启
 }
 
 /// 修改可用状态
@@ -143,7 +145,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
         0
 	};
     client_dao::toggle_enable(&conn, query.id, to);
-    crate::application::restart_mark();//标记需要重启
+    application::IS_NEED_RESTART.store(true, Ordering::Release);//标记需要重启
 }
 
 mod model {

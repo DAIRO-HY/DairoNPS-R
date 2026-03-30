@@ -9,6 +9,7 @@ use std::sync::atomic::AtomicU64;
 use tokio::net::TcpListener;
 use tokio::select;
 use tokio::sync::Notify;
+use crate::application;
 
 /**
  * TCP隧道代理
@@ -42,7 +43,11 @@ impl TCPProxyAccept {
             select! {
                 // 接收到关闭通知：退出 accept 循环
                 _ = self.notify.notified() => {
-                    println!("-->接收到关闭通知：退出 accept 循环");
+                    // println!("-->接收到关闭通知：退出 accept 循环");
+                    break;
+                }
+                // 接收到全局关闭通知：退出 accept 循环
+                _ = application::SHUTDOWN_NOTIFY.notified() => {
                     break;
                 }
 
