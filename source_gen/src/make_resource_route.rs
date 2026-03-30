@@ -16,7 +16,10 @@ pub fn make(root_dir: &str, max_age: u32) {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap()).join(HTML_OUT_DIR);
     let mut route = String::new();
     loop_files(Path::new(root_dir), &mut |p| {
-        let ext = p.extension().unwrap();
+        let Some(ext) = p.extension() else{
+            println!("cargo:warning=-->文件没有扩展名，跳过: {}", p.display());
+            return;
+        };
         if ext == "tpl" {
             // tpl文件不生成路由
             return;

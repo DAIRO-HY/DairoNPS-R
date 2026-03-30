@@ -9,9 +9,15 @@ fn main() {
     make_resource_route::make("assets/resources", 86400);
 
     // 生成 DAO 相关的代码块
+    // source_gen::make_dao::make(
+    //     "C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\sql",
+    //     "C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\mapper",
+    // );
+
+    // 生成 DAO 相关的代码块
     source_gen::make_dao::make(
-        "C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\sql",
-        "C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\mapper",
+        "/Users/zhoulq/dev/rust/DairoNPS-R/db/assets/sql",
+        "/Users/zhoulq/dev/rust/DairoNPS-R/db/assets/mapper",
     );
 
     println!("cargo:warning=-------------->11");
@@ -27,6 +33,9 @@ fn main() {
     println!("cargo:rerun-if-changed=assets/sql/");
     println!("cargo:rerun-if-changed=assets/mapper/");
 
-    println!("cargo:rerun-if-changed=C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\sql\\");
-    println!("cargo:rerun-if-changed=C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\mapper\\");
+    // println!("cargo:rerun-if-changed=C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\sql\\");
+    // println!("cargo:rerun-if-changed=C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\mapper\\");
+
+    println!("cargo:rerun-if-changed=/Users/zhoulq/dev/rust/DairoNPS-R/db/assets/sql/");
+    println!("cargo:rerun-if-changed=/Users/zhoulq/dev/rust/DairoNPS-R/db/assets/mapper/");
 }
