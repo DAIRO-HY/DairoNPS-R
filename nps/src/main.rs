@@ -15,13 +15,10 @@ mod dao;
 // use sqlx::SqlitePool;
 // use dao::client_dao;
 
-
-
 use crate::dao::channel_dao;
 
 #[tokio::main]
 async fn main() -> tokio::io::Result<()> {
-
     // let arg = application::Args::try_parse().unwrap();
     // println!("-->ARG: {:?}", arg);
     // if arg.is_restart_mode {
@@ -29,33 +26,37 @@ async fn main() -> tokio::io::Result<()> {
     //     // tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     // }
 
-
     println!("-->START<--");
     // util::db_util::init().await;
     db::init().await;
-     let id = channel_dao::insert(&db::DB_CONN.clone(), channel_dao::Channel {
-        id: 0,
-        client_id: 1,
-        name: "test".to_string(),
-        mode: 1,
-        server_port: 8080,
-        target_port: "80".to_string(),
-        in_data: 0,
-        out_data: 0,
-        enable_state: 1,
-        security_state: 1,
-        acl_state: 1,
-        created_at: 0,
-        updated_at: 0,
-        remark: None,
-        error: None,
-        version: 0,
-    }).await.unwrap();
+    let id = channel_dao::insert(
+        &db::DB_CONN.clone(),
+        channel_dao::Channel {
+            id: 0,
+            client_id: 1,
+            name: "test".to_string(),
+            mode: 1,
+            server_port: 8080,
+            target_port: "80".to_string(),
+            in_data: 0,
+            out_data: 0,
+            enable_state: 1,
+            security_state: 1,
+            acl_state: 1,
+            created_at: 0,
+            updated_at: 0,
+            remark: None,
+            error: None,
+            version: 0,
+        },
+    )
+    .await
+    .unwrap();
     println!("插入数据id: {}", id);
-    let channel = channel_dao::select_one(&db::DB_CONN.clone(), 1).await.unwrap();
+    let channel = channel_dao::select_one(&db::DB_CONN.clone(), id)
+        .await
+        .unwrap();
     println!("查询结果: {:?}", channel);
-
-
 
     // util::security_util::init();
     // nps::init();

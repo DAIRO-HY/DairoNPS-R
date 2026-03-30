@@ -9,33 +9,17 @@ fn main() {
     make_resource_route::make("assets/resources", 86400);
 
     // 生成 DAO 相关的代码块
-    // source_gen::make_dao::make(
-    //     "C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\sql",
-    //     "C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\mapper",
-    // );
-
-    // 生成 DAO 相关的代码块
-    source_gen::make_dao::make(
-        "/Users/zhoulq/dev/rust/DairoNPS-R/db/assets/sql",
-        "/Users/zhoulq/dev/rust/DairoNPS-R/db/assets/mapper",
-    );
-
-    println!("cargo:warning=-------------->11");
+    make_dao::make("assets/sql", "assets/mapper");
     pollster::block_on(async {
-        println!("cargo:warning=-------------->22");
+
+        //初始化数据库,这个数据用来支持sqlx宏编译检查sql语句的正确性，必须在编译阶段就初始化数据库，否则sqlx会报错
         db::init().await;
-        println!("cargo:warning=-------------->33");
     });
-    println!("cargo:warning=-------------->44");
 
     // 追踪输入文件变化
     println!("cargo:rerun-if-changed=assets/resources/");
     println!("cargo:rerun-if-changed=assets/sql/");
     println!("cargo:rerun-if-changed=assets/mapper/");
+    println!("cargo:rerun-if-changed=dairo-nps.sqlite");
 
-    // println!("cargo:rerun-if-changed=C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\sql\\");
-    // println!("cargo:rerun-if-changed=C:\\zhoulq\\project\\rust\\DairoNPS-R\\db\\assets\\mapper\\");
-
-    println!("cargo:rerun-if-changed=/Users/zhoulq/dev/rust/DairoNPS-R/db/assets/sql/");
-    println!("cargo:rerun-if-changed=/Users/zhoulq/dev/rust/DairoNPS-R/db/assets/mapper/");
 }

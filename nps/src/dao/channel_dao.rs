@@ -44,7 +44,8 @@ where
 {
     let row = sqlx::query_as!(
         Channel,
-        "SELECT * FROM channel WHERE id = 1"
+        "SELECT * FROM channel WHERE id = ?",
+        id
     ).fetch_one(executor).await;
     row
 }

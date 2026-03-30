@@ -6,7 +6,7 @@ use sqlx::{Sqlite, SqlitePool, Transaction};
 use std::sync::LazyLock;
 
 #[derive(RustEmbed)]
-#[folder = "assets/sql/"]
+#[folder = "../nps/assets/sql/"]
 struct Assets;
 
 // VERSION 数据库版本号
@@ -22,7 +22,7 @@ const VERSION: i32 = 1;
 pub static DB_CONN: LazyLock<SqlitePool> = LazyLock::new(|| {
     SqlitePoolOptions::new()
         .max_connections(5)
-        .connect_lazy("sqlite://C:/zhoulq/project/rust/DairoNPS-R/dairo-nps.sqlite?mode=rwc")
+        .connect_lazy("sqlite://dairo-nps.sqlite?mode=rwc")
         .unwrap()
 });
 
@@ -91,14 +91,14 @@ async fn upgrade(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>>
 
 // 初始化数据库
 async fn init_data(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>> {
-    sqlx::query(
-        r#"
-        delete from client where deleted = 1;
-        delete from channel where client_id not in (select id from client);
-        "#
-    )
-    .execute(&mut **tx)
-    .await?;
+    // sqlx::query(
+    //     r#"
+    //     delete from client where deleted = 1;
+    //     delete from channel where client_id not in (select id from client);
+    //     "#
+    // )
+    // .execute(&mut **tx)
+    // .await?;
     Ok(())
 }
 
