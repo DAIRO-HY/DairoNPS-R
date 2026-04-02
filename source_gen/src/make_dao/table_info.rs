@@ -1,6 +1,6 @@
+use super::mapper_info::MapperInfo;
 use crate::utils;
 use serde::Serialize;
-use super::mapper_info::MapperInfo;
 
 /// 数据库表信息
 #[derive(Debug, Serialize)]
@@ -55,11 +55,9 @@ impl TableInfo {
     /// 生成实体类的源代码
     pub fn make_entity_src(&self) -> String {
         let mut entity_src = String::new();
-        entity_src.push_str("#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]\n");
-        entity_src.push_str(&format!(
-            "pub struct {} {{\n",
-            self.get_entity_name()
-        ));
+        entity_src
+            .push_str("#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]\n");
+        entity_src.push_str(&format!("pub struct {} {{\n", self.get_entity_name()));
         self.columns.iter().for_each(|column| {
             let mut field_type = Self::map_data_type_to_rust_type(&column.data_type).to_string();
             if column.is_nullable {
@@ -192,7 +190,8 @@ impl TableInfo {
             insert_params_replace.join(", ")
         );
 
-        let fn_template = if let Some(key) = self.auto_increment_and_primary_column() {// 如果有自增且主键的列则在插入时返回该列的值以方便后续操作
+        let fn_template = if let Some(key) = self.auto_increment_and_primary_column() {
+            // 如果有自增且主键的列则在插入时返回该列的值以方便后续操作
             insert_sql.push_str(&format!(" RETURNING {}", key));
             r#"
             /// 插入数据
@@ -253,25 +252,19 @@ impl TableInfo {
         // 要查询的字段列表，默认查询所有非TEXT和BLOB类型的字段以避免性能问题
         let filed_columns: Vec<&str> = self.columns.iter().map(|it| it.name.as_str()).collect();
 
-        // 构建查询参数与列的映射列表
-        let field_mappings: Vec<String> = filed_columns
-            .iter()
-            .enumerate()
-            .map(|(i, it)| format!("{}: row.get({})?", it, i))
-            .collect();
-
         // 生成查询一条数据的函数的源代码
         let select_one_template = r##"
 
         /// 通过主键查询一条数据
-        pub fn select_one(conn: &rusqlite::Connection, [FUNC_PARAMS]) -> rusqlite::Result<[ENTITY], rusqlite::Error> {
-            const SQL: &str = "SELECT [FIELDS] FROM [TABLE] WHERE [WHERE];";
-            let mut stmt = conn.prepare(SQL)?;
-            stmt.query_one(rusqlite::params!([PARAM]), |row| {
-                Ok([ENTITY] {
-                    [FIELD_MAPPINGS]
-                })
-            })
+        pub async fn select_one<'e, E>(executor: E, [FUNC_PARAMS]) -> Result<[ENTITY], sqlx::Error>
+        where
+            E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+        {
+            sqlx::query_as!(
+                [ENTITY],
+                "SELECT [FIELDS] FROM [TABLE] WHERE [WHERE]",
+                id
+            ).fetch_one(executor).await
         }
         "##;
         select_one_template
@@ -281,34 +274,10 @@ impl TableInfo {
             .replace("[ENTITY]", &utils::snake_to_pascal(&self.name, "_"))
             .replace("[WHERE]", &where_columns.join(" AND "))
             .replace("[PARAM]", &where_params.join(", "))
-            .replace("[FIELD_MAPPINGS]", &field_mappings.join(", "))
     }
 
     /// 生成查询函数的源代码
     pub fn make_select_all_func(&self) -> String {
-        // 要查询的字段列表，默认查询所有非TEXT和BLOB类型的字段以避免性能问题
-        let filed_columns: Vec<&str> = self
-            .columns
-            .iter()
-            .filter_map(|it| {
-                let ty = it.data_type.to_uppercase();
-                println!("filed_type: {}->{}", ty, ty == "TEXT" || ty == "BLOB");
-                if ty == "TEXT" || ty == "BLOB" {
-                    // 如果是TEXT或BLOB类型则不生成查询函数以避免性能问题
-                    return None;
-                }
-                Some(it.name.as_str())
-            })
-            .collect();
-
-        println!("filed_columns: {:?}", filed_columns);
-
-        // 构建查询参数与列的映射列表
-        let field_mappings: Vec<String> = filed_columns
-            .iter()
-            .enumerate()
-            .map(|(i, it)| format!("{}: row.get({})?", it, i))
-            .collect();
         let mut templates = Vec::new();
         if self.has_deleted() {
             // 如果有deleted列则生成两个查询函数一个查询所有未删除数据一个查询所有数据以满足不同的查询需求
@@ -316,53 +285,52 @@ impl TableInfo {
             // 生成查询所有未删除数据的函数的源代码
             let select_all_template = r##"
                 /// 查询所有未删除的数据
-                pub fn select_all(conn: &rusqlite::Connection) -> rusqlite::Result<Vec<[ENTITY]>, rusqlite::Error> {
-                    const SQL: &str = "SELECT [FIELDS] FROM [TABLE] WHERE deleted = 0;";
-                    let mut stmt = conn.prepare(SQL)?;
-                    stmt.query_map([], |row| {
-                        Ok([ENTITY] {
-                            [FIELD_MAPPINGS],..Default::default()
-                        })
-                    })?.collect()
+                pub async fn select_all<'e, E>(executor: E) -> Result<Vec<[ENTITY]>, sqlx::Error>
+                where
+                    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+                {
+                    sqlx::query_as!([ENTITY], "SELECT * FROM [TABLE] where deleted = 0")
+                        .fetch_all(executor)
+                        .await
                 }
                 "##;
 
             // 生成查询所有数据的函数的源代码
             let select_all_include_deleted_template = r##"
                 /// 查询所有数据，包括已删除的数据
-                pub fn select_all_include_deleted(conn: &rusqlite::Connection) -> rusqlite::Result<Vec<[ENTITY]>, rusqlite::Error> {
-                    const SQL: &str = "SELECT [FIELDS] FROM [TABLE];";
-                    let mut stmt = conn.prepare(SQL)?;
-                    stmt.query_map([], |row| {
-                        Ok([ENTITY] {
-                            [FIELD_MAPPINGS],..Default::default()
-                        })
-                    })?.collect()
+                pub async fn select_all_include_deleted<'e, E>(executor: E) -> Result<Vec<[ENTITY]>, sqlx::Error>
+                where
+                    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+                {
+                    sqlx::query_as!([ENTITY], "SELECT * FROM [TABLE]")
+                        .fetch_all(executor)
+                        .await
                 }
                 "##;
             templates.push(select_all_template);
             templates.push(select_all_include_deleted_template);
         } else {
-            templates.push(r##"
-        pub fn select_all(conn: &rusqlite::Connection) -> rusqlite::Result<Vec<[ENTITY]>, rusqlite::Error> {
-            const SQL: &str = "SELECT [FIELDS] FROM [TABLE]";
-            let mut stmt = conn.prepare(SQL)?;
-            stmt.query_map([], |row| {
-                Ok([ENTITY] {
-                    [FIELD_MAPPINGS],..Default::default()
-                })
-            })?.collect()
-        }
-        "##);
+            templates.push(
+                r##"
+
+                /// 查询所有
+                pub async fn select_all<'e, E>(executor: E) -> Result<Vec<[ENTITY]>, sqlx::Error>
+                where
+                    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+                {
+                    sqlx::query_as!([ENTITY], "SELECT * FROM [TABLE]")
+                        .fetch_all(executor)
+                        .await
+                }
+        "##,
+            );
         }
 
         templates
             .iter()
             .map(|it| -> String {
                 it.replace("[TABLE]", &self.name)
-                    .replace("[FIELDS]", &filed_columns.join(", "))
                     .replace("[ENTITY]", &utils::snake_to_pascal(&self.name, "_"))
-                    .replace("[FIELD_MAPPINGS]", &field_mappings.join(", "))
             })
             .collect::<Vec<_>>()
             .join("\n")
@@ -379,6 +347,8 @@ impl TableInfo {
             // 如果有version列则在更新时自动加1
             update_columns.push("version = version + 1".to_string());
         }
+
+        let mut timestamp = String::new();
         self.columns
             .iter()
             .filter(|it| {
@@ -402,7 +372,8 @@ impl TableInfo {
             .for_each(|it| {
                 update_columns.push(format!("{} = ?", it.name));
                 if it.name == "updated_at" {
-                    update_params.push("std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64".to_string());
+                    timestamp = "let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64;".to_string();
+                    update_params.push("timestamp".to_string());
                 } else {
                     update_params.push(format!("entity.{}", it.name));
                 }
@@ -441,29 +412,27 @@ impl TableInfo {
 
         r##"
         /// 更新数据
-        pub fn update(conn: &rusqlite::Connection, entity: [ENTITY]) -> Option<rusqlite::Error> {
-            const SQL: &str = "[SQL];";
-            match conn.execute(
-                SQL,
-                rusqlite::params!([PARAM]),
-            ) {
-                Ok(count) => {
-                    if count == 0 {
-                        return Some(rusqlite::Error::QueryReturnedNoRows);
-                    }
-                }
-                Err(e) => return Some(e),
-            }
-            None
+        pub async fn update<'e, E>(executor: E, entity: [ENTITY]) -> Result<u64, sqlx::Error>
+        where
+            E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+        {
+            [TIMESTAMP]
+            let rs = sqlx::query!(
+            "[SQL]",
+            [PARAM]
+            ).execute(executor).await?;
+            let count = rs.rows_affected();
+            Ok(count)
         }
         "##
+        .replace("[TIMESTAMP]", timestamp.as_str())
         .replace("[SQL]", &update_sql)
         .replace("[PARAM]", &(update_params.join(", ")))
-        .replace("[ENTITY]", &utils::snake_to_pascal(&self.name, "_"))
+        .replace("[ENTITY]", self.get_entity_name().as_str())
     }
 
     /// 生成删除函数的源代码
-    pub fn make_delete_func(&self) -> String {
+    pub fn make_set_delete_func(&self) -> String {
         if !self.has_deleted() {
             return String::new();
         }
@@ -490,7 +459,11 @@ impl TableInfo {
             where_columns.push("version = ?".to_string());
             update_fields.push("version = version + 1");
         }
+
+        let mut timestamp = String::new();
         if self.has_deleted_at() {
+            timestamp = "let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64;".to_string();
+
             // 如果有deleted_at列则在删除时自动设置删除时间
             update_fields.push("deleted_at = ?");
         }
@@ -504,7 +477,7 @@ impl TableInfo {
         //------------------------------按照参数顺序添加------------------------------//
         if self.has_deleted_at() {
             // 如果有deleted_at列则在删除时自动设置删除时间
-            sql_params.push("std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64");
+            sql_params.push("timestamp");
         }
         if self.has_deleted_by() {
             // 如果有deleted_by列则在删除时自动设置删除者
@@ -526,29 +499,29 @@ impl TableInfo {
         );
         r##"
         /// 逻辑删除数据
-        pub fn delete(conn: &rusqlite::Connection, [FUNC_PARAMS]) -> Option<rusqlite::Error> {
-            const SQL: &str = "[SQL];";
-            match conn.execute(
-                SQL,
-                rusqlite::params!([PARAM]),
-            ) {
-                Ok(count) => {
-                    if count == 0 {
-                        return Some(rusqlite::Error::QueryReturnedNoRows);
-                    }
-                }
-                Err(e) => return Some(e),
-            }
-            None
+        pub async fn set_delete<'e, E>(
+            executor: E,
+            [FUNC_PARAMS]
+        ) -> Result<u64, sqlx::Error>
+        where
+            E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+        {
+            [TIMESTAMP]
+            let rs = sqlx::query!("[SQL]", [PARAM])
+                .execute(executor)
+                .await?;
+            let count = rs.rows_affected();
+            Ok(count)
         }
         "##
-        .replace("[SQL]", &delete_sql)
+            .replace("[TIMESTAMP]", &timestamp)
+            .replace("[SQL]", &delete_sql)
         .replace("[PARAM]", &sql_params.join(", "))
         .replace("[FUNC_PARAMS]", &func_params.join(", "))
     }
 
     /// 生成删除忽略版本函数的源代码
-    pub fn make_delete_ignore_version_func(&self) -> String {
+    pub fn make_set_delete_ignore_version_func(&self) -> String {
         if !self.has_deleted() {
             return String::new();
         }
@@ -569,7 +542,15 @@ impl TableInfo {
             return String::new();
         }
 
+        if self.has_version() {
+            // 如果有version列则在删除时自动加1以实现乐观锁
+            update_fields.push("version = version + 1");
+        }
+
+        let mut timestamp = String::new();
         if self.has_deleted_at() {
+            timestamp = "let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64;".to_string();
+
             // 如果有deleted_at列则在删除时自动设置删除时间
             update_fields.push("deleted_at = ?");
         }
@@ -583,7 +564,7 @@ impl TableInfo {
         //------------------------------按照参数顺序添加------------------------------//
         if self.has_deleted_at() {
             // 如果有deleted_at列则在删除时自动设置删除时间
-            sql_params.push("std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64");
+            sql_params.push("timestamp");
         }
         if self.has_deleted_by() {
             // 如果有deleted_by列则在删除时自动设置删除者
@@ -600,98 +581,30 @@ impl TableInfo {
             where_columns.join(" AND ")
         );
         r##"
-        /// 忽略版本号逻辑删除数据
-        pub fn delete_ignore_version(conn: &rusqlite::Connection, [FUNC_PARAMS]) -> Option<rusqlite::Error> {
-            const SQL: &str = "[SQL];";
-            match conn.execute(
-                SQL,
-                rusqlite::params!([PARAM]),
-            ) {
-                Ok(count) => {
-                    if count == 0 {
-                        return Some(rusqlite::Error::QueryReturnedNoRows);
-                    }
-                }
-                Err(e) => return Some(e),
-            }
-            None
+        /// 逻辑删除数据
+        pub async fn set_delete_ignone_version<'e, E>(
+            executor: E,
+            [FUNC_PARAMS]
+        ) -> Result<u64, sqlx::Error>
+        where
+            E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+        {
+            [TIMESTAMP]
+            let rs = sqlx::query!("[SQL]", [PARAM])
+                .execute(executor)
+                .await?;
+            let count = rs.rows_affected();
+            Ok(count)
         }
         "##
-        .replace("[SQL]", &delete_sql)
-        .replace("[PARAM]", &sql_params.join(", "))
-        .replace("[FUNC_PARAMS]", &func_params.join(", "))
-    }
-
-    /// 生成删除忽略版本函数的源代码
-    pub fn make_delete_ignore_version_func123(&self) -> String {
-        if !self.has_deleted() {
-            return String::new();
-        }
-        let mut where_columns = Vec::new(); // 构建WHERE条件列列表
-        let mut sql_params: Vec<&str> = Vec::new(); // 构建删除参数列表
-        let mut func_params: Vec<String> = Vec::new(); // 构建函数参数列表
-        let mut update_fields = vec!["deleted = 1"]; // 构建更新字段列表
-        self.primary_key_columns().for_each(|it| {
-            func_params.push(format!(
-                "{}: {}",
-                it.name,
-                Self::map_data_type_to_rust_type(&it.data_type)
-            ));
-            where_columns.push(format!("{} = ?", it.name));
-        });
-        if where_columns.is_empty() {
-            // 如果没有主键列则不生成删除函数以避免误操作
-            return String::new();
-        }
-        where_columns.push("deleted = 0".to_string());
-        if self.columns.iter().any(|it| it.name == "deleted_at") {
-            // 如果有deleted_at列则在删除时自动设置删除时间
-            update_fields.push("deleted_at = ?");
-            sql_params.push("std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64");
-        }
-        if self.columns.iter().any(|it| it.name == "deleted_by") {
-            // 如果有deleted_by列则在删除时自动设置删除者
-            update_fields.push("deleted_by = ?");
-            sql_params.push("deleted_by");
-            func_params.push("deleted_by: String".to_string());
-        }
-
-        //最后添加主键参数以保证参数顺序正确
-        self.primary_key_columns().for_each(|it| {
-            sql_params.push(it.name.as_str());
-        });
-
-        let delete_sql = format!(
-            "UPDATE {} SET {} WHERE {}",
-            self.name,
-            update_fields.join(", "),
-            where_columns.join(" AND ")
-        );
-        r##"
-        /// 忽略版本号逻辑删除数据
-        pub fn delete_ignore_version(conn: &rusqlite::Connection, [FUNC_PARAMS]) -> Option<rusqlite::Error> {
-            const SQL: &str = "[SQL];";
-            match conn.execute(
-                SQL,
-                ([PARAM]),
-            ) {
-                Ok(count) => {
-                    if count == 0 {
-                        return Some(rusqlite::Error::QueryReturnedNoRows);
-                    }
-                }
-                Err(e) => return Some(e),
-            }
-            None
-        }
-        "##
-        .replace("[SQL]", &delete_sql)
-        .replace("[PARAM]", &sql_params.join(", "))
-        .replace("[FUNC_PARAMS]", &func_params.join(", "))
+            .replace("[TIMESTAMP]", &timestamp)
+            .replace("[SQL]", &delete_sql)
+            .replace("[PARAM]", &sql_params.join(", "))
+            .replace("[FUNC_PARAMS]", &func_params.join(", "))
     }
 
     /// 生成物理删除函数的源代码
-    pub fn make_purge_func(&self) -> String {
+    pub fn make_delete_func(&self) -> String {
         let mut where_columns = Vec::new(); // 构建WHERE条件列列表
         let mut sql_params: Vec<&str> = Vec::new(); // 构建删除参数列表
         let mut func_params: Vec<String> = Vec::new(); // 构建函数参数列表
@@ -717,22 +630,16 @@ impl TableInfo {
             where_columns.join(" AND ")
         );
         r##"
-
         /// 物理删除数据
-        pub fn purge(conn: &rusqlite::Connection, [FUNC_PARAMS]) -> Option<rusqlite::Error> {
-            const SQL: &str = "[SQL];";
-            match conn.execute(
-                SQL,
-                rusqlite::params!([PARAM]),
-            ) {
-                Ok(count) => {
-                    if count == 0 {
-                        return Some(rusqlite::Error::QueryReturnedNoRows);
-                    }
-                }
-                Err(e) => return Some(e),
-            }
-            None
+        pub async fn delete<'e, E>(executor: E, [FUNC_PARAMS]) -> Result<u64, sqlx::Error>
+        where
+            E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+        {
+            let rs = sqlx::query!("[SQL]", [PARAM])
+                .execute(executor)
+                .await?;
+            let count = rs.rows_affected();
+            Ok(count)
         }
         "##
         .replace("[SQL]", &delete_sql)

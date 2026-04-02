@@ -28,6 +28,8 @@ async fn main() -> tokio::io::Result<()> {
 
     println!("-->START<--");
     // util::db_util::init().await;
+
+
     db::init().await;
     let id = channel_dao::insert(
         &db::DB_CONN.clone(),
@@ -43,11 +45,7 @@ async fn main() -> tokio::io::Result<()> {
             enable_state: 1,
             security_state: 1,
             acl_state: 1,
-            created_at: 0,
-            updated_at: 0,
-            remark: None,
-            error: None,
-            version: 0,
+            ..Default::default()
         },
     )
     .await
@@ -57,6 +55,23 @@ async fn main() -> tokio::io::Result<()> {
         .await
         .unwrap();
     println!("查询结果: {:?}", channel);
+
+    let count = channel_dao::update(&db::DB_CONN.clone(),channel.clone()).await.unwrap();
+    println!("更新结果: {}", count);
+
+    let all = channel_dao::select_all(&db::DB_CONN.clone())
+        .await
+        .unwrap();
+    println!("查询结果: {:?}", all);
+
+    let count = channel_dao::set_delete(&db::DB_CONN.clone(),id, channel.version + 1).await.unwrap();
+    println!("删除结果: {}", count);
+
+    let count = channel_dao::set_delete_ignone_version(&db::DB_CONN.clone(),id).await.unwrap();
+    println!("删除结果: {}", count);
+
+    let count = channel_dao::delete(&db::DB_CONN.clone(),id).await.unwrap();
+    println!("删除结果: {}", count);
 
     // util::security_util::init();
     // nps::init();

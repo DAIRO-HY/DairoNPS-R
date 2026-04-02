@@ -7,13 +7,13 @@ use source_gen::*;
 fn main() {
     // 生成静态资源路由的代码块
     make_resource_route::make("assets/resources", 86400);
-
-    // 生成 DAO 相关的代码块
-    make_dao::make("assets/sql", "assets/mapper");
     pollster::block_on(async {
 
         //初始化数据库,这个数据用来支持sqlx宏编译检查sql语句的正确性，必须在编译阶段就初始化数据库，否则sqlx会报错
         db::init().await;
+
+        // 生成 DAO 相关的代码块
+        make_dao::make("sqlite://dairo-nps.sqlite?mode=rwc", "assets/mapper").await;
     });
 
     // 追踪输入文件变化

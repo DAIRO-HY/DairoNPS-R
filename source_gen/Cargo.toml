@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+sqlx = { version = "0.8", features = ["runtime-async-std", "sqlite", "macros"] }
 sqlparser = "0.61"
 syn = { version = "2", features = ["full", "extra-traits", "parsing", "visit"] }
 prettyplease = "0.2" #代码格式化
