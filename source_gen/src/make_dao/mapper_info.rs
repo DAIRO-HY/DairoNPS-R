@@ -3,6 +3,7 @@ use serde::Serialize;
 use sqlparser::ast::{Expr, SelectItem, Statement};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
+use sqlx::{Column, Executor, SqliteConnection, Statement};
 
 #[derive(Debug, Default, Serialize)]
 pub enum CrudType {
@@ -109,7 +110,7 @@ impl MapperInfo {
     }
 
     /// 生成映射函数的源代码字符串
-    pub fn make_mapper_source(&self, table: &TableInfo) -> String {
+    pub async fn make_mapper_source(&self, conn: &mut SqliteConnection, table: &TableInfo) -> String {
         //从 SQL 中提取参数名称列表
         let sql_params = Self::extract_params(self.sql.as_str());
 
@@ -139,12 +140,14 @@ impl MapperInfo {
             struct_columns.push(it.to_string());
         });
 
-        let mut row_to_struct = String::new();
-        struct_columns.iter().enumerate().for_each(|(i, name)| {
-            //生成 row.get(0) 这种格式的代码
-            row_to_struct.push_str(format!("{}:row.get({})?,", name, i).as_str());
-        });
-
+        conn.prepare(sql.as_str()).await.unwrap().columns().iter().map(|it| {
+            super::table_info::ColumnInfo{
+                name: it.name().to_string(),
+                data_type: it.type_info().to_string(),
+                ..Default::default()
+            }.
+        })
+        
         let sql_template = match self.crud_type {
             CrudType::Read => {
                 if self.is_list {
@@ -201,6 +204,5 @@ impl MapperInfo {
             .replace("[RETURN_TYPE]", self.return_type.as_str())
             .replace("[SQL]", sql.as_str())
             .replace("[ENTITY]", entity_name.as_str())
-            .replace("[ROW_TO_STRUCT]", row_to_struct.as_str())
     }
 }

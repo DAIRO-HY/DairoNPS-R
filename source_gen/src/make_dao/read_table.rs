@@ -2,10 +2,9 @@ use super::table_info::{ColumnInfo, TableInfo};
 use sqlx::{Connection, Row, SqliteConnection};
 
 /// 从指定目录下的SQL文件中读取表信息列表
-pub async fn read(url: &str) -> Vec<TableInfo> {
-    let mut conn = SqliteConnection::connect(url).await.unwrap();
+pub async fn read(conn: &mut SqliteConnection) -> Vec<TableInfo> {
     sqlx::query("SELECT name,sql FROM sqlite_master WHERE type = 'table' and name NOT LIKE 'sqlite_%'")
-            .fetch_all(&mut conn)
+            .fetch_all(conn)
             .await
             .unwrap()
             .iter()

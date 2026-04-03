@@ -658,7 +658,7 @@ impl TableInfo {
 }
 
 /// 数据库列信息
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct ColumnInfo {
     // 列名
     pub name: String,
@@ -676,4 +676,15 @@ pub struct ColumnInfo {
     pub is_nullable: bool,
     // 列注释
     pub comment: String,
+}
+
+impl ColumnInfo {
+    /// 生成变量定义代码
+    pub fn make_member_src(&self) -> String {
+        let mut field_type = Self::map_data_type_to_rust_type(self.data_type).to_string();
+        if self.is_nullable {
+            field_type = format!("Option<{}>", field_type);
+        }
+        format!("    pub {}: {},\n", self.name, field_type)
+    }
 }
