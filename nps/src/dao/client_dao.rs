@@ -19,11 +19,11 @@ include!(concat!(env!("OUT_DIR"), "/dao/client_dao.rs"));
 // 	return DBUtil.SelectOne[dto.ClientDto](sql, id)
 // }
 
-/**
- * 通过认证秘钥获取一条数据
- * @param key 认证秘钥
- * @return 客户端Dto
- */
+// /**
+//  * 通过认证秘钥获取一条数据
+//  * @param key 认证秘钥
+//  * @return 客户端Dto
+//  */
 // pub fn select_by_key(key: &str) -> Option<Client> {
 // 	// sql := "select * from client where key = ?"
 // 	// return DBUtil.SelectOne[dto.ClientDto](sql, key)
@@ -81,12 +81,6 @@ include!(concat!(env!("OUT_DIR"), "/dao/client_dao.rs"));
 // 	DBUtil.ExecIgnoreError(sql, remark, id)
 // }
 //
-
-// 设置可用状态
-pub fn toggle_enable(conn: &rusqlite::Connection, id: i64, state: i8) {
-    const SQL: &str = "update client set enable_state = ? where id = ?";
-    let _ = conn.execute(SQL, rusqlite::params!(state, id));
-}
 //
 // /**
 //  * 获取所有客户端列表

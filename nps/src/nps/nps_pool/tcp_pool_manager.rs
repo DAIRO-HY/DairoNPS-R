@@ -56,7 +56,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<()> {
         return Ok(());
     };
     if pools.len() >= nps_constant::MAX_POOL_COUNT {
-        println!("-->客户端: {}连接池已满,拒绝新连接。count: {}", client_id, pools.len());
+        // println!("-->客户端: {}连接池已满,拒绝新连接。count: {}", client_id, pools.len());
         //已经达到最大连接数,拒绝新连接
         drop(pool_map); // 释放锁
 
@@ -121,7 +121,7 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
 
     //申请创建连接池
     tokio::spawn(tcp_client_session_manager::send_tcp_pool_request(client_id, if(nps_constant::MAX_POOL_COUNT == count){1}else{2}));
-    println!("-->当前连接池数量: {} ", count);
+    // println!("-->当前连接池数量: {} ", count);
     return Some(tcp);
 }
 

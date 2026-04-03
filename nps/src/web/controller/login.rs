@@ -1,24 +1,17 @@
 use crate::constant::nps_constant;
 use crate::extension::ResponseEmptyExt;
-use crate::{biz_error, biz_errorf};
-use axum::{
-    Json, Router,
-    extract::Form,
-    http::{StatusCode, header},
-    response::{IntoResponse, Response},
-    routing::post,
-};
-use once_cell::sync::Lazy;
+use crate::web::extract::AppForm;
+use crate::biz_error;
+use axum::response::{IntoResponse, Response};
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::LazyLock;
 use tokio::sync::RwLock;
-use validator::{Validate, ValidationErrors};
-use crate::web::extract::{AppForm, AppQuery};
+use validator::Validate;
 
 
-pub static LOGGED_INFO: Lazy<RwLock<LoggedInfo>> = Lazy::new(|| {
+pub static LOGGED_INFO: LazyLock<RwLock<LoggedInfo>> = LazyLock::new(|| {
     RwLock::new(LoggedInfo {
         token: String::new(),
         last_time: 0,

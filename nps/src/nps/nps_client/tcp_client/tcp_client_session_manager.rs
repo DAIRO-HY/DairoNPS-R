@@ -161,7 +161,7 @@ pub async fn shutdown(client_id: i64) -> io::Result<()> {
             .contains_key(&client_id)
         {
             //这里很快就会被关闭，所以不需要设置过长的等待时间
-            println!("-->等待旧连接关闭...");
+            // println!("-->等待旧连接关闭...");
             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
         }
     }

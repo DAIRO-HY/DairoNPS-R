@@ -1,13 +1,13 @@
 use crate::nps;
 use clap::Parser;
-use once_cell::sync::Lazy;
 use std::env;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::Notify;
+use std::sync::LazyLock;
 
 /// 用来接收关闭通知的全局异步通知器
-pub static SHUTDOWN_NOTIFY: Lazy<Arc<Notify>> = Lazy::new(|| Arc::new(Notify::const_new()));
+pub static SHUTDOWN_NOTIFY: LazyLock<Arc<Notify>> = LazyLock::new(|| Arc::new(Notify::const_new()));
 
 /// 标记是否需要重启
 pub static IS_NEED_RESTART: AtomicBool = AtomicBool::new(false);

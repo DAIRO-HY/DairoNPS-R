@@ -2,9 +2,10 @@ use super::table_info::TableInfo;
 use std::env;
 use std::fs;
 use std::path::Path;
+use sqlx::SqliteConnection;
 use syn;
 
-pub fn make(tables: Vec<TableInfo>) {
+pub async fn make(conn: &mut SqliteConnection, tables: Vec<TableInfo>) {
     //生成的dao源代码写到 OUT_DIR/dao 目录
     let save_path = Path::new(&(env::var("OUT_DIR").unwrap().as_str())).join("dao");
     if !save_path.exists() {
@@ -12,7 +13,7 @@ pub fn make(tables: Vec<TableInfo>) {
         fs::create_dir(&save_path).unwrap();
     }
 
-    tables.iter().for_each(|table| {
+    for table in tables {
         let mut dao_src = String::new();
 
         // dao_src.push_str(&table.make_query_entity_src());
@@ -42,7 +43,7 @@ pub fn make(tables: Vec<TableInfo>) {
         dao_src.push_str(&table.make_delete_func());
 
         // 生成mapper函数的源代码
-        dao_src.push_str(&table.make_mapper_func());
+        dao_src.push_str(&table.make_mapper_func(conn).await);
 
         dao_src.insert_str(
             0,
@@ -54,6 +55,7 @@ pub fn make(tables: Vec<TableInfo>) {
         let rust_src = syn::parse_str(dao_src.as_str()).unwrap_or_else(|it|{
             eprintln!("cargo:warning=解析{}文件出错:{}", file_path.display(), it);
             eprintln!("cargo:warning=文件内容:\n{}", dao_src);
+            fs::write(&file_path, dao_src).unwrap();
             panic!("文件解析失败");
         });
 
@@ -68,5 +70,5 @@ pub fn make(tables: Vec<TableInfo>) {
             table.name,
             file_path.display()
         );
-    });
+    }
 }

@@ -1,11 +1,9 @@
 use crate::dao::{channel_dao, channel_data_dao};
 use crate::dao::channel_dao::Channel;
 use crate::dao::client_dao;
-use crate::dao::client_dao::Client;
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::ToDataSize;
 use crate::extension::number::ToDateFormat;
-use crate::util::db_util;
 use crate::web::extract::{AppForm, AppQuery};
 use crate::web::router::IdQuery;
 use crate::{biz_error, biz_errorf};
@@ -20,15 +18,14 @@ use crate::nps::nps_proxy::tcp_proxy_manager;
 
 ///  隧道列表
 pub async fn list() -> Response {
-    let conn = db_util::new_connection();
-
-    let client_id_name_map = client_dao::select_all(&conn)
+    let conn = db::get();
+    let client_id_name_map = client_dao::select_all(&conn).await
         .unwrap_or_default()
         .into_iter()
         .rev()
         .map(|it| (it.id, it.name))
         .collect::<HashMap<_, _>>();
-    let list = channel_dao::select_all(&conn)
+    let list = channel_dao::select_all(&conn).await
         .unwrap_or_default()
         .into_iter()
         .map(|it| model::ChannelList {
@@ -54,9 +51,9 @@ pub async fn list() -> Response {
 
 /// 隧道详情获取API
 pub async fn detail(AppQuery(query): AppQuery<model::DetailQuery>) -> Response {
-    let conn = db_util::new_connection();
+    let conn = db::get();
     let detail = if query.id > 0 {
-        let Ok(channel) = channel_dao::select_one(&conn, query.id) else {
+        let Ok(channel) = channel_dao::select_one(&conn, query.id).await else {
             return biz_error!("未找到隧道信息");
         };
         model::ChannelDetail {
@@ -123,15 +120,14 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
         //验证表单数据是否合法
         return Response::field_errors(e);
     }
-
-    let conn = db_util::new_connection();
+    let conn = db::get();
     let mut channel = if form.id == 0 {
         Channel{
             enable_state:1,
             ..Default::default()
         }
     } else {
-        if let Ok(it) = channel_dao::select_one(&conn, form.id) {
+        if let Ok(it) = channel_dao::select_one(&conn, form.id).await {
             it
         } else {
             return biz_error!("未找到隧道信息");
@@ -150,11 +146,11 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
 
     let mut err = None;
     if channel.id == 0 {
-        if let Err(e) = channel_dao::insert(&conn, channel) {
+        if let Err(e) = channel_dao::insert(&conn, channel).await {
             err = Some(e);
         }
     } else {
-        err = channel_dao::update(&conn, channel);
+        err = channel_dao::update(&conn, channel).await.err();
     }
     if let Some(e) = err {
         let err_msg = e.to_string();
@@ -166,37 +162,33 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
         }
         return biz_error!(e.to_string());
     }
-    crate::application::restart_mark();//标记需要重启
+    // crate::application::restart_mark();//标记需要重启
     Response::empty()
 }
 
 /// 通过id删除一个隧道
 pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
-    let mut conn = db_util::new_connection();
-
-    let Ok(tx) = conn.transaction() else{
-        return biz_error!("开启事务失败");
-    };
-    if let Some(e) = channel_dao::purge(&tx, query.id){
+    let conn =  db::get();
+    let mut tx = conn.begin().await.unwrap();
+    if let Err(e) = channel_dao::delete(&mut *tx, query.id).await{
         return biz_errorf!("删除失败:{}", e);
     }
-    // channel_data_dao::delete_by_channel_id(&tx, query.id).unwrap();
+    channel_data_dao::delete_by_channel_id(&mut *tx, query.id).await.unwrap();
 
     //提交事务
     let _ = tx.commit();
-    // drop(conn);
+    drop(conn);
 
     // //关闭代理监听
     // udp_proxy.ShutdownByChannel(channel.Id)
     tcp_proxy_manager::shutdown_by_channel(query.id).await;
-    // crate::application::restart_mark();//标记需要重启
     Response::empty()
 }
 
 /// 修改可用状态
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
-    let conn = db_util::new_connection();
-	let channel = channel_dao::select_one(&conn, query.id).unwrap();
+    let conn = db::get();
+	let channel = channel_dao::select_one(&conn, query.id).await.unwrap();
 	let to = if channel.enable_state == 0 {
         if crate::nps::CLIENT_SESSION.lock().await.contains_key(&channel.client_id){//如果当前客户端在线
             tcp_proxy_manager::accept_channel(channel).await;//开启隧道监听
@@ -213,8 +205,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
         tcp_proxy_manager::shutdown_by_channel(query.id).await;
         0
 	};
-    channel_dao::toggle_enable(&conn, query.id, to);
-    // crate::application::restart_mark();//标记需要重启
+    channel_dao::toggle_enable(&conn, query.id, to).await.unwrap();
 }
 
 // // 表单验证
@@ -285,13 +276,13 @@ mod model {
         pub client_id: i64,
         pub client_name: String,
         pub name: String,
-        pub mode: i8,
-        pub server_port: i16,
+        pub mode: i64,
+        pub server_port: i64,
         pub target_port: String,
-        pub enable_state: i8,
+        pub enable_state: i64,
         pub in_data: String,
         pub out_data: String,
-        pub security_state: i8,
+        pub security_state: i64,
         pub error: Option<String>,
     }
 
@@ -310,15 +301,15 @@ mod model {
         pub client_id: i64,
         pub client_name: String,
         pub name: String,
-        pub mode: i8,
-        pub server_port: i16,
+        pub mode: i64,
+        pub server_port: i64,
         pub target_port: String,
         pub remark: Option<String>,
         pub created_at: String,
         pub enable_state: String,
         pub in_data: String,
         pub out_data: String,
-        pub security_state: i8,
+        pub security_state: i64,
 
         // 乐观排他用的版本号
         pub version: i64,
@@ -332,10 +323,10 @@ mod model {
 
         #[validate(length(min = 1, max = 32, message = "名称不能为空;长度不能超过32位"))]
         pub name: String,
-        pub mode: i8,
-        pub server_port: i16,
+        pub mode: i64,
+        pub server_port: i64,
         pub target_port: String,
-        pub security_state: i8,
+        pub security_state: i64,
         pub remark: Option<String>,
 
         // 乐观排他用的版本号

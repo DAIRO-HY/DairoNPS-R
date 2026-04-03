@@ -4,10 +4,12 @@ use crate::model::data_total::DataTotal;
 use crate::nps;
 use crate::nps::nps_proxy::tcp_proxy_accept::TCPProxyAccept;
 use crate::nps::{CHANNEL_CLOSE_NOTIFY, CHANNEL_DATA_TOTAL};
-use dashmap::DashMap;
+use crate::dao::channel_data_dao;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::{net::TcpListener, sync::Notify};
+use crate::dao::channel_data_dao::ChannelData;
 // // 隧道id对应的服务端口监听
 // var proxyAcceptMap = make(map[int]*TCPProxyAccept)
 
@@ -32,11 +34,8 @@ pub async fn accept_client(client_id: i64) {
     // //加载统计数据
     // ChannelStatisticsUtil.Init()
 
-    let conn = crate::util::db_util::new_connection();
-
     //开启NPS客户端ID下所有的隧道
-    let active_list = channel_dao::select_active_by_client_id(&conn, client_id).unwrap();
-    drop(conn);
+    let active_list = channel_dao::select_active_by_client_id(&db::get(), client_id).await.unwrap();
     for it in active_list {
         if it.mode == 1 {
             //只监听TCP隧道
@@ -169,7 +168,6 @@ pub async fn shutdown_by_channel(channel_id: i64) {
 // 统计隧道数据总量
 async fn channel_data_stats() {
     const STATS_INTERVAL: u64 = 1000; //统计间隔，单位毫秒
-    let conn = crate::util::db_util::new_connection();
 
     //最后一次统计到的隧道数据总量
     let mut last_total_map: HashMap<i64, DataTotal> = HashMap::new();
@@ -180,6 +178,7 @@ async fn channel_data_stats() {
     }
     loop {
         tokio::time::sleep(tokio::time::Duration::from_millis(STATS_INTERVAL)).await;
+        let conn = db::get();
         let data_map = CHANNEL_DATA_TOTAL.lock().await;
         for (channel_id, data_total) in data_map.iter() {
             if let Some(last_total) = last_total_map.get(channel_id)
@@ -194,7 +193,12 @@ async fn channel_data_stats() {
             let out_data = data_total.load_out() as i64;
 
             //这里可以将统计数据保存到数据库或者发送到监控系统
-            crate::dao::channel_data_dao::add(&conn, channel_id.clone(), in_data, out_data);
+            channel_data_dao::insert(&conn,ChannelData{
+                channel_id: channel_id.clone(),
+                date: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64,
+                in_data,
+                out_data,
+            }).await;
             last_total_map.insert(
                 *channel_id,
                 DataTotal::from(in_data as u64, out_data as u64),

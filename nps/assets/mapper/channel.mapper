@@ -5,8 +5,7 @@ select channel.* from channel
     where channel.client_id = :client_id and client.enable_state = 1 and channel.enable_state = 1
 fn select_active_by_client_id(client_id: i64) -> Vec<Channel>
 
-/// 通过客户端ID查询所有激活的通道
-select channel.*,client.id as my_id from channel
-    left join client on channel.client_id = client.id
-    where channel.client_id = :client_id and client.enable_state = 1 and channel.enable_state = 1
-fn select_active_by_client_id_test(client_id: i64) -> Channel
+
+/// 设置可用状态
+update channel set enable_state = :enable_state where id = :id
+fn toggle_enable(id: i64, enable_state: i8)

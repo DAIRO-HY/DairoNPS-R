@@ -1,6 +1,7 @@
 use super::mapper_info::MapperInfo;
 use crate::utils;
 use serde::Serialize;
+use sqlx::SqliteConnection;
 
 /// 数据库表信息
 #[derive(Debug, Serialize)]
@@ -58,12 +59,8 @@ impl TableInfo {
         entity_src
             .push_str("#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]\n");
         entity_src.push_str(&format!("pub struct {} {{\n", self.get_entity_name()));
-        self.columns.iter().for_each(|column| {
-            let mut field_type = Self::map_data_type_to_rust_type(&column.data_type).to_string();
-            if column.is_nullable {
-                field_type = format!("Option<{}>", field_type);
-            }
-            entity_src.push_str(&format!("    pub {}: {},\n", column.name, field_type));
+        self.columns.iter().for_each(|it| {
+            entity_src.push_str(it.make_member_src().as_str());
         });
         entity_src.push_str("}\n");
         entity_src
@@ -78,7 +75,7 @@ impl TableInfo {
             utils::snake_to_pascal(&self.name, "_")
         ));
         self.columns.iter().for_each(|it| {
-            let mut field_type = Self::map_data_type_to_rust_type(&it.data_type).to_string();
+            let mut field_type = ColumnInfo::map_data_type_to_rust_type(&it.data_type).to_string();
             field_type = format!("QueryModel<{}>", field_type);
             entity_src.push_str(&format!("    pub {}: {},\n", it.name, field_type));
             // match it.name.as_str() {
@@ -91,36 +88,6 @@ impl TableInfo {
         });
         entity_src.push_str("}\n");
         entity_src
-    }
-
-    /// 将数据库数据类型映射为Rust类型
-    fn map_data_type_to_rust_type(data_type: &str) -> &str {
-        // match data_type.to_uppercase().as_str() {
-        //     "INTEGER" | "INT" => "i64",
-        //     "BIGINT" => "i64",
-        //     "INT8" => "i8",
-        //     "INT16" => "i16",
-        //     "INT32" => "i32",
-        //     "INT64" => "i64",
-        //     "VARCHAR" | "TEXT" => "String",
-        //     "BOOLEAN" => "bool",
-        //     "FLOAT" => "f32",
-        //     "DOUBLE" => "f64",
-        //     _ => "String", // 默认使用String类型
-        // }
-        match data_type.to_uppercase().as_str() {
-            "INTEGER" | "INT" => "i64",
-            "BIGINT" => "i64",
-            "INT8" => "i64",
-            "INT16" => "i64",
-            "INT32" => "i64",
-            "INT64" => "i64",
-            "VARCHAR" | "TEXT" => "String",
-            "BOOLEAN" => "bool",
-            "FLOAT" => "f32",
-            "DOUBLE" => "f64",
-            _ => "String", // 默认使用String类型
-        }
     }
 
     // 获取自增且主键的列名
@@ -239,7 +206,7 @@ impl TableInfo {
                 func_params.push(format!(
                     "{}:{}",
                     it.name,
-                    Self::map_data_type_to_rust_type(&it.data_type)
+                    ColumnInfo::map_data_type_to_rust_type(&it.data_type)
                 ));
                 format!("{} = ?", it.name)
             })
@@ -444,7 +411,7 @@ impl TableInfo {
             func_params.push(format!(
                 "{}: {}",
                 it.name,
-                Self::map_data_type_to_rust_type(&it.data_type)
+                ColumnInfo::map_data_type_to_rust_type(&it.data_type)
             ));
             where_columns.push(format!("{} = ?", it.name));
         });
@@ -533,7 +500,7 @@ impl TableInfo {
             func_params.push(format!(
                 "{}: {}",
                 it.name,
-                Self::map_data_type_to_rust_type(&it.data_type)
+                ColumnInfo::map_data_type_to_rust_type(&it.data_type)
             ));
             where_columns.push(format!("{} = ?", it.name));
         });
@@ -616,7 +583,7 @@ impl TableInfo {
                 func_params.push(format!(
                     "{}: {}",
                     it.name,
-                    Self::map_data_type_to_rust_type(&it.data_type)
+                    ColumnInfo::map_data_type_to_rust_type(&it.data_type)
                 ));
                 where_columns.push(format!("{} = ?", it.name));
             });
@@ -648,11 +615,11 @@ impl TableInfo {
     }
 
     /// 生成映射函数的源代码
-    pub fn make_mapper_func(&self) -> String {
+    pub async fn make_mapper_func(&self,conn: &mut SqliteConnection) -> String {
         let mut func_src = String::new();
-        self.mappers.iter().for_each(|mapper| {
-            func_src.push_str(&mapper.make_mapper_source(self));
-        });
+        for it in &self.mappers {
+            func_src.push_str(it.make_mapper_source(conn, self).await.as_str());
+        }
         func_src
     }
 }
@@ -679,12 +646,47 @@ pub struct ColumnInfo {
 }
 
 impl ColumnInfo {
+
+    /// 将数据库数据类型映射为Rust类型
+    fn map_data_type_to_rust_type(data_type: &str) -> &str {
+        // match data_type.to_uppercase().as_str() {
+        //     "INTEGER" | "INT" => "i64",
+        //     "BIGINT" => "i64",
+        //     "INT8" => "i8",
+        //     "INT16" => "i16",
+        //     "INT32" => "i32",
+        //     "INT64" => "i64",
+        //     "VARCHAR" | "TEXT" => "String",
+        //     "BOOLEAN" => "bool",
+        //     "FLOAT" => "f32",
+        //     "DOUBLE" => "f64",
+        //     _ => "String", // 默认使用String类型
+        // }
+        match data_type.to_uppercase().as_str() {
+            "INTEGER" | "INT" => "i64",
+            "BIGINT" => "i64",
+            "INT8" => "i64",
+            "INT16" => "i64",
+            "INT32" => "i64",
+            "INT64" => "i64",
+            "VARCHAR" | "TEXT" => "String",
+            "BOOLEAN" => "bool",
+            "FLOAT" => "f32",
+            "DOUBLE" => "f64",
+            _ => "String", // 默认使用String类型
+        }
+    }
+
     /// 生成变量定义代码
     pub fn make_member_src(&self) -> String {
-        let mut field_type = Self::map_data_type_to_rust_type(self.data_type).to_string();
+        let mut field_type = Self::map_data_type_to_rust_type(self.data_type.as_str()).to_string();
         if self.is_nullable {
             field_type = format!("Option<{}>", field_type);
         }
-        format!("    pub {}: {},\n", self.name, field_type)
+        let mut comment = self.comment.clone();
+        if !comment.is_empty(){
+            comment = format!("/// {}" , comment)
+        }
+        format!("{}\n    pub {}: {},\n", comment, self.name, field_type)
     }
 }

@@ -80,10 +80,10 @@ impl ClientSession {
         //开启一个异步任务,专门负责将从其他地方发送过来的数据写入到客户端连接中
         let external_receive_task = async move {
             while let Some(bytes) = external_rx.recv().await {
-                println!(
-                    "-->收到外部发送的数据,准备发送给客户端,数据长度: {}",
-                    bytes.len()
-                );
+                // println!(
+                //     "-->收到外部发送的数据,准备发送给客户端,数据长度: {}",
+                //     bytes.len()
+                // );
                 _tx.send(bytes).await.unwrap();
             }
             io::Result::Ok(())

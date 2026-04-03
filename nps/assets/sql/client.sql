@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS client -- 客户端表
 (
     id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name            VARCHAR(32)                       NOT NULL,
-    `key`           VARCHAR(32)                       NOT NULL UNIQUE,                                 -- 客户端验证秘钥
+    key             VARCHAR(32)                       NOT NULL UNIQUE,                                 -- 客户端验证秘钥
     client_version  VARCHAR(10),                                                                       -- 客户端版本
     ip              VARCHAR(128),                                                                      -- 客户端ip地址
     in_data         BIGINT                            NOT NULL DEFAULT 0,                              -- 入网流量

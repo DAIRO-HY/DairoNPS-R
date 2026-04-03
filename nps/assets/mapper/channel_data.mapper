@@ -1,2 +1,2 @@
-delete from channel_data where channel_id  = ?;
+delete from channel_data where channel_id = :channel_id;
 fn delete_by_channel_id(channel_id: i64)

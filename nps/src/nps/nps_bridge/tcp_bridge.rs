@@ -27,7 +27,7 @@ pub struct TCPBridge {
     pub target_port: String,
 
     //是否加密传输
-    pub security_state: i8,
+    pub security_state: i64,
     pub proxy_tcp: TcpStream,
     pub client_tcp: TcpStream,
     pub channel_data_total: DataTotal,
@@ -103,7 +103,7 @@ impl TCPBridge {
         loop {
             select! {
                 _ = close_notify.notified() => {
-                    println!("-->接收到关闭通知：退出 proxy_to_client 循环");
+                    // println!("-->接收到关闭通知：退出 proxy_to_client 循环");
                     break;
                 }
                 read_data = proxy_reader.read(&mut buf) =>{
@@ -120,7 +120,7 @@ impl TCPBridge {
 
         //这里必须关闭客户端的输出流，否则对方无法感知到已经关闭连接了（写失败或者读失败没有必要调用shutdown()，即使调用大概率也是失败的，所以没有意义）
         client_writer.shutdown().await?;
-        println!("-->客户端连接已关闭");
+        // println!("-->客户端连接已关闭");
         Ok(())
     }
 
@@ -142,7 +142,7 @@ impl TCPBridge {
         }
         //这里必须关闭客户端的输出流，否则对方无法感知到已经关闭连接了（写失败或者读失败没有必要调用shutdown()，即使调用大概率也是失败的，所以没有意义）
         proxy_writer.shutdown().await?;
-        println!("-->代理连接已关闭");
+        // println!("-->代理连接已关闭");
         Ok(())
     }
 

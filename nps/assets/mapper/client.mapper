@@ -2,3 +2,9 @@
 /// 通过key获取客户端
 select * from client where key  = :key and enable_state = 1
 fn select_by_key(key: &str) -> Client
+
+
+
+/// 设置可用状态
+update client set enable_state = :enable_state where id = :id
+fn toggle_enable(id: i64, enable_state: i8)

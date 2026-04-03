@@ -49,7 +49,7 @@ pub async fn make_bridge(
     //NPS客户端Socket
     let npc_pool_tcp = tcp_pool_manager::get_and_add_pool(channel.client_id).await;
     if npc_pool_tcp.is_none() {
-        println!("-->客户端: {}没有可用的连接池。", channel.client_id);
+        // println!("-->客户端: {}没有可用的连接池。", channel.client_id);
 
         //这里无需关闭，生命周期结束之后会自动关闭
         // tcp.shutdown().await?;

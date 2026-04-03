@@ -19,12 +19,17 @@ const VERSION: i32 = 1;
 // }
 
 /// 全局数据库连接池
-pub static DB_CONN: LazyLock<SqlitePool> = LazyLock::new(|| {
+static DB_CONN: LazyLock<SqlitePool> = LazyLock::new(|| {
     SqlitePoolOptions::new()
         .max_connections(5)
         .connect_lazy("sqlite://dairo-nps.sqlite?mode=rwc")
         .unwrap()
 });
+
+/// 消耗一个链接
+pub fn get() -> SqlitePool {
+    DB_CONN.clone()
+}
 
 // 初始化数据库连接和表结构
 pub async fn init() {
@@ -35,8 +40,8 @@ pub async fn init() {
     });
 }
 
-async fn init_db() -> Result<(), Box<dyn Error>>{
-    let mut tx = DB_CONN.clone().begin().await?;
+async fn init_db() -> Result<(), Box<dyn Error>> {
+    let mut tx = get().begin().await?;
 
     //升级数据库（如果需要）
     upgrade(&mut tx).await?;
@@ -61,9 +66,10 @@ async fn init_db() -> Result<(), Box<dyn Error>>{
 
 // 数据库升级
 async fn upgrade(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>> {
-    let version:i64 = sqlx::query_scalar("PRAGMA USER_VERSION")
+    let version: i64 = sqlx::query_scalar("PRAGMA USER_VERSION")
         .fetch_one(&mut **tx)
-        .await.unwrap_or(0);
+        .await
+        .unwrap_or(0);
     if version == 0 {
         // // 设置 WAL（返回值是实际模式，可能被 SQLite 调整）
         // conn.execute_batch("PRAGMA journal_mode = WAL;").unwrap();

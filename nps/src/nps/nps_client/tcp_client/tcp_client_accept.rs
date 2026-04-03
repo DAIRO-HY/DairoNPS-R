@@ -8,6 +8,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
 use crate::application;
 use std::sync::atomic::Ordering;
+use sqlx::Error;
+use crate::dao::client_dao::Client;
 
 // 监听客户端连接
 pub async fn accept() -> io::Result<()> {
@@ -21,12 +23,12 @@ pub async fn accept() -> io::Result<()> {
         }
         acc = listener.accept() => {//等待客户端连接
                        let (tcp_stream, _) = acc?;
-                       println!("接收到客户端连接请求,端口:{}监听成功。", 1781);
+                       // println!("接收到客户端连接请求,端口:{}监听成功。", 1781);
                        tokio::spawn(async {
                            if handle_accept(tcp_stream).await.is_err() {
                                println!("处理客户端连接发生错误。");
                            }
-                           println!("客户端连接处理结束。");
+                           // println!("客户端连接处理结束。");
                        });
                    }
                    }
@@ -47,7 +49,7 @@ async fn handle_accept(mut tcp_stream: TcpStream) -> io::Result<()> {
     let mut flag_data = [0u8; 1];
     tcp_stream.read_exact(&mut flag_data).await?;
     let flag = flag_data[0];
-    println!("接收到客户端连接请求,标记:{}", flag);
+    // println!("接收到客户端连接请求,标记:{}", flag);
     match flag {
         //标记该连接为:服务器端往客户端发送指令的连接
         header_util::CLIENT_TO_SERVER_MAIN_CONNECTION => validate_session(tcp_stream).await?,
@@ -68,15 +70,19 @@ async fn validate_session(mut tcp_stream: TcpStream) -> io::Result<()> {
 
     //得到客户端key
     let key = headers[0];
-    let conn = crate::util::db_util::new_connection();
-    let client = client_dao::select_by_key(&conn, key);
-    drop(conn);
-    if let Err(e) = client {
-        if e != rusqlite::Error::QueryReturnedNoRows{
-            println!("客户端：{}获取失败:{}", key,e);
+    let client = client_dao::select_by_key(&db::get(), key).await;
+    match client {
+        Err(Error::RowNotFound) => {
+            println!("客户端：{}获取失败", key);
+            tcp_stream.shutdown().await?;
+            return Ok(());
         }
-        tcp_stream.shutdown().await?;
-        return Ok(());
+        Err(e) => {
+            println!("客户端：{}获取失败：{}", key, e);
+            tcp_stream.shutdown().await?;
+            return Ok(());
+        }
+        _ => {}
     }
     let client = client.unwrap();
     if client.enable_state == 0 {

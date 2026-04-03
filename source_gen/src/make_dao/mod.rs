@@ -13,5 +13,5 @@ pub async fn make(url: &str, mapper_dir: &str) {
     tables.iter_mut().for_each(|table| {
         table.mappers = read_mapper::read(&table.name, mapper_dir);
     });
-    make_source::make(tables);
+    make_source::make(&mut conn, tables).await;
 }
