@@ -42,7 +42,7 @@ pub fn make(tables: Vec<TableInfo>) {
         dao_src.push_str(&table.make_delete_func());
 
         // 生成mapper函数的源代码
-        // dao_src.push_str(&table.make_mapper_func());
+        dao_src.push_str(&table.make_mapper_func());
 
         dao_src.insert_str(
             0,

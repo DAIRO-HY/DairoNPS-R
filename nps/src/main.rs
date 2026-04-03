@@ -1,4 +1,4 @@
-// // #![allow(warnings)]//忽略所有警告
+#![allow(warnings)]//忽略所有警告
 // mod application;
 // mod constant;
 mod dao;

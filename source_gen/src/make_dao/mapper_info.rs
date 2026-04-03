@@ -149,36 +149,45 @@ impl MapperInfo {
             CrudType::Read => {
                 if self.is_list {
                     r###"
-                    pub fn [FUNC_NAME](conn: &rusqlite::Connection, [FUNC_PARAMS]) -> Result<Vec<[RETURN_TYPE]>, rusqlite::Error> {
-                        const SQL: &str = r#"[SQL]"#;
-                        let mut stmt = conn.prepare(SQL)?;
-                        stmt.query_map([[SQL_PARAM]], |row| {
-                            Ok([ENTITY] {
-                                [ROW_TO_STRUCT]
-                                ..Default::default()
-                            })
-                        })?
-                        .collect()
+                    pub async fn [FUNC_NAME]<'e, E>(executor: E, [FUNC_PARAMS]) -> Result<Vec<[RETURN_TYPE]>, sqlx::Error>
+                     where E: sqlx::Executor<'e, Database = sqlx::Sqlite>
+                    {
+                         sqlx::query_as!(
+                             [ENTITY],
+                             r#"[SQL]"#,
+                             [SQL_PARAM]
+                         )
+                         .fetch_all(executor)
+                         .await
                     }"###
                 } else {
                     r###"
-                    pub fn [FUNC_NAME](conn: &rusqlite::Connection, [FUNC_PARAMS]) -> Result<[RETURN_TYPE], rusqlite::Error> {
-                        const SQL: &str = r#"[SQL]"#;
-                        let mut stmt = conn.prepare(SQL)?;
-                        stmt.query_one(rusqlite::params!([SQL_PARAM]), |row| {
-                            Ok([ENTITY] {
-                                [ROW_TO_STRUCT]
-                                ..Default::default()
-                            })
-                        })
+                    pub async fn [FUNC_NAME]<'e, E>(executor: E, [FUNC_PARAMS]) -> Result<[RETURN_TYPE], sqlx::Error> 
+                     where E: sqlx::Executor<'e, Database = sqlx::Sqlite>
+                    {
+                         sqlx::query_as!(
+                             [ENTITY],
+                             r#"[SQL]"#,
+                             [SQL_PARAM]
+                         )
+                         .fetch_one(executor)
+                         .await
                     }"###
                 }
             }
             CrudType::Update | CrudType::Delete | CrudType::Create => {
                 r##"
-                    pub fn [FUNC_NAME](conn: &rusqlite::Connection, [FUNC_PARAMS]) -> Result<usize, rusqlite::Error> {
-                        const SQL: &str = r#"[SQL]"#;
-                        conn.execute(SQL, rusqlite::params!([SQL_PARAM]))
+                    pub async fn [FUNC_NAME]<'e, E>(executor: E, [FUNC_PARAMS]) -> Result<u64, sqlx::Error> 
+                     where E: sqlx::Executor<'e, Database = sqlx::Sqlite>
+                    {
+                        let rs = sqlx::query!(
+                            r#"[SQL]"#,
+                            [SQL_PARAM]
+                        )
+                            .execute(executor)
+                            .await?;
+                        let count = rs.rows_affected();
+                        Ok(count)
                     }
                 "##
             }
