@@ -3,8 +3,10 @@
 select * from client where key  = :key and enable_state = 1
 fn select_by_key(key: &str) -> Client
 
-
-
 /// 设置可用状态
 update client set enable_state = :enable_state where id = :id
 fn toggle_enable(id: i64, enable_state: i8)
+
+/// 设置客户端连接信息
+update client set ip = :ip, client_version = :client_version, last_login_date = :last_login_date where id = :id
+fn set_connection_info(id:i64, ip: String, client_version: String, last_login_date: i64)

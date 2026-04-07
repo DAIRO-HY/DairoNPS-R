@@ -63,7 +63,7 @@ pub async fn make_bridge(
         proxy_tcp,
         client_tcp: npc_pool_tcp,
         channel_data_total: data_total,
-        close_notify
+        channel_closer: close_notify
     };
     tokio::spawn(bridge.start());
 }

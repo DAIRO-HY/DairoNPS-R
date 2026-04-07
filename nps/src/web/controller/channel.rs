@@ -1,31 +1,32 @@
-use crate::dao::{channel_dao, channel_data_dao};
 use crate::dao::channel_dao::Channel;
 use crate::dao::client_dao;
+use crate::dao::{channel_dao, channel_data_dao};
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::ToDataSize;
 use crate::extension::number::ToDateFormat;
+use crate::nps::nps_proxy::tcp_proxy_manager;
 use crate::web::extract::{AppForm, AppQuery};
 use crate::web::router::IdQuery;
-use crate::{biz_error, biz_errorf};
+use crate::{biz_error, biz_errorf, nps};
 use axum::{
     Json,
-    extract::Query,
     response::{IntoResponse, Response},
 };
 use std::collections::HashMap;
 use validator::Validate;
-use crate::nps::nps_proxy::tcp_proxy_manager;
 
 ///  隧道列表
 pub async fn list() -> Response {
     let conn = db::get();
-    let client_id_name_map = client_dao::select_all(&conn).await
+    let client_id_name_map = client_dao::select_all(&conn)
+        .await
         .unwrap_or_default()
         .into_iter()
         .rev()
         .map(|it| (it.id, it.name))
         .collect::<HashMap<_, _>>();
-    let list = channel_dao::select_all(&conn).await
+    let list = channel_dao::select_all(&conn)
+        .await
         .unwrap_or_default()
         .into_iter()
         .map(|it| model::ChannelList {
@@ -84,7 +85,7 @@ pub async fn detail(AppQuery(query): AppQuery<model::DetailQuery>) -> Response {
             ..model::ChannelDetail::default()
         }
     };
-    return Json(detail).into_response();
+    Json(detail).into_response()
 
     // client := ClientDao.SelectOne(ClientId)
     // var outForm form.ChannelEditForm
@@ -122,8 +123,8 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
     }
     let conn = db::get();
     let mut channel = if form.id == 0 {
-        Channel{
-            enable_state:1,
+        Channel {
+            enable_state: 1,
             ..Default::default()
         }
     } else {
@@ -145,12 +146,13 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
     channel.version = form.version;
 
     let mut err = None;
-    if channel.id == 0 {
-        if let Err(e) = channel_dao::insert(&conn, channel).await {
-            err = Some(e);
+    if form.id == 0 {
+        match channel_dao::insert(&conn, &channel).await {
+            Err(e) => err = Some(e),
+            Ok(id) => channel.id = id,
         }
     } else {
-        err = channel_dao::update(&conn, channel).await.err();
+        err = channel_dao::update(&conn, &channel).await.err();
     }
     if let Some(e) = err {
         let err_msg = e.to_string();
@@ -162,21 +164,33 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
         }
         return biz_error!(e.to_string());
     }
+    if channel.enable_state == 1
+        && nps::CLIENT_NPS_MAP
+            .lock()
+            .await
+            .contains_key(&channel.client_id)
+    {
+        //当前隧道有效并且当前客户端在线，则开启隧道监听
+        tcp_proxy_manager::accept_channel(channel).await; //开启隧道监听
+    }
     // crate::application::restart_mark();//标记需要重启
     Response::empty()
 }
 
 /// 通过id删除一个隧道
 pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
-    let conn =  db::get();
+    let conn = db::get();
     let mut tx = conn.begin().await.unwrap();
-    if let Err(e) = channel_dao::delete(&mut *tx, query.id).await{
+    println!("-->id:{}", query.id);
+    if let Err(e) = channel_dao::delete(&mut *tx, query.id).await {
         return biz_errorf!("删除失败:{}", e);
     }
-    channel_data_dao::delete_by_channel_id(&mut *tx, query.id).await.unwrap();
+    channel_data_dao::delete_by_channel_id(&mut *tx, query.id)
+        .await
+        .unwrap();
 
     //提交事务
-    let _ = tx.commit();
+    let _ = tx.commit().await;
     drop(conn);
 
     // //关闭代理监听
@@ -188,24 +202,30 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
 /// 修改可用状态
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     let conn = db::get();
-	let channel = channel_dao::select_one(&conn, query.id).await.unwrap();
-	let to = if channel.enable_state == 0 {
-        if crate::nps::CLIENT_SESSION.lock().await.contains_key(&channel.client_id){//如果当前客户端在线
-            tcp_proxy_manager::accept_channel(channel).await;//开启隧道监听
+    let channel = channel_dao::select_one(&conn, query.id).await.unwrap();
+    let to = if channel.enable_state == 0 {
+        if nps::CLIENT_NPS_MAP
+            .lock()
+            .await
+            .contains_key(&channel.client_id)
+        {
+            //如果当前客户端在线
+            tcp_proxy_manager::accept_channel(channel).await; //开启隧道监听
         }
         1
-		// clientDto := ClientDao.SelectOne(channel.ClientId)
-		// if tcp_client.IsOnline(clientDto.Id) {
-		// 	udp_proxy.AcceptClient(clientDto) //重新开启监听该客户端
-		// }
-	} else {
-
+        // clientDto := ClientDao.SelectOne(channel.ClientId)
+        // if tcp_client.IsOnline(clientDto.Id) {
+        // 	udp_proxy.AcceptClient(clientDto) //重新开启监听该客户端
+        // }
+    } else {
         // //关闭代理监听
         // udp_proxy.ShutdownByChannel(channel.Id)
         tcp_proxy_manager::shutdown_by_channel(query.id).await;
         0
-	};
-    channel_dao::toggle_enable(&conn, query.id, to).await.unwrap();
+    };
+    channel_dao::toggle_enable(&conn, query.id, to)
+        .await
+        .unwrap();
 }
 
 // // 表单验证

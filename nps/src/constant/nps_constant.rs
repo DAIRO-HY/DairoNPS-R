@@ -34,10 +34,6 @@ pub const UDP_BRIDGE_TIMEOUT: u64 = 1 * 60 * 1000;
 
 //const UDP_BRIDGE_TIMEOUT = 5 * 1000
 
-/**
- * 心跳间隔时间
- */
-pub const HEART_TIME: u64 = 3000;
 
 /**
  * 读取数据缓存大小

@@ -1,26 +1,31 @@
-use crate::constant::nps_constant;
 use crate::dao::client_dao;
 use crate::dao::client_dao::Client;
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::ToDataSize;
 use crate::extension::number::ToDateFormat;
+use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use crate::web::extract::{AppForm, AppQuery};
 use crate::web::router::IdQuery;
-use crate::{biz_error, biz_errorf};
+use crate::{biz_error, nps};
 use axum::{
     Json,
     extract::Query,
     response::{IntoResponse, Response},
 };
 use rand::distr::{Alphanumeric, SampleString};
+use std::collections::HashSet;
 use validator::Validate;
-use std::sync::atomic::Ordering;
-use crate::application;
-use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 
 /// 客户端列表
 pub async fn list() -> Response {
-    let list = client_dao::select_all(&db::get()).await
+    let online_client_set: HashSet<i64> = nps::CLIENT_NPS_MAP
+        .lock()
+        .await
+        .keys()
+        .map(|it| it.clone())
+        .collect(); //收集在线状态的客户端id
+    let list = client_dao::select_all(&db::get())
+        .await
         .unwrap_or_default()
         .into_iter()
         .rev()
@@ -33,8 +38,7 @@ pub async fn list() -> Response {
             enable_state: it.enable_state,
             in_data: it.in_data.data_size(),
             out_data: it.out_data.data_size(),
-            // is_online: crate::nps_client::tcp_client::is_online(it.id),
-            is_online: false, //待实现
+            is_online: online_client_set.contains(&it.id),
         })
         .collect::<Vec<_>>();
     Json(list).into_response()
@@ -55,8 +59,11 @@ pub async fn detail(Query(id): Query<IdQuery>) -> Response {
             ip: client.ip,
             in_data: client.in_data.data_size(),
             out_data: client.out_data.data_size(),
-            // online_state: if crate::nps_client::tcp_client::IsOnline(client.id) { "在线" } else { "离线" }.to_string(),
-            online_state: "待实现".to_string(),
+            online_state: if nps::CLIENT_NPS_MAP.lock().await.contains_key(&client.id) {
+                "在线".to_string()
+            } else {
+                "离线".to_string()
+            },
             enable_state: if client.enable_state == 0 {
                 "关闭"
             } else {
@@ -86,8 +93,8 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
 
     let conn = db::get();
     let mut client = if form.id == 0 {
-        Client{
-            enable_state:1,
+        Client {
+            enable_state: 1,
             ..Default::default()
         }
     } else {
@@ -120,6 +127,8 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
         }
         return biz_error!(e.to_string());
     }
+
+    //通知关闭该客户端会话
     tcp_client_session_manager::shutdown(form.id).await.unwrap();
     // application::IS_NEED_RESTART.store(true, std::sync::atomic::Ordering::Release);//标记需要重启
     Response::empty()
@@ -127,22 +136,31 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
 
 /// 通过id删除一个客户端
 pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
-    client_dao::set_delete_ignone_version(&db::get(), query.id).await.unwrap();
-    tcp_client_session_manager::shutdown(query.id).await.unwrap();
+    client_dao::set_delete_ignone_version(&db::get(), query.id)
+        .await
+        .unwrap();
+    tcp_client_session_manager::shutdown(query.id)
+        .await
+        .unwrap();
     // application::IS_NEED_RESTART.store(true, std::sync::atomic::Ordering::Release);//标记需要重启
 }
 
 /// 修改可用状态
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     let conn = db::get();
-	let client = client_dao::select_one(&conn, query.id).await.unwrap();
-	let to = if client.enable_state == 0 {
+    let client = client_dao::select_one(&conn, query.id).await.unwrap();
+    let to = if client.enable_state == 0 {
         1
-	} else {//关闭客户端
-        tcp_client_session_manager::shutdown(query.id).await.unwrap();
+    } else {
+        //关闭客户端
+        tcp_client_session_manager::shutdown(query.id)
+            .await
+            .unwrap();
         0
-	};
-    client_dao::toggle_enable(&conn, query.id, to).await.unwrap();
+    };
+    client_dao::toggle_enable(&conn, query.id, to)
+        .await
+        .unwrap();
     // application::IS_NEED_RESTART.store(true, Ordering::Release);//标记需要重启
 }
 

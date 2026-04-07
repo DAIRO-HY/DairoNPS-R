@@ -21,6 +21,11 @@ pub static IS_AXUM_DROP: AtomicBool = AtomicBool::new(false);
 /// 标记是否退出了NPS服务端监听
 pub static IS_NPS_SERVER_DROP: AtomicBool = AtomicBool::new(false);
 
+/**
+ * 心跳间隔时间
+ */
+pub const HEART_TIME: u64 = 3000;
+
 /// 重启函数，设置标记并退出程序
 pub async fn restart() {
     IS_NEED_RESTART.store(false, Ordering::Release);
@@ -32,7 +37,7 @@ pub async fn restart() {
         println!("正在关闭服务...");
         SHUTDOWN_NOTIFY.notify_waiters();
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        if !nps::CHANNEL_CLOSE_NOTIFY.lock().await.is_empty() {
+        if !nps::CHANNEL_NPS_MAP.lock().await.is_empty() {
             //等待所有隧道代理监听停止,否则可能导致下次监听同一端口失败
             continue;
         }

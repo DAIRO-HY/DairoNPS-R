@@ -1,14 +1,13 @@
 use super::tcp_pool::TCPPool;
 use crate::constant::nps_constant;
+use crate::nps;
 use crate::nps::nps_client::header_util;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncWriteExt, Result};
 use tokio::net::TcpStream;
-use crate::nps::POOL_MAP;
 
 pub fn init() {
-
     // 超时连接池整理
     tokio::spawn(timeout_check());
 }
@@ -30,17 +29,21 @@ pub fn init() {
 
 // 获取某个客户端连接池数量
 pub async fn get_pool_count(client_id: &i64) -> usize {
-    return POOL_MAP.lock().await.get(&client_id).map_or(0, |it| it.len());
+    nps::CLIENT_NPS_MAP
+        .lock()
+        .await
+        .get(&client_id)
+        .map_or(0, |it| it.tcp_pool.len())
 }
 
 /**
  * 为客户端创建一个空的连接池
  * @param client_id 客户端ID
  */
-pub async fn init_empty_pool_by_client(client_id: i64) {
-    //移除旧的连接池并创建新的连接池
-    POOL_MAP.lock().await.insert(client_id, Vec::new());
-}
+// pub async fn init_empty_pool_by_client(client_id: i64) {
+//     //移除旧的连接池并创建新的连接池
+//     POOL_MAP.lock().await.insert(client_id, Vec::new());
+// }
 
 // 添加TCP连接池
 // clientSocket tcp连接
@@ -49,16 +52,16 @@ pub async fn add(mut tcp: TcpStream) -> Result<()> {
     let client_id_str = header_util::get_header(&mut tcp).await?;
     let client_id: i64 = client_id_str.parse().unwrap();
 
-    let mut pool_map = POOL_MAP.lock().await;
+    let mut client_nps_map = nps::CLIENT_NPS_MAP.lock().await;
 
     //得到客户端连接池列表
-    let Some(pools) = pool_map.get_mut(&client_id) else{
+    let Some(mut client_nps) = client_nps_map.get_mut(&client_id) else {
         return Ok(());
     };
-    if pools.len() >= nps_constant::MAX_POOL_COUNT {
+    if client_nps.tcp_pool.len() >= nps_constant::MAX_POOL_COUNT {
         // println!("-->客户端: {}连接池已满,拒绝新连接。count: {}", client_id, pools.len());
         //已经达到最大连接数,拒绝新连接
-        drop(pool_map); // 释放锁
+        drop(client_nps_map); // 释放锁
 
         //已经达到最大连接数,拒绝新连接
         tcp.shutdown().await?;
@@ -74,7 +77,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<()> {
             .as_secs(),
         tcp: tcp,
     };
-    pools.push(pool);
+    (client_nps.tcp_pool).push(pool);
     Ok(())
 }
 
@@ -82,12 +85,14 @@ pub async fn add(mut tcp: TcpStream) -> Result<()> {
  * 通过客户端ID获取一个连接
  * @param clientID 客户端ID
  */
-async fn get(client_id:i64)-> Option<(TcpStream,usize)> {
-    let mut pool_map = POOL_MAP.lock().await;
-    let Some(pools) = pool_map.get_mut(&client_id) else {
+async fn get(client_id: i64) -> Option<(TcpStream, usize)> {
+    let mut client_nps_map = nps::CLIENT_NPS_MAP.lock().await;
+
+    //得到客户端连接池列表
+    let Some(mut client_nps) = client_nps_map.get_mut(&client_id) else {
         return None;
     };
-    let count = pools.len();
+    let count = client_nps.tcp_pool.len();
     if count == 0 {
         return None;
     }
@@ -96,7 +101,7 @@ async fn get(client_id:i64)-> Option<(TcpStream,usize)> {
     // return Some(pools.pop().unwrap().tcp);
 
     //从连接池取出并移除最旧的连接，较少连接池中存在过期连接
-    return Some((pools.remove(0).tcp, count));
+    Some((client_nps.tcp_pool.remove(0).tcp, count))
 }
 
 /**
@@ -104,15 +109,16 @@ async fn get(client_id:i64)-> Option<(TcpStream,usize)> {
  * @param clientID 客户端ID
  */
 pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
-     let mut pool_info: Option<(TcpStream,usize)> = None;
-     for _ in 0..5 {
+    let mut pool_info: Option<(TcpStream, usize)> = None;
+    for _ in 0..5 {
         pool_info = get(client_id).await;
         if pool_info.is_some() {
             break;
         }
 
         //连接池里没有数据，申请创建连接池
-        tcp_client_session_manager::send_tcp_pool_request(client_id, nps_constant::ADD_POOL_COUNT).await;
+        tcp_client_session_manager::send_tcp_pool_request(client_id, nps_constant::ADD_POOL_COUNT)
+            .await;
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
     let Some((tcp, count)) = pool_info else {
@@ -120,7 +126,14 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
     };
 
     //申请创建连接池
-    tokio::spawn(tcp_client_session_manager::send_tcp_pool_request(client_id, if(nps_constant::MAX_POOL_COUNT == count){1}else{2}));
+    tokio::spawn(tcp_client_session_manager::send_tcp_pool_request(
+        client_id,
+        if (nps_constant::MAX_POOL_COUNT == count) {
+            1
+        } else {
+            2
+        },
+    ));
     // println!("-->当前连接池数量: {} ", count);
     return Some(tcp);
 }
@@ -149,26 +162,28 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
  * 移除某个客户端所有的连接池
  * @param clientID 客户端ID
  */
-pub async fn shutdown_by_client(client_id: i64) {
-    POOL_MAP.lock().await.remove(&client_id);
-    println!("tcp连接池被关闭了...");
-}
+// pub async fn shutdown_by_client(client_id: i64) {
+//     POOL_MAP.lock().await.remove(&client_id);
+//     println!("tcp连接池被关闭了...");
+// }
 
 // 超时连接池整理
 async fn timeout_check() {
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(nps_constant::RECYLE_POOL_TIME_OUT / 2)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(
+            nps_constant::RECYLE_POOL_TIME_OUT / 2,
+        ))
+        .await;
         let now = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
-        let mut pool_map = POOL_MAP.lock().await;
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let mut client_map = nps::CLIENT_NPS_MAP.lock().await;
 
         //用来记录连接池被清空的客户端ID,用于请求创建新的连接池
         let mut empty_pool_clients = Vec::new();
-        for (client_id, pools) in pool_map.iter_mut() {
-            pools.retain(|it| {
-
+        for (client_id, client_nps) in client_map.iter_mut() {
+            client_nps.tcp_pool.retain(|it| {
                 //连接池超过指定时间,关闭连接
                 if now - it.create_time > nps_constant::RECYLE_POOL_TIME_OUT {
                     //连接池超过指定时间,关闭连接
@@ -177,15 +192,20 @@ async fn timeout_check() {
                 }
                 return true;
             });
-            if pools.len() == 0 {//如果连接池被清空，则记录客户端ID,用于请求创建新的连接池,而不是直接在这里请求创建新的连接池,因为这里还持有连接池的锁,如果在这里请求创建新的连接池,可能会导致死锁
+            if client_nps.tcp_pool.len() == 0 {
+                //如果连接池被清空，则记录客户端ID,用于请求创建新的连接池,而不是直接在这里请求创建新的连接池,因为这里还持有连接池的锁,如果在这里请求创建新的连接池,可能会导致死锁
                 empty_pool_clients.push(*client_id);
             }
         }
-        drop(pool_map);//释放连接池锁
+        drop(client_map); //释放连接池锁
 
         //请求添加连接池
         for client_id in empty_pool_clients {
-            tcp_client_session_manager::send_tcp_pool_request(client_id, nps_constant::ADD_POOL_COUNT).await;
+            tcp_client_session_manager::send_tcp_pool_request(
+                client_id,
+                nps_constant::ADD_POOL_COUNT,
+            )
+            .await;
         }
     }
 }

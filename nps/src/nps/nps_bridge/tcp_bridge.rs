@@ -31,8 +31,7 @@ pub struct TCPBridge {
     pub proxy_tcp: TcpStream,
     pub client_tcp: TcpStream,
     pub channel_data_total: DataTotal,
-
-    pub close_notify: Arc<Notify>,
+    pub channel_closer: Arc<Notify>,
 }
 
 //用来生成当前桥接唯一标识
@@ -75,7 +74,7 @@ impl TCPBridge {
             self.channel_data_total.clone(),
             proxy_reader,
             client_writer,
-            self.close_notify
+            self.channel_closer
         );
         let c2p = Self::client_to_proxy(
             data_total,

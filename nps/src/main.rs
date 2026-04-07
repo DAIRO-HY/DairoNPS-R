@@ -14,8 +14,6 @@ mod web;
 // use sqlx::sqlite::SqlitePoolOptions;
 // use sqlx::SqlitePool;
 // use dao::client_dao;
-
-use crate::dao::channel_dao;
 use sqlx::{Column, Executor, Statement, TypeInfo};
 
 #[tokio::main]
@@ -31,13 +29,26 @@ async fn main() -> tokio::io::Result<()> {
         loop {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             println!(
-                "-->client_session_count:{}",
-                nps::CLIENT_SESSION.lock().await.len()
+                "-->CLIENT_NPS_MAP_count:{} CHANNEL_NPS_count:{}",
+                nps::CLIENT_NPS_MAP.lock().await.len(),
+                nps::CHANNEL_NPS_MAP.lock().await.len(),
             );
-            let pool_map = nps::POOL_MAP.lock().await;
-            pool_map
-                .iter()
-                .for_each(|it| println!("-->client:{} pool_count:{}", it.0, it.1.len()));
+            let client_map = nps::CLIENT_NPS_MAP.lock().await;
+            for (k,v) in client_map.iter() {
+                println!(
+                    "-->pool client:{} pool_count:{}",
+                    k,
+                    v.tcp_pool.len()
+                );
+            }
+            let bridge_map = nps::CHANNEL_NPS_MAP.lock().await;
+            for (k,v) in bridge_map.iter() {
+                println!(
+                    "-->bridge  channel:{} count:{}",
+                    k,
+                    v.bridger.len()
+                );
+            }
         }
     });
 

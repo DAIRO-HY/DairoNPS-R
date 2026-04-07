@@ -55,14 +55,24 @@ impl TableInfo {
 
     /// 生成实体类的源代码
     pub fn make_entity_src(&self) -> String {
+        let entity_name = self.get_entity_name();
         let mut entity_src = String::new();
         entity_src
             .push_str("#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]\n");
-        entity_src.push_str(&format!("pub struct {} {{\n", self.get_entity_name()));
+        entity_src.push_str(&format!("pub struct {} {{\n", entity_name));
         self.columns.iter().for_each(|it| {
             entity_src.push_str(it.make_member_src().as_str());
         });
         entity_src.push_str("}\n");
+
+        /// 让函数参数可以“接受多种类型的引用形式”，并统一转成某种引用类型使用
+        entity_src.push_str(r#"
+        impl AsRef<[ENTITY]> for [ENTITY] {
+            fn as_ref(&self) -> &[ENTITY] {
+                self
+            }
+        }"#.replace("[ENTITY]", entity_name.as_str()).as_str()
+        );
         entity_src
     }
 
@@ -162,22 +172,25 @@ impl TableInfo {
             insert_sql.push_str(&format!(" RETURNING {}", key));
             r#"
             /// 插入数据
-            pub async fn insert<'e, E>(executor: E, entity: [ENTITY]) -> Result<i64, sqlx::Error>
+            pub async fn insert<'e, E>(executor: E, entity: impl AsRef<[ENTITY]>) -> Result<i64, sqlx::Error>
             where
                 E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
             {
                 [TIME_CODE]
+                let entity = entity.as_ref();
                 sqlx::query_scalar!("[SQL]", [PARAM]).fetch_one(executor).await
             }"#
         } else {
             r#"
             /// 插入数据
-            pub async fn insert<'e, E>(executor: E, entity: [ENTITY]) -> Option<sqlx::Error>
+            pub async fn insert<'e, E>(executor: E, entity: impl AsRef<[ENTITY]>) -> Result<(),sqlx::Error>
             where
                 E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
             {
                 [TIME_CODE]
-                sqlx::query_scalar!("[SQL]", [PARAM]).execute(executor).await.err()
+                let entity = entity.as_ref();
+                sqlx::query!("[SQL]", [PARAM]).execute(executor).await?;
+                Ok(())
             }"#
         };
 
@@ -379,11 +392,12 @@ impl TableInfo {
 
         r##"
         /// 更新数据
-        pub async fn update<'e, E>(executor: E, entity: [ENTITY]) -> Result<u64, sqlx::Error>
+        pub async fn update<'e, E>(executor: E, entity: impl AsRef<[ENTITY]>) -> Result<u64, sqlx::Error>
         where
             E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
         {
             [TIMESTAMP]
+            let entity = entity.as_ref();
             let rs = sqlx::query!(
             "[SQL]",
             [PARAM]

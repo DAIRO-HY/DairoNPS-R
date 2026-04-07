@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use super::super::header_util;
 use super::tcp_client_session_manager;
 use crate::dao::client_dao;
@@ -8,6 +9,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
 use crate::application;
 use std::sync::atomic::Ordering;
+use std::time::{SystemTime, UNIX_EPOCH};
 use sqlx::Error;
 use crate::dao::client_dao::Client;
 
@@ -22,10 +24,10 @@ pub async fn accept() -> io::Result<()> {
             break;
         }
         acc = listener.accept() => {//等待客户端连接
-                       let (tcp_stream, _) = acc?;
+                       let (tcp_stream, addr) = acc?;
                        // println!("接收到客户端连接请求,端口:{}监听成功。", 1781);
-                       tokio::spawn(async {
-                           if handle_accept(tcp_stream).await.is_err() {
+                       tokio::spawn(async move{
+                           if handle_accept(tcp_stream, addr).await.is_err() {
                                println!("处理客户端连接发生错误。");
                            }
                            // println!("客户端连接处理结束。");
@@ -41,7 +43,7 @@ pub async fn accept() -> io::Result<()> {
  * 分配连接
  * @param socketClient 与客户端的连接
  */
-async fn handle_accept(mut tcp_stream: TcpStream) -> io::Result<()> {
+async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> io::Result<()> {
     //读取连接的第一个数据,设置超时,避免恶意连接
     // tcp.SetReadDeadline(time.Now().Add(3 * time.Second))
 
@@ -52,7 +54,7 @@ async fn handle_accept(mut tcp_stream: TcpStream) -> io::Result<()> {
     // println!("接收到客户端连接请求,标记:{}", flag);
     match flag {
         //标记该连接为:服务器端往客户端发送指令的连接
-        header_util::CLIENT_TO_SERVER_MAIN_CONNECTION => validate_session(tcp_stream).await?,
+        header_util::CLIENT_TO_SERVER_MAIN_CONNECTION => validate_session(tcp_stream, addr).await?,
 
         //创建客户端Socket连接池
         header_util::REQUEST_TCP_POOL => tcp_pool_manager::add(tcp_stream).await?,
@@ -63,7 +65,7 @@ async fn handle_accept(mut tcp_stream: TcpStream) -> io::Result<()> {
 }
 
 // 验证客户端回话
-async fn validate_session(mut tcp_stream: TcpStream) -> io::Result<()> {
+async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> io::Result<()> {
     //得到头部数据
     let header = header_util::get_header(&mut tcp_stream).await?;
     let headers: Vec<&str> = header.split("|").collect();
@@ -107,6 +109,20 @@ async fn validate_session(mut tcp_stream: TcpStream) -> io::Result<()> {
     // ClientDao.SetClientInfo(loginClientDto)
     // //设置客户端登录信息-------------------------------------------------------------------------------END
     //
+    let client_id = client.id;
+
+    //得到客户端版本号
+    let client_version = headers[1].to_string();
+    let _ = client_dao::set_connection_info(
+        &db::get(),
+        client_id,
+        addr.ip().to_string(),
+        client_version,
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as i64
+    ).await;
     tcp_client_session_manager::hold_on_client(client, tcp_stream).await?;
     Ok(())
 }

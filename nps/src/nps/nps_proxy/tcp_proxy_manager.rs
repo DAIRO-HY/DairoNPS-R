@@ -3,13 +3,9 @@ use crate::dao::channel_dao::Channel;
 use crate::model::data_total::DataTotal;
 use crate::nps;
 use crate::nps::nps_proxy::tcp_proxy_accept::TCPProxyAccept;
-use crate::nps::{CHANNEL_CLOSE_NOTIFY, CHANNEL_DATA_TOTAL};
-use crate::dao::channel_data_dao;
-use std::collections::HashMap;
+use dashmap::DashMap;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::{net::TcpListener, sync::Notify};
-use crate::dao::channel_data_dao::ChannelData;
 // // 隧道id对应的服务端口监听
 // var proxyAcceptMap = make(map[int]*TCPProxyAccept)
 
@@ -25,9 +21,7 @@ use crate::dao::channel_data_dao::ChannelData;
 // 	return count
 // }
 
-pub fn init() {
-    tokio::spawn(channel_data_stats());
-}
+pub fn init() {}
 
 // 开始客户端的所有监听
 pub async fn accept_client(client_id: i64) {
@@ -35,7 +29,9 @@ pub async fn accept_client(client_id: i64) {
     // ChannelStatisticsUtil.Init()
 
     //开启NPS客户端ID下所有的隧道
-    let active_list = channel_dao::select_active_by_client_id(&db::get(), client_id).await.unwrap();
+    let active_list = channel_dao::select_active_by_client_id(&db::get(), client_id)
+        .await
+        .unwrap();
     for it in active_list {
         if it.mode == 1 {
             //只监听TCP隧道
@@ -79,32 +75,55 @@ pub async fn accept_channel(channel: Channel) {
     // proxyAcceptMap[channel.Id] = proxyAccept
     // proxyAcceptLock.Unlock()
 
+    let client_id = channel.client_id;
     let channel_id = channel.id;
     let data_total = DataTotal::from(channel.in_data, channel.out_data);
-    let notify = Arc::new(Notify::new());
+    let closer = Arc::new(Notify::new());
+    let bridger = Arc::new(DashMap::new());
+
     let proxy_tcp_accept = TCPProxyAccept {
         channel,
         tcp_listener,
-        notify: notify.clone(),
+        closer: closer.clone(),
         data_total: data_total.clone(),
+        bridger: bridger.clone(),
     };
 
     //保存关闭通知器
-    CHANNEL_CLOSE_NOTIFY
-        .lock()
-        .await
-        .insert(channel_id, notify.clone());
+    nps::CHANNEL_NPS_MAP.lock().await.insert(
+        channel_id,
+        nps::ChannelNPS {
+            client_id,
+            data_total,
+            closer,
+            bridger,
+        },
+    );
 
-    //初始化隧道数据总量
-    CHANNEL_DATA_TOTAL
-        .lock()
-        .await
-        .insert(channel_id, data_total);
+    //
+    // //保存关闭通知器
+    // CHANNEL_CLOSE_NOTIFY
+    //     .lock()
+    //     .await
+    //     .insert(channel_id, notify.clone());
+    //
+    // //初始化隧道数据总量
+    // CHANNEL_DATA_TOTAL
+    //     .lock()
+    //     .await
+    //     .insert(channel_id, data_total);
+    //
+    // //初始化隧道对应的桥接信息
+    // nps::BRIDGE_INFO
+    //     .lock()
+    //     .await
+    //     .insert(channel_id, bridge_info_map.clone());
+
     tokio::spawn(async move {
         let _ = proxy_tcp_accept.accept().await;
 
         //接受到accept结束的通知,说明监听已经停止,可以安全地删除关闭通知器
-        CHANNEL_CLOSE_NOTIFY.lock().await.remove(&channel_id);
+        nps::CHANNEL_NPS_MAP.lock().await.remove(&channel_id);
     });
 }
 
@@ -120,16 +139,12 @@ pub async fn shutdown_by_channel(channel_id: i64) {
 
     loop {
         //等待隧道代理监听停止,否则可能导致下次监听同一端口失败
-        if let Some(notify) = CHANNEL_CLOSE_NOTIFY
-            .lock()
-            .await
-            .get(&channel_id)
-        {
+        if let Some(channel_nps) = nps::CHANNEL_NPS_MAP.lock().await.get(&channel_id) {
             // println!(
             //     "-->等待隧道代理监听停止,否则可能导致下次监听同一端口失败。channelId: {}",
             //     channel_id
             // );
-            let _ = notify.notify_waiters();
+            let _ = channel_nps.closer.notify_waiters();
             tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
         } else {
             return;
@@ -164,45 +179,3 @@ pub async fn shutdown_by_channel(channel_id: i64) {
 // 		delete(proxyAcceptMap, channelId)
 // 	}
 // }
-
-// 统计隧道数据总量
-async fn channel_data_stats() {
-    const STATS_INTERVAL: u64 = 1000; //统计间隔，单位毫秒
-
-    //最后一次统计到的隧道数据总量
-    let mut last_total_map: HashMap<i64, DataTotal> = HashMap::new();
-    if DataTotal::from(0, 0) == DataTotal::from(0, 0) {
-        println!("DataTotal PartialEq implemented correctly");
-    } else {
-        println!("DataTotal PartialEq implementation error");
-    }
-    loop {
-        tokio::time::sleep(tokio::time::Duration::from_millis(STATS_INTERVAL)).await;
-        let conn = db::get();
-        let data_map = CHANNEL_DATA_TOTAL.lock().await;
-        for (channel_id, data_total) in data_map.iter() {
-            if let Some(last_total) = last_total_map.get(channel_id)
-                && last_total == data_total
-            {
-                //如果数据总量没有变化，说明隧道没有流量了，可以删除统计数据以节省内存
-                break;
-            }
-
-            //每隔STATS_INTERVAL毫秒统计一次数据总量
-            let in_data = data_total.load_in() as i64;
-            let out_data = data_total.load_out() as i64;
-
-            //这里可以将统计数据保存到数据库或者发送到监控系统
-            channel_data_dao::insert(&conn,ChannelData{
-                channel_id: channel_id.clone(),
-                date: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64,
-                in_data,
-                out_data,
-            }).await;
-            last_total_map.insert(
-                *channel_id,
-                DataTotal::from(in_data as u64, out_data as u64),
-            );
-        }
-    }
-}

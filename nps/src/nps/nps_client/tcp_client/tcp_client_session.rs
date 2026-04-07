@@ -1,7 +1,10 @@
+use std::sync::Arc;
 use crate::dao::client_dao::Client;
 use crate::nps::nps_client::header_util;
 use crate::util::security_util;
 use bytes::Bytes;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -18,7 +21,7 @@ pub struct ClientSession {
     pub tcp: TcpStream,
 
     //最后一次收到客户端心跳时间
-    pub last_heart_beat_time: u64,
+    pub heart_time: Arc<AtomicU64>,
 }
 
 /**
@@ -56,14 +59,13 @@ impl ClientSession {
             .await?;
 
         //拆分读写流,接收和发送分开处理
-        let (reader, mut writer) = tokio::io::split(&mut self.tcp);
+        let (mut reader, mut writer) = tokio::io::split(&mut self.tcp);
 
         //开启一个异步任务,专门负责接收从客户端发来的数据,并将数据写入到writer中
         let (tx, mut rx) = tokio::sync::mpsc::channel::<Bytes>(1024);
-        let _tx = &tx;
 
         //开启一个异步任务,专门负责将从其他地方发送过来的数据写入到客户端连接中
-        let write_task = async move {
+        let external_write_task = async move {
             while let Some(bytes) = rx.recv().await {
                 if bytes.len() == header_util::CLOSE_CMD.len()
                     && bytes.as_ref() == header_util::CLOSE_CMD
@@ -78,45 +80,66 @@ impl ClientSession {
         };
 
         //开启一个异步任务,专门负责将从其他地方发送过来的数据写入到客户端连接中
-        let external_receive_task = async move {
-            while let Some(bytes) = external_rx.recv().await {
-                // println!(
-                //     "-->收到外部发送的数据,准备发送给客户端,数据长度: {}",
-                //     bytes.len()
-                // );
-                _tx.send(bytes).await.unwrap();
+        let external_receive_task = {
+            let tx = tx.clone();
+            async move {
+                while let Some(bytes) = external_rx.recv().await {
+                    // println!(
+                    //     "-->收到外部发送的数据,准备发送给客户端,数据长度: {}",
+                    //     bytes.len()
+                    // );
+                    tx.send(bytes).await.unwrap();
+                }
+                io::Result::Ok(())
+            }
+        };
+
+        let heart_time = &self.heart_time;
+        let receive_task = async move {
+            loop {
+                let mut flag_data = [0u8; 1];
+                reader.read_exact(&mut flag_data).await?;
+                Self::handle(heart_time, &tx, flag_data[0]).await?;
             }
             io::Result::Ok(())
         };
-
-        try_join!(
-            write_task,
-            Self::receive(reader, _tx),
-            external_receive_task
-        )?;
+        try_join!(external_write_task, external_receive_task, receive_task)?;
         Ok(())
     }
 
-    /**
-     * 接收从客户端发来的数据
-     */
-    async fn receive(mut reader: ReadHalf<&mut TcpStream>, tx: &Sender<Bytes>) -> io::Result<()> {
-        loop {
-            let mut flag_data = [0u8; 1];
-            reader.read_exact(&mut flag_data).await?;
-            Self::handle(tx, flag_data[0]).await?;
-        }
-    }
+    // /**
+    //  * 接收从客户端发来的数据
+    //  */
+    // async fn receive(
+    //     heart_time: &AtomicU64,
+    //     mut reader: ReadHalf<&mut TcpStream>,
+    //     tx: &Sender<Bytes>,
+    // ) -> io::Result<()> {
+    //     loop {
+    //         let mut flag_data = [0u8; 1];
+    //         reader.read_exact(&mut flag_data).await?;
+    //         Self::handle(heart_time, tx, flag_data[0]).await?;
+    //     }
+    // }
 
     /**
      * 处理从客户端收到的消息
      */
-    async fn handle(tx: &Sender<Bytes>, flag: u8) -> io::Result<()> {
+    async fn handle(heart_time: &AtomicU64, tx: &Sender<Bytes>, flag: u8) -> io::Result<()> {
         match flag {
             header_util::MAIN_HEART_BEAT => {
                 tx.send(Bytes::from_static(&[header_util::MAIN_HEART_BEAT]))
                     .await
                     .unwrap();
+
+                //记录当前心跳时间
+                heart_time.store(
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis() as u64,
+                    Ordering::Relaxed,
+                );
                 Ok(())
             }
             //这里抛出Error
