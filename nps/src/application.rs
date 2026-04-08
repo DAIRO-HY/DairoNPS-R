@@ -21,10 +21,14 @@ pub static IS_AXUM_DROP: AtomicBool = AtomicBool::new(false);
 /// 标记是否退出了NPS服务端监听
 pub static IS_NPS_SERVER_DROP: AtomicBool = AtomicBool::new(false);
 
-/**
- * 心跳间隔时间
- */
+/// 心跳间隔时间
 pub const HEART_TIME: u64 = 3000;
+
+/// 数据流量收集统计间隔，单位毫秒
+pub const DATA_COLLECT_INTERVAL: u64 = 1000;
+
+/// 数据流量收集插入数据库间隔，单位毫秒
+pub const DATA_COLLECT_INSERT_INTERVAL: u64 = 60000;
 
 /// 重启函数，设置标记并退出程序
 pub async fn restart() {

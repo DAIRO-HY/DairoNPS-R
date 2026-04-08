@@ -41,3 +41,4 @@ axum = { version = "0.8.8", features = [
 validator = { version = "0.20", features = ["derive"] }
 maplit = "1.0"
 sqlparser = "0.61.0"
+itertools = "0.14.0"

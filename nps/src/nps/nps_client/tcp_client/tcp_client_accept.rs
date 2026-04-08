@@ -1,17 +1,17 @@
-use std::net::SocketAddr;
 use super::super::header_util;
 use super::tcp_client_session_manager;
+use crate::application;
 use crate::dao::client_dao;
+use crate::dao::client_dao::Client;
 use crate::nps::nps_pool::tcp_pool_manager;
+use sqlx::Error;
+use std::net::SocketAddr;
+use std::sync::atomic::Ordering;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
-use crate::application;
-use std::sync::atomic::Ordering;
-use std::time::{SystemTime, UNIX_EPOCH};
-use sqlx::Error;
-use crate::dao::client_dao::Client;
 
 // 监听客户端连接
 pub async fn accept() -> io::Result<()> {
@@ -27,9 +27,9 @@ pub async fn accept() -> io::Result<()> {
                        let (tcp_stream, addr) = acc?;
                        // println!("接收到客户端连接请求,端口:{}监听成功。", 1781);
                        tokio::spawn(async move{
-                           if handle_accept(tcp_stream, addr).await.is_err() {
-                               println!("处理客户端连接发生错误。");
-                           }
+                            handle_accept(tcp_stream, addr).await.unwrap_or_else(|it| {
+                               println!("处理客户端连接发生错误:{:?}",it);
+                           });
                            // println!("客户端连接处理结束。");
                        });
                    }
@@ -121,8 +121,9 @@ async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> io::Re
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_millis() as i64
-    ).await;
+            .as_millis() as i64,
+    )
+    .await;
     tcp_client_session_manager::hold_on_client(client, tcp_stream).await?;
     Ok(())
 }

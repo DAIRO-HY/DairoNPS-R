@@ -70,6 +70,7 @@ async fn upgrade(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>>
         .fetch_one(&mut **tx)
         .await
         .unwrap_or(0);
+    create_table(tx).await?;
     if version == 0 {
         // // 设置 WAL（返回值是实际模式，可能被 SQLite 调整）
         // conn.execute_batch("PRAGMA journal_mode = WAL;").unwrap();
@@ -80,8 +81,6 @@ async fn upgrade(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>>
         // // 可选：设置自动 checkpoint 频率（默认 1000 页）
         // conn.execute_batch("PRAGMA wal_autocheckpoint = 1000;")
         //     .unwrap();
-
-        create_table(tx).await?;
 
         //第一次创建数据库时往系统配置表插入一条数据
         //ExecIgnoreError("insert into system_config(inData, outData) values (0, 0);")

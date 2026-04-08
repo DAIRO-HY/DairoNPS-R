@@ -1,5 +1,5 @@
 use crate::dao::channel_dao::Channel;
-use crate::model::data_total::DataTotal;
+use crate::model::data_io::AtomicDataIO;
 use crate::nps::nps_bridge::tcp_bridge_manager;
 use dashmap::DashMap;
 use std::sync::Arc;
@@ -16,7 +16,7 @@ pub struct TCPProxyAccept {
     pub channel: Channel, //隧道信息
     pub tcp_listener: TcpListener,
     pub closer: Arc<Notify>,
-    pub data_total: DataTotal,
+    pub data_total: AtomicDataIO,
     pub bridger:Arc<DashMap<u64, TCPBridgeInfo>>,
 }
 

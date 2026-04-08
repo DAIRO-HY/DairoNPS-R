@@ -110,7 +110,9 @@ async fn send(client_id: i64, flag: u8, message: &str) {
         }
     };
     let header_data = header_util::make_header_data(flag, message);
-    tx.send(header_data).await.unwrap();
+    tx.send(header_data).await.unwrap_or_else(|it|{
+        println!("-->往客户端发送数据失败:{:?}",it)
+    });
 }
 
 // 关闭客户端

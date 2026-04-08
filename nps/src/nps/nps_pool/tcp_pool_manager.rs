@@ -7,11 +7,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncWriteExt, Result};
 use tokio::net::TcpStream;
 
-pub fn init() {
-    // 超时连接池整理
-    tokio::spawn(timeout_check());
-}
-
 // func init() {
 //     go timeoutCheck()
 // }
@@ -158,57 +153,15 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
 //     tcp_client_session_manager::send_tcp_pool_request(client_id, count).await;
 // }
 
-/**
- * 移除某个客户端所有的连接池
- * @param clientID 客户端ID
- */
+// /**
+//  * 移除某个客户端所有的连接池
+//  * @param clientID 客户端ID
+//  */
 // pub async fn shutdown_by_client(client_id: i64) {
 //     POOL_MAP.lock().await.remove(&client_id);
 //     println!("tcp连接池被关闭了...");
 // }
 
-// 超时连接池整理
-async fn timeout_check() {
-    loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(
-            nps_constant::RECYLE_POOL_TIME_OUT / 2,
-        ))
-        .await;
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        let mut client_map = nps::CLIENT_NPS_MAP.lock().await;
-
-        //用来记录连接池被清空的客户端ID,用于请求创建新的连接池
-        let mut empty_pool_clients = Vec::new();
-        for (client_id, client_nps) in client_map.iter_mut() {
-            client_nps.tcp_pool.retain(|it| {
-                //连接池超过指定时间,关闭连接
-                if now - it.create_time > nps_constant::RECYLE_POOL_TIME_OUT {
-                    //连接池超过指定时间,关闭连接
-                    // let _ = it.tcp.shutdown();
-                    return false;
-                }
-                return true;
-            });
-            if client_nps.tcp_pool.len() == 0 {
-                //如果连接池被清空，则记录客户端ID,用于请求创建新的连接池,而不是直接在这里请求创建新的连接池,因为这里还持有连接池的锁,如果在这里请求创建新的连接池,可能会导致死锁
-                empty_pool_clients.push(*client_id);
-            }
-        }
-        drop(client_map); //释放连接池锁
-
-        //请求添加连接池
-        for client_id in empty_pool_clients {
-            tcp_client_session_manager::send_tcp_pool_request(
-                client_id,
-                nps_constant::ADD_POOL_COUNT,
-            )
-            .await;
-        }
-    }
-}
 
 // // 超时连接池整理
 // func timeoutCheck() {

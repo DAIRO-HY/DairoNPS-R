@@ -9,11 +9,7 @@ mod nps;
 mod util;
 mod web;
 
-// use std::sync::LazyLock;
-// use clap::Parser;
-// use sqlx::sqlite::SqlitePoolOptions;
-// use sqlx::SqlitePool;
-// use dao::client_dao;
+use itertools::Itertools;
 use sqlx::{Column, Executor, Statement, TypeInfo};
 
 #[tokio::main]
@@ -25,32 +21,32 @@ async fn main() -> tokio::io::Result<()> {
     //     // tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     // }
 
-    tokio::spawn(async {
-        loop {
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-            println!(
-                "-->CLIENT_NPS_MAP_count:{} CHANNEL_NPS_count:{}",
-                nps::CLIENT_NPS_MAP.lock().await.len(),
-                nps::CHANNEL_NPS_MAP.lock().await.len(),
-            );
-            let client_map = nps::CLIENT_NPS_MAP.lock().await;
-            for (k,v) in client_map.iter() {
-                println!(
-                    "-->pool client:{} pool_count:{}",
-                    k,
-                    v.tcp_pool.len()
-                );
-            }
-            let bridge_map = nps::CHANNEL_NPS_MAP.lock().await;
-            for (k,v) in bridge_map.iter() {
-                println!(
-                    "-->bridge  channel:{} count:{}",
-                    k,
-                    v.bridger.len()
-                );
-            }
-        }
-    });
+    // tokio::spawn(async {
+    //     loop {
+    //         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    //         println!(
+    //             "-->CLIENT_NPS_MAP_count:{} CHANNEL_NPS_count:{}",
+    //             nps::CLIENT_NPS_MAP.lock().await.len(),
+    //             nps::CHANNEL_NPS_MAP.lock().await.len(),
+    //         );
+    //         let client_map = nps::CLIENT_NPS_MAP.lock().await;
+    //         for (k,v) in client_map.iter() {
+    //             println!(
+    //                 "-->pool client:{} pool_count:{}",
+    //                 k,
+    //                 v.tcp_pool.len()
+    //             );
+    //         }
+    //         let bridge_map = nps::CHANNEL_NPS_MAP.lock().await;
+    //         for (k,v) in bridge_map.iter() {
+    //             println!(
+    //                 "-->bridge  channel:{} count:{}",
+    //                 k,
+    //                 v.bridger.len()
+    //             );
+    //         }
+    //     }
+    // });
 
     println!("-->START<--");
     db::init().await;
@@ -96,6 +92,38 @@ async fn main() -> tokio::io::Result<()> {
     //
     // let count = channel_dao::delete(&db::get(),id).await.unwrap();
     // println!("删除结果: {}", count);
+
+    // let list = vec![
+    //     ChannelData {
+    //         client_id: 1,
+    //         channel_id: 1,
+    //         in_data: 1,
+    //         ..ChannelData::default()
+    //     },
+    //     ChannelData {
+    //         client_id: 2,
+    //         channel_id: 1,
+    //         in_data: 2,
+    //         ..ChannelData::default()
+    //     },
+    //     ChannelData {
+    //         client_id: 1,
+    //         channel_id: 2,
+    //         in_data: 3,
+    //         ..ChannelData::default()
+    //     },
+    //     ChannelData {
+    //         client_id: 1,
+    //         channel_id: 2,
+    //         in_data: 4,
+    //         ..ChannelData::default()
+    //     },
+    // ];
+    // let map = list
+    //     .iter()
+    //     .map(|it|(it.client_id,it))
+    //     .into_group_map();
+    // println!("-->{:?}", map);
 
     util::security_util::init();
     nps::init();

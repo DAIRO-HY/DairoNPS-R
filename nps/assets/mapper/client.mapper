@@ -10,3 +10,7 @@ fn toggle_enable(id: i64, enable_state: i8)
 /// 设置客户端连接信息
 update client set ip = :ip, client_version = :client_version, last_login_date = :last_login_date where id = :id
 fn set_connection_info(id:i64, ip: String, client_version: String, last_login_date: i64)
+
+/// 同步入出网流量
+update client set in_data = in_data + :in_data,out_data = out_data + :out_data where id = :id
+fn set_data_total(id:i64, in_data: i64, out_data: i64)

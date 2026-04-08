@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS client -- 客户端表
     deleted         INT8                              NOT NULL DEFAULT 0                               -- 删除标记 1:已删除 0:未删除
 );
 
-
 -- 养殖中的耳标编号不允许重复
-CREATE UNIQUE INDEX idx_unique_fid
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_fid
     ON client (`key`) where deleted = 0;

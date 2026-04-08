@@ -1,9 +1,9 @@
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// 流量计数（入/出），底层使用 `Arc<AtomicU64>` 以便跨任务共享并原子更新
 #[derive(Clone, Debug)]
-pub struct DataTotal {
+pub struct AtomicDataIO {
     pub in_bytes: Arc<AtomicU64>,
     pub out_bytes: Arc<AtomicU64>,
 }
@@ -26,9 +26,7 @@ macro_rules! impl_to_u64 {
 // 为常见无符号类型和 usize 实现
 impl_to_u64!(u8, u16, u32, u64, usize, i8, i16, i32, i64, isize);
 
-
-impl DataTotal {
-
+impl AtomicDataIO {
     // 创建新的流量计数实例，初始值为0
     pub fn new() -> Self {
         Self {
@@ -55,21 +53,25 @@ impl DataTotal {
         self.out_bytes.fetch_add(v.to_u64(), Ordering::Relaxed);
     }
 
-    // 获取当前入站流量总和
-    pub fn load_in(&self) -> u64 {
-        self.in_bytes.load(Ordering::Relaxed)
-    }
-
     // 获取当前出站流量总和
-    pub fn load_out(&self) -> u64 {
-        self.out_bytes.load(Ordering::Relaxed)
+    pub fn load(&self) -> DataIO {
+        DataIO {
+            in_bytes: self.in_bytes.load(Ordering::Relaxed),
+            out_bytes: self.out_bytes.load(Ordering::Relaxed),
+        }
     }
 }
 
-
 // 实现 PartialEq 以便比较两个 DataTotal 实例是否相等（入站和出站流量都相等）
-impl PartialEq for DataTotal {
+impl PartialEq for AtomicDataIO {
     fn eq(&self, other: &Self) -> bool {
-        self.load_in() == other.load_in() && self.load_out() == other.load_out()
+        self.load() == other.load()
     }
+}
+
+/// 流量计数（入/出）
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct DataIO {
+    pub in_bytes: u64,
+    pub out_bytes: u64,
 }
