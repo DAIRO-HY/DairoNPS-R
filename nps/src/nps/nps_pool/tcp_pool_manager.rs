@@ -3,10 +3,10 @@ use crate::constant::nps_constant;
 use crate::nps;
 use crate::nps::nps_client::header_util;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
+use crate::nps::nps_error::NpsError;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::io::{AsyncWriteExt, Result};
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
-
 // func init() {
 //     go timeoutCheck()
 // }
@@ -42,7 +42,7 @@ pub async fn get_pool_count(client_id: &i64) -> usize {
 
 // 添加TCP连接池
 // clientSocket tcp连接
-pub async fn add(mut tcp: TcpStream) -> Result<()> {
+pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
     //从头部信息中得到客户端id
     let client_id_str = header_util::get_header(&mut tcp).await?;
     let client_id: i64 = client_id_str.parse().unwrap();
@@ -60,10 +60,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<()> {
 
         //已经达到最大连接数,拒绝新连接
         tcp.shutdown().await?;
-        return Result::Err(std::io::Error::new(
-            std::io::ErrorKind::ConnectionRefused,
-            "已经达到最大连接数,拒绝新连接",
-        ));
+        return Err(NpsError::PoolIsFull);
     }
     let pool = TCPPool {
         create_time: SystemTime::now()
@@ -161,7 +158,6 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
 //     POOL_MAP.lock().await.remove(&client_id);
 //     println!("tcp连接池被关闭了...");
 // }
-
 
 // // 超时连接池整理
 // func timeoutCheck() {

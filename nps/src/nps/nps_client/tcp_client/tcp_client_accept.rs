@@ -2,7 +2,7 @@ use super::super::header_util;
 use super::tcp_client_session_manager;
 use crate::application;
 use crate::dao::client_dao;
-use crate::dao::client_dao::Client;
+use crate::nps::nps_error::NpsError;
 use crate::nps::nps_pool::tcp_pool_manager;
 use sqlx::Error;
 use std::net::SocketAddr;
@@ -19,31 +19,42 @@ pub async fn accept() -> io::Result<()> {
     loop {
         select! {
         _ = application::SHUTDOWN_NOTIFY.notified() => {
-            drop(listener);
-            application::IS_NPS_SERVER_DROP.store(true, Ordering::Release);
-            break;
+                drop(listener);
+                application::IS_NPS_SERVER_DROP.store(true, Ordering::Release);
+                break;
         }
         acc = listener.accept() => {//等待客户端连接
-                       let (tcp_stream, addr) = acc?;
-                       // println!("接收到客户端连接请求,端口:{}监听成功。", 1781);
-                       tokio::spawn(async move{
-                            handle_accept(tcp_stream, addr).await.unwrap_or_else(|it| {
-                               println!("处理客户端连接发生错误:{:?}",it);
-                           });
-                           // println!("客户端连接处理结束。");
-                       });
-                   }
-                   }
+                start(acc?)
+            }
+        }
     }
     println!("NPS服务端监听已关闭。");
     Ok(())
+}
+
+fn start((tcp_stream, addr): (TcpStream, SocketAddr)) {
+    // println!("接收到客户端连接请求,端口:{}监听成功。", 1781);
+    tokio::spawn(async move {
+        match handle_accept(tcp_stream, addr).await {
+            Err(NpsError::PoolIsFull) => {
+                //Tcp连接池被填充满了，不做任何处理
+                //println!("-->{}",NpsError::PoolIsFull)
+            }
+            Err(NpsError::IoError(e)) => {
+                //@TODO: 应该写入日志
+                println!("处理客户端连接发生错误:{:?}", e);
+            }
+            Ok(()) | _ => {}
+        };
+        // println!("客户端连接处理结束。");
+    });
 }
 
 /**
  * 分配连接
  * @param socketClient 与客户端的连接
  */
-async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> io::Result<()> {
+async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<(), NpsError> {
     //读取连接的第一个数据,设置超时,避免恶意连接
     // tcp.SetReadDeadline(time.Now().Add(3 * time.Second))
 

@@ -140,10 +140,6 @@ pub async fn shutdown_by_channel(channel_id: i64) {
     loop {
         //等待隧道代理监听停止,否则可能导致下次监听同一端口失败
         if let Some(channel_nps) = nps::CHANNEL_NPS_MAP.lock().await.get(&channel_id) {
-            // println!(
-            //     "-->等待隧道代理监听停止,否则可能导致下次监听同一端口失败。channelId: {}",
-            //     channel_id
-            // );
             let _ = channel_nps.closer.notify_waiters();
             tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
         } else {

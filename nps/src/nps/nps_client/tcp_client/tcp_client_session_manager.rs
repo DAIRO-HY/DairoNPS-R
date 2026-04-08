@@ -12,32 +12,30 @@ use tokio::io;
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::time::Duration;
-// type ClientSessionManager struct{}
 
 //往客户端发送指令的专用连接
 
 // 保持客户端连接
 pub async fn hold_on_client(client: Client, tcp: TcpStream) -> io::Result<()> {
-    println!("-->新连接...");
     let client_id = client.id;
 
     // 先尝试关闭之前的连接
     shutdown(client_id).await?;
 
-    // let now = SystemTime::now()
-    //     .duration_since(UNIX_EPOCH)
-    //     .unwrap()
-    //     .as_millis() as u64;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
 
     //用来记录最后一次心跳时间
-    let heart_time = Arc::new(AtomicU64::new(0));
+    let heart_time = Arc::new(AtomicU64::new(now));
     let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(1024);
     nps::CLIENT_NPS_MAP.lock().await.insert(
         client_id,
         ClientNPS {
             tcp_pool: Vec::new(),
             sender: tx,
-            heart_time:heart_time.clone()
+            heart_time: heart_time.clone(),
         },
     );
 
@@ -45,7 +43,7 @@ pub async fn hold_on_client(client: Client, tcp: TcpStream) -> io::Result<()> {
     let mut session = ClientSession {
         client,
         tcp,
-        heart_time
+        heart_time,
     };
 
     //初始化客户端连接池
@@ -110,9 +108,9 @@ async fn send(client_id: i64, flag: u8, message: &str) {
         }
     };
     let header_data = header_util::make_header_data(flag, message);
-    tx.send(header_data).await.unwrap_or_else(|it|{
-        println!("-->往客户端发送数据失败:{:?}",it)
-    });
+    tx.send(header_data)
+        .await
+        .unwrap_or_else(|it| println!("-->往客户端发送数据失败:{:?}", it));
 }
 
 // 关闭客户端

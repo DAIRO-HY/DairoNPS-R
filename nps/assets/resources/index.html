@@ -11,28 +11,28 @@
         <div class="col text-center p-2">
             <div class="bg-white border rounded">
                 <div class="py-2">入网流量</div>
-                <div class="border-top fs-2" id="InDataTotal">
+                <div class="border-top fs-2" id="inBytes">
                 </div>
             </div>
         </div>
         <div class="col text-center p-2">
             <div class="bg-white border rounded">
                 <div class="py-2">出网流量</div>
-                <div class="border-top fs-2" id="OutDataTotal">
+                <div class="border-top fs-2" id="outBytes">
                 </div>
             </div>
         </div>
         <div class="col text-center p-2">
             <div class="bg-white border rounded">
                 <div class="py-2">在线客服端</div>
-                <div class="border-top fs-2" id="OnlineClientCount">
+                <div class="border-top fs-2" id="onlineClientCount">
                 </div>
             </div>
         </div>
         <div class="col text-center p-2">
             <div class="bg-white border rounded">
                 <div class="py-2">正在监听隧道</div>
-                <div class="border-top fs-2" id="ProxyCount">
+                <div class="border-top fs-2" id="channelCount">
                 </div>
             </div>
         </div>
@@ -40,7 +40,7 @@
             <div class="bg-white border rounded">
                 <div class="py-2">TCP桥接数/连接池</div>
                 <div class="border-top fs-2" id="">
-                    <span id="TcpBridgeCount"></span>/<span id="TcpPoolCount"></span>
+                    <span id="tcpBridgeCount"></span>/<span id="tcpPoolCount"></span>
                 </div>
             </div>
         </div>
@@ -48,44 +48,21 @@
             <div class="bg-white border rounded">
                 <div class="py-2">UDP桥接数/连接池</div>
                 <div class="border-top fs-2">
-                    <span id="UdpBridgeCount"></span>/<span id="UdpPoolCount"></span>
+                    <span id="UdpBridgeCount"></span>/<span id="udpPoolCount"></span>
                 </div>
             </div>
         </div>
         <div class="col text-center p-2">
             <div class="bg-white border rounded">
                 <div class="py-2">端口转发代理</div>
-                <div class="border-top fs-2" id="ForwardCount">
+                <div class="border-top fs-2" id="forwardCount">
                 </div>
             </div>
         </div>
         <div class="col text-center p-2">
             <div class="bg-white border rounded">
                 <div class="py-2">端口转发桥接</div>
-                <div class="border-top fs-2" id="ForwardBridgeCount">
-                </div>
-            </div>
-        </div>
-        <div class="col text-center p-2">
-            <div class="bg-white border rounded">
-                <div class="py-2">协程数</div>
-                <div class="border-top fs-2" id="NumGoroutine">
-                </div>
-            </div>
-        </div>
-        <div class="col text-center p-2">
-            <div class="bg-white border rounded">
-                <div class="py-2">内存分配</div>
-                <div class="border-top fs-2" id="Memory">
-                </div>
-            </div>
-        </div>
-        <div class="col text-center p-2">
-            <div class="bg-white border rounded">
-                <div class="py-2">垃圾回收次数</div>
-                <div class="border-top fs-2" >
-                    <span id="NumGC"></span>
-                    <button class="btn btn-link" onclick="onGCClick()">立即回收</button>
+                <div class="border-top fs-2" id="forwardBridgeCount">
                 </div>
             </div>
         </div>
@@ -94,29 +71,44 @@
 {{template "data_size_chart" .}}
 {{template "speed_chart" .}}
 <script>
+    let es = null;
+
+    $(window).on('beforeunload', function () {
+        if(es){
+            es.close()
+            es = null
+        }
+    });
+
     $(function () {
         initGetDataWebsocket()
-        showDataSizeChart()
-        showSpeedChart()
+        // showDataSizeChart()
+        // showSpeedChart()
     })
 
     /**
      * 加载数据
      */
     function initGetDataWebsocket() {
-        let ws = new WebSocket(`ws://${location.host}/index/data`);
-        ws.onopen = function () {
-            ws.send("0")
-        };
-
-        ws.onmessage = function (event) {
-            const data = JSON.parse(event.data)
+        // let ws = new WebSocket(`ws://${location.host}/index/data`);
+        // ws.onopen = function () {
+        //     ws.send("0")
+        // };
+        //
+        // ws.onmessage = function (event) {
+        //     const data = JSON.parse(event.data)
+        //     fillData(data)
+        //
+        //     //每隔一段时间去取新的数据
+        //     setTimeout(function () {
+        //         ws.send("0")
+        //     }, 1000)
+        // };
+        if (es) return; // 防止重复创建
+        es = new EventSource("/index/nps_status");
+        es.onmessage = (e) => {
+            const data = JSON.parse(e.data)
             fillData(data)
-
-            //每隔一段时间去取新的数据
-            setTimeout(function () {
-                ws.send("0")
-            }, 1000)
         };
     }
 

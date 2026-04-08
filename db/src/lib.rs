@@ -84,6 +84,9 @@ async fn upgrade(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>>
 
         //第一次创建数据库时往系统配置表插入一条数据
         //ExecIgnoreError("insert into system_config(inData, outData) values (0, 0);")
+        sqlx::query("insert into system_config(in_data,out_data)values(0,0)")
+            .execute(&mut **tx)
+            .await?;
     } else {
     }
 
@@ -109,7 +112,7 @@ async fn init_data(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error
 
 // 创建表
 async fn create_table(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>> {
-    for sql_file in ["xxx.sql", "client.sql", "channel.sql", "channel_data.sql"] {
+    for sql_file in ["xxx.sql", "client.sql", "channel.sql", "channel_data.sql","system_config.sql"] {
         execute_sql_file(tx, sql_file).await?;
     }
     Ok(())

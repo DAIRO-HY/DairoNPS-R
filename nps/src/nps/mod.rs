@@ -3,6 +3,7 @@ pub mod nps_client;
 pub mod nps_pool;
 pub mod nps_proxy;
 mod nps_timer;
+mod nps_error;
 
 use crate::model::data_io::AtomicDataIO;
 use crate::nps::nps_bridge::tcp_bridge::TCPBridgeInfo;

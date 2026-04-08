@@ -1,6 +1,7 @@
 use crate::constant::nps_constant;
 use crate::dao::channel_data_dao::ChannelData;
-use crate::dao::{channel_dao, channel_data_dao, client_dao};
+use crate::dao::{channel_dao, channel_data_dao, client_dao, system_config_dao};
+use crate::extension::number::ToDateFormat;
 use crate::model::data_io::DataIO;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use crate::nps::{CHANNEL_NPS_MAP, CLIENT_NPS_MAP};
@@ -98,6 +99,7 @@ async fn collect_data(
             .map(|it| (it.id, (it.in_data, it.out_data)))
             .collect();
 
+        //-------------------------------------统计隧道流量------------------------------------------
         //按隧道分组，将分组后的最后一条隧道数据更新到数据库表
         let channel_group = channel_data_list
             .iter()
@@ -122,6 +124,7 @@ async fn collect_data(
             channel_data_change_map.insert(channel_id, (in_data - pre_in, out_data - pre_out));
         }
 
+        //-------------------------------------统计客户端流量------------------------------------------
         //按客户端分组，分组后对流量数据求和更新到数据库表
         let client_data_change_group = channel_data_list
             .iter()
@@ -134,13 +137,26 @@ async fn collect_data(
                     (in_total, out_total)
                 }
             });
-        for (client_id, (in_data, out_data)) in client_data_change_group {
-            client_dao::set_data_total(&mut *tx, client_id, in_data, out_data).await?;
+        for (client_id, (in_data, out_data)) in &client_data_change_group {
+            client_dao::set_data_total(
+                &mut *tx,
+                client_id.clone(),
+                in_data.clone(),
+                out_data.clone(),
+            )
+            .await?;
         }
+
+        //-------------------------------------统计总流量------------------------------------------
+        let (in_data, out_data) = client_data_change_group
+            .iter()
+            .fold((0, 0), |(c_in, c_out), (_, (i, o))| (c_in + i, c_out + o));
+        system_config_dao::update_data_io(&mut *tx, in_data, out_data).await?;
+
         tx.commit().await?;
         *channel_data_list = Vec::new();
         *pre_insert_time = 0;
-        println!("-->执行了一次统计")
+        //println!("-->执行了一次统计")
     }
     Ok(())
 }

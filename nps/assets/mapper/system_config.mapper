@@ -1,0 +1,8 @@
+
+///获取系统配置
+select * from system_config
+fn get()->SystemConfig
+
+///同步入出网流量
+update system_config set in_data = in_data + :in_data,out_data = out_data + :out_data
+fn update_data_io(in_data:i64, out_data:i64)
