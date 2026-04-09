@@ -66,7 +66,7 @@ where
         if timestamp == 0 {
             return String::new();
         }
-        let dt = DateTime::from_timestamp_millis(timestamp).unwrap();
+        let dt = DateTime::from_timestamp_millis(timestamp).unwrap().with_timezone(&chrono::Local);
         dt.format("%Y-%m-%d %H:%M:%S").to_string()
     }
 }

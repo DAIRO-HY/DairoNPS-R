@@ -2,7 +2,7 @@ use crate::constant::nps_constant;
 use crate::dao::channel_data_dao::ChannelData;
 use crate::dao::{channel_dao, channel_data_dao, client_dao, system_config_dao};
 use crate::extension::number::ToDateFormat;
-use crate::model::bytes_io::BytesIO;
+use crate::model::data_io_len::DataIOLen;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use crate::nps::{CHANNEL_NPS_MAP, CLIENT_NPS_MAP};
 use crate::{application, nps};
@@ -27,7 +27,7 @@ pub fn init() {
 /// 统计隧道数据总量
 async fn channel_collect_data() {
     //最后一次统计到的隧道数据总量
-    let mut last_total_map: HashMap<i64, BytesIO> = HashMap::new();
+    let mut last_total_map: HashMap<i64, DataIOLen> = HashMap::new();
 
     //用来缓存数据统计，避免频繁操作数据库
     let mut channel_data_list: Vec<ChannelData> = Vec::new();
@@ -52,25 +52,24 @@ async fn channel_collect_data() {
 /// 收集流量数据
 async fn collect_data(
     channel_data_list: &mut Vec<ChannelData>,
-    last_total_map: &mut HashMap<i64, BytesIO>,
+    last_total_map: &mut HashMap<i64, DataIOLen>,
     pre_insert_time: &mut u64,
 ) -> Result<(), sqlx::Error> {
     *pre_insert_time += application::DATA_COLLECT_INTERVAL;
-
     let channel_nps_map = CHANNEL_NPS_MAP.lock().await;
     for (channel_id, channel_nps) in channel_nps_map.iter() {
         let last_total = match last_total_map.get(channel_id) {
             Some(v) => v.clone(),
-            None => BytesIO::default(),
+            None => DataIOLen::default(),
         };
-        if last_total == channel_nps.data_total.load() {
+        if last_total == channel_nps.data_len.load() {
             //如果数据总量没有变化，跳过
             // println!("-->数据总量没有变化，跳过");
-            break;
+            continue;
         }
 
         //每隔STATS_INTERVAL毫秒统计一次数据总量
-        let data_io = channel_nps.data_total.load();
+        let data_io = channel_nps.data_len.load();
         channel_data_list.push(ChannelData {
             client_id: channel_nps.client_id,
             channel_id: channel_id.clone(),
@@ -78,8 +77,8 @@ async fn collect_data(
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs() as i64,
-            in_data: data_io.in_bytes as i64,
-            out_data: data_io.out_bytes as i64,
+            in_len: data_io.in_len as i64,
+            out_len: data_io.out_len as i64,
         });
         last_total_map.insert(*channel_id, data_io);
     }
@@ -96,7 +95,7 @@ async fn collect_data(
         let pre_channel_data_map: HashMap<i64, (i64, i64)> = channel_dao::select_all(&mut *tx)
             .await?
             .iter()
-            .map(|it| (it.id, (it.in_data, it.out_data)))
+            .map(|it| (it.id, (it.in_len, it.out_len)))
             .collect();
 
         //-------------------------------------统计隧道流量------------------------------------------
@@ -106,52 +105,55 @@ async fn collect_data(
             .into_group_map_by(|it| it.channel_id);
 
         //本次统计隧道发生变化的流量Map,用来计算本次客户端更新的流量
-        let mut channel_data_change_map = HashMap::new();
+        let mut current_channel_change_len_map = HashMap::new();
         for (channel_id, list) in channel_group {
             let last = list.last().unwrap();
 
-            let in_data = last.in_data;
-            let out_data = last.out_data;
+            let in_len = last.in_len;
+            let out_len = last.out_len;
 
             //更新该隧道的流量总和
-            channel_dao::set_data_total(&mut *tx, last.channel_id, in_data, out_data).await?;
+            channel_dao::set_data_len(&mut *tx, last.channel_id, in_len, out_len).await?;
 
             let Some((pre_in, pre_out)) = pre_channel_data_map.get(&channel_id) else {
                 continue;
             };
 
             //计算本次统计隧道发生变化的流量
-            channel_data_change_map.insert(channel_id, (in_data - pre_in, out_data - pre_out));
+            current_channel_change_len_map.insert(channel_id, DataIOLen::from(in_len - pre_in, out_len - pre_out));
         }
 
         //-------------------------------------统计客户端流量------------------------------------------
-        //按客户端分组，分组后对流量数据求和更新到数据库表
-        let client_data_change_group = channel_data_list
+        //按客户端对应的本次变化数据大小
+        let client_2_len = channel_data_list
             .iter()
             .map(|it| (it.client_id, it.channel_id))
-            .into_grouping_map()
-            .fold((0, 0), |(in_total, out_total), client_id, channel_id| {
-                if let Some((c_in, c_out)) = channel_data_change_map.get(&channel_id) {
-                    (in_total + c_in, out_total + c_out)
-                } else {
-                    (in_total, out_total)
-                }
-            });
-        for (client_id, (in_data, out_data)) in &client_data_change_group {
-            client_dao::set_data_total(
-                &mut *tx,
-                client_id.clone(),
-                in_data.clone(),
-                out_data.clone(),
-            )
-            .await?;
+            .into_group_map()
+            .into_iter()
+            .map(|(client_id, mut channel_ids)| {
+                channel_ids.dedup(); //由于里面有重复隧道id数据，需要去除重复的隧道id
+
+                //再将该客户端下的所有隧道数据流量求和
+                let client_total_len = channel_ids.iter().map(|it| match current_channel_change_len_map.get(it) {
+                    Some(v) => v.clone(),
+                    None => DataIOLen::default(),
+                }).fold(DataIOLen::default(),|pre,it|{
+                    pre + it
+                });
+                (client_id, client_total_len)
+            })
+            .collect::<HashMap<i64, DataIOLen>>();
+
+        for (client_id, data_len) in &client_2_len {
+            client_dao::set_data_len(&mut *tx, client_id.clone(), data_len.in_len as i64, data_len.out_len as i64)
+                .await?;
         }
 
         //-------------------------------------统计总流量------------------------------------------
-        let (in_data, out_data) = client_data_change_group
-            .iter()
-            .fold((0, 0), |(c_in, c_out), (_, (i, o))| (c_in + i, c_out + o));
-        system_config_dao::update_data_io(&mut *tx, in_data, out_data).await?;
+        let total = client_2_len
+            .into_iter()
+            .fold(DataIOLen::default(), |pre, (_,it)| pre + it);
+        system_config_dao::update_data_io(&mut *tx, total.in_len as i64, total.out_len as i64).await?;
 
         tx.commit().await?;
         *channel_data_list = Vec::new();

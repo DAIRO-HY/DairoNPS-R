@@ -36,8 +36,8 @@ pub async fn list() -> Response {
             ip: it.ip.unwrap_or("未连接".to_string()),
             client_version: it.client_version.unwrap_or("未连接".to_string()),
             enable_state: it.enable_state,
-            in_data: it.in_data.data_size(),
-            out_data: it.out_data.data_size(),
+            in_len: it.in_len.data_size(),
+            out_len: it.out_len.data_size(),
             is_online: online_client_set.contains(&it.id),
         })
         .collect::<Vec<_>>();
@@ -57,8 +57,8 @@ pub async fn detail(Query(id): Query<IdQuery>) -> Response {
             client_version: client.client_version,
             key: client.key,
             ip: client.ip,
-            in_data: client.in_data.data_size(),
-            out_data: client.out_data.data_size(),
+            in_len: client.in_len.data_size(),
+            out_len: client.out_len.data_size(),
             online_state: if nps::CLIENT_NPS_MAP.lock().await.contains_key(&client.id) {
                 "在线".to_string()
             } else {
@@ -177,8 +177,8 @@ mod model {
         pub ip: String,
         pub client_version: String,
         pub enable_state: i64,
-        pub in_data: String,
-        pub out_data: String,
+        pub in_len: String,
+        pub out_len: String,
         pub is_online: bool,
     }
 
@@ -205,10 +205,10 @@ mod model {
         pub ip: Option<String>,
 
         // 入网流量
-        pub in_data: String,
+        pub in_len: String,
 
         // 出网流量
-        pub out_data: String,
+        pub out_len: String,
 
         // 在线状态
         pub online_state: String,

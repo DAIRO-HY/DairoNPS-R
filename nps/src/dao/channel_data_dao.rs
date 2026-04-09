@@ -17,26 +17,26 @@ include!(concat!(env!("OUT_DIR"), "/dao/channel_data_dao.rs"));
 //  * @param inData 入网流量
 //  * @param outData 出网流量
 //  */
-//     pub fn add(conn: &Connection, channel_id: i64, in_data: i64, out_data: i64) {
+//     pub fn add(conn: &Connection, channel_id: i64, in_len: i64, out_len: i64) {
 //
 //         //当前时间戳（秒）
 //         let date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
 //         let sql =
-//             "insert into channel_data(channel_id,date,in_data,out_data)values(?,?,?,?)";
+//             "insert into channel_data(channel_id,date,in_len,out_len)values(?,?,?,?)";
 //
 //         // let mut conn = connection().await;
 //         // let tx = conn.transaction().unwrap();
-//         // tx.execute(sql, (channel_id, date, in_data, out_data)).unwrap();
+//         // tx.execute(sql, (channel_id, date, in_len, out_len)).unwrap();
 //         // tx.commit().unwrap();
 //         // drop(conn);
 //
 //         // let mut conn = connection().await;
 //         // let tx = conn.transaction().unwrap();
-//         // add123(channel_id, in_data, out_data, &tx);
+//         // add123(channel_id, in_len, out_len, &tx);
 //         // drop(tx);
 //         // drop(conn);
 //
-//         conn.execute(sql, (channel_id, date, in_data, out_data)).unwrap();
+//         conn.execute(sql, (channel_id, date, in_len, out_len)).unwrap();
 //     }
 
 // /**

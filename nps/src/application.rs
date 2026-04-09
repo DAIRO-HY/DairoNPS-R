@@ -28,7 +28,7 @@ pub const HEART_TIME: u64 = 3000;
 pub const DATA_COLLECT_INTERVAL: u64 = 1000;
 
 /// 数据流量收集插入数据库间隔，单位毫秒
-pub const DATA_COLLECT_INSERT_INTERVAL: u64 = 60000;
+pub const DATA_COLLECT_INSERT_INTERVAL: u64 = 6000;
 
 /// 重启函数，设置标记并退出程序
 pub async fn restart() {

@@ -42,11 +42,12 @@
     let chartEs = null;
 
     $(window).on('beforeunload', function () {
-        if(chartEs){
+        if (chartEs) {
             chartEs.close()
             chartEs = null
         }
     });
+
     function showSpeedChart(id = "A") {
         //let ws = new WebSocket(`ws://${location.host}/ws/speed_chart`);
         //ws.onopen = function () {
@@ -66,9 +67,12 @@
         //};
 
         if (chartEs) return; // 防止重复创建
-        chartEs = new EventSource("/chart/bytes_io");
+        $("#speedChatDiv").show()
+        initSpeedChart()
+        chartEs = new EventSource("/chart/current_len");
         chartEs.onmessage = (e) => {
-            console.log(e.data)
+            const datas = e.data.split(":")
+            computeSpeed(parseInt(datas[0]), parseInt(datas[1]))
         };
     }
 
@@ -82,8 +86,8 @@
                 {
                     label: '入网网速',
                     data: Array(SPEED_CHART_COUNT).fill(NaN),
-                    pointRadius:1,//小圆点大小
-                    borderWidth:2,//线粗细
+                    pointRadius: 1,//小圆点大小
+                    borderWidth: 2,//线粗细
                     borderColor: "#22ff00",
                     fill: false,
                     // cubicInterpolationMode: 'monotone',
@@ -91,8 +95,8 @@
                 }, {
                     label: '出网网速',
                     data: Array(SPEED_CHART_COUNT).fill(NaN),
-                    pointRadius:1,//小圆点大小
-                    borderWidth:2,//线粗细
+                    pointRadius: 1,//小圆点大小
+                    borderWidth: 2,//线粗细
                     borderColor: "#ff0000",
                     fill: false,
                     tension: 0.4//线条贝塞尔曲线的张力，0：代表折线   1：代表非常圆滑

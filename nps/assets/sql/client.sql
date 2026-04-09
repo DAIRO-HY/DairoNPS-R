@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS client -- 客户端表
     key             VARCHAR(32)                       NOT NULL UNIQUE,                                 -- 客户端验证秘钥
     client_version  VARCHAR(10),                                                                       -- 客户端版本
     ip              VARCHAR(128),                                                                      -- 客户端ip地址
-    in_data         BIGINT                            NOT NULL DEFAULT 0,                              -- 入网流量
-    out_data        BIGINT                            NOT NULL DEFAULT 0,                              -- 出网流量
+    in_len         BIGINT                            NOT NULL DEFAULT 0,                              -- 入网流量
+    out_len        BIGINT                            NOT NULL DEFAULT 0,                              -- 出网流量
     online_state    INT8                              NOT NULL DEFAULT 0,                              -- 在线状态
     enable_state    INT8                              NOT NULL DEFAULT 1,                              -- 启用状态 1:开启  0:停止
     last_login_date BIGINT                            NOT NULL DEFAULT (strftime('%s', 'now') * 1000), -- 最后一次连接时间

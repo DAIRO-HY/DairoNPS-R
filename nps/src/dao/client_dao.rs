@@ -30,8 +30,8 @@ include!(concat!(env!("OUT_DIR"), "/dao/client_dao.rs"));
 // 	Some(Client{
 // 		name:String::new(),
 // 		key:"key".to_string(),
-// 		in_data:0,
-// 		out_data:0,
+// 		in_len:0,
+// 		out_len:0,
 // 		last_login_date:0,
 // 		enable_state:1,
 // 		online_state: 0,

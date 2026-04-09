@@ -33,6 +33,8 @@ async fn init_router() {
             get(super::controller::common::dropdown),
         )
         .route("/login/do_login", post(super::controller::login::do_login))
+        .route("/chart/current_len", get(super::controller::chart::current_len))
+        .route("/chart/data_len", get(super::controller::chart::data_len))
         .route("/index/nps_status", get(super::controller::index::get_nps_status))
         .route("/client/list", get(super::controller::client::list))
         .route("/client/detail", get(super::controller::client::detail))

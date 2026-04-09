@@ -1,9 +1,9 @@
 use crate::dao::system_config_dao;
-use crate::extension::number::ToDataSize;
 use crate::extension::ResponseEmptyExt;
+use crate::extension::number::ToDataSize;
 use crate::nps;
-use axum::response::{IntoResponse, Response};
 use axum::response::sse::{Event, Sse};
+use axum::response::{IntoResponse, Response};
 use futures::{Stream, TryFutureExt};
 use std::{convert::Infallible, time::Duration};
 use tokio_stream::StreamExt;
@@ -19,7 +19,9 @@ pub async fn test() -> Response {
 ///　获取系统运行状态
 pub async fn get_nps_status() -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let stream = tokio_stream::iter(0..).then(|i| async move {
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        if i > 0 {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
         let data = get_data().await;
         let json = serde_json::to_string(&data).unwrap();
         Ok(Event::default().data(json))
@@ -49,14 +51,14 @@ async fn get_data() -> model::NPSStatus {
     drop(channel_nps_map);
 
     model::NPSStatus {
-        channel_count,      //当前正在代理数
+        channel_count,       //当前正在代理数
         online_client_count, //在线客户端数量
-        tcp_bridge_count, //当前TCP桥接数
-        tcp_pool_count, //当前TCP连接池
+        tcp_bridge_count,    //当前TCP桥接数
+        tcp_pool_count,      //当前TCP连接池
         // UdpBridgeCount:     udp_bridge.GetBridgeCount(),          //当前UDP桥接数
         // UdpPoolCount:       udp_pool.GetPoolCount(),              //当前UDP连接池
-        in_bytes: system_config.in_data.data_size(), //入网流量
-        out_bytes: system_config.out_data.data_size(), //出网流量
+        in_len: system_config.in_len.data_size(), //入网流量
+        out_len: system_config.out_len.data_size(), //出网流量
     }
 }
 
@@ -86,10 +88,10 @@ mod model {
         // pub UdpPoolCount: usize,
 
         // 入网流量
-        pub in_bytes: String,
+        pub in_len: String,
 
         // 出网流量
-        pub out_bytes: String,
+        pub out_len: String,
         // // 当前正在代理服务数
         // pub ForwardCount: usize,
         //

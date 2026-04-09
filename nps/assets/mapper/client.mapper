@@ -12,5 +12,5 @@ update client set ip = :ip, client_version = :client_version, last_login_date = 
 fn set_connection_info(id:i64, ip: String, client_version: String, last_login_date: i64)
 
 /// 同步入出网流量
-update client set in_data = in_data + :in_data,out_data = out_data + :out_data where id = :id
-fn set_data_total(id:i64, in_data: i64, out_data: i64)
+update client set in_len = in_len + :in_len,out_len = out_len + :out_len where id = :id
+fn set_data_len(id:i64, in_len: i64, out_len: i64)

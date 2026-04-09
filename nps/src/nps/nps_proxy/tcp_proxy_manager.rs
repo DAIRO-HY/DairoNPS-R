@@ -1,6 +1,6 @@
 use crate::dao::channel_dao;
 use crate::dao::channel_dao::Channel;
-use crate::model::bytes_io::AtomicBytesIO;
+use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps;
 use crate::nps::nps_proxy::tcp_proxy_accept::TCPProxyAccept;
 use dashmap::DashMap;
@@ -77,7 +77,7 @@ pub async fn accept_channel(channel: Channel) {
 
     let client_id = channel.client_id;
     let channel_id = channel.id;
-    let data_total = AtomicBytesIO::from(channel.in_data, channel.out_data);
+    let data_len = AtomicDataIOLen::from(channel.in_len, channel.out_len);
     let closer = Arc::new(Notify::new());
     let bridger = Arc::new(DashMap::new());
 
@@ -85,7 +85,7 @@ pub async fn accept_channel(channel: Channel) {
         channel,
         tcp_listener,
         closer: closer.clone(),
-        data_total: data_total.clone(),
+        data_len: data_len.clone(),
         bridger: bridger.clone(),
     };
 
@@ -94,7 +94,7 @@ pub async fn accept_channel(channel: Channel) {
         channel_id,
         nps::ChannelNPS {
             client_id,
-            data_total,
+            data_len,
             closer,
             bridger,
         },
@@ -111,7 +111,7 @@ pub async fn accept_channel(channel: Channel) {
     // CHANNEL_DATA_TOTAL
     //     .lock()
     //     .await
-    //     .insert(channel_id, data_total);
+    //     .insert(channel_id, data_len);
     //
     // //初始化隧道对应的桥接信息
     // nps::BRIDGE_INFO

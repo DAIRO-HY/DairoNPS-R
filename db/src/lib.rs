@@ -84,7 +84,7 @@ async fn upgrade(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>>
 
         //第一次创建数据库时往系统配置表插入一条数据
         //ExecIgnoreError("insert into system_config(inData, outData) values (0, 0);")
-        sqlx::query("insert into system_config(in_data,out_data)values(0,0)")
+        sqlx::query("insert into system_config(in_len,out_len)values(0,0)")
             .execute(&mut **tx)
             .await?;
     } else {

@@ -41,8 +41,8 @@ pub async fn list() -> Response {
             server_port: it.server_port,
             target_port: it.target_port,
             enable_state: it.enable_state,
-            in_data: it.in_data.data_size(),
-            out_data: it.out_data.data_size(),
+            in_len: it.in_len.data_size(),
+            out_len: it.out_len.data_size(),
             security_state: it.security_state,
             error: it.error,
         })
@@ -73,8 +73,8 @@ pub async fn detail(AppQuery(query): AppQuery<model::DetailQuery>) -> Response {
                 "开启"
             }
             .to_string(),
-            in_data: channel.in_data.data_size(),
-            out_data: channel.out_data.data_size(),
+            in_len: channel.in_len.data_size(),
+            out_len: channel.out_len.data_size(),
             security_state: channel.security_state,
             version: channel.version,
         }
@@ -300,8 +300,8 @@ mod model {
         pub server_port: i64,
         pub target_port: String,
         pub enable_state: i64,
-        pub in_data: String,
-        pub out_data: String,
+        pub in_len: String,
+        pub out_len: String,
         pub security_state: i64,
         pub error: Option<String>,
     }
@@ -327,8 +327,8 @@ mod model {
         pub remark: Option<String>,
         pub created_at: String,
         pub enable_state: String,
-        pub in_data: String,
-        pub out_data: String,
+        pub in_len: String,
+        pub out_len: String,
         pub security_state: i64,
 
         // 乐观排他用的版本号

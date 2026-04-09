@@ -46,7 +46,7 @@
      * @param channelId 隧道ID
      * @param forwardId 端口转发ID
      */
-    function showDataSizeChart(clientId = 0, channelId = 0, forwardId = 0) {
+    function showDataLenChart(clientId = 0, channelId = 0, forwardId = 0) {
         dataSizeChartClientId = clientId
         dataSizeChartChannelId = channelId
         dataSizeChartForwardId = forwardId
@@ -115,17 +115,17 @@
      * 获取数据
      */
     function getDataSizeLog(start, end) {
-        $.ajaxByData("/data_size/get_data_size")
+        $.ajaxByData("/chart/data_len")
             .addAll({
-                ClientId: dataSizeChartClientId,
-                ChannelId: dataSizeChartChannelId,
-                ForwardId: dataSizeChartForwardId,
-                StartTime: start,
-                EndTime: end,
+                clientId: dataSizeChartClientId,
+                channelId: dataSizeChartChannelId,
+                forwardId: dataSizeChartForwardId,
+                startTime: start,
+                endTime: end,
             })
             .success(data => {
-                initDataSizeChart(data.Lables, data.InDatas, data.OutDatas, data.Unit)
-            }).post()
+                initDataSizeChart(data.labels, data.inLens, data.outLens, data.unit)
+            }).get()
     }
 
     /**

@@ -11,14 +11,14 @@
         <div class="col text-center p-2">
             <div class="bg-white border rounded">
                 <div class="py-2">入网流量</div>
-                <div class="border-top fs-2" id="inBytes">
+                <div class="border-top fs-2" id="inLen">
                 </div>
             </div>
         </div>
         <div class="col text-center p-2">
             <div class="bg-white border rounded">
                 <div class="py-2">出网流量</div>
-                <div class="border-top fs-2" id="outBytes">
+                <div class="border-top fs-2" id="outLen">
                 </div>
             </div>
         </div>
@@ -68,7 +68,7 @@
         </div>
     </div>
 </div>
-{{template include/data_size_chart123}}
+{{template include/data_size_chart}}
 {{template include/speed_chart}}
 <script>
     let es = null;
@@ -82,7 +82,7 @@
 
     $(function () {
         initGetDataWebsocket()
-        // showDataSizeChart()
+        showDataLenChart()
         showSpeedChart()
     })
 
@@ -90,20 +90,6 @@
      * 加载数据
      */
     function initGetDataWebsocket() {
-        // let ws = new WebSocket(`ws://${location.host}/index/data`);
-        // ws.onopen = function () {
-        //     ws.send("0")
-        // };
-        //
-        // ws.onmessage = function (event) {
-        //     const data = JSON.parse(event.data)
-        //     fillData(data)
-        //
-        //     //每隔一段时间去取新的数据
-        //     setTimeout(function () {
-        //         ws.send("0")
-        //     }, 1000)
-        // };
         if (es) return; // 防止重复创建
         es = new EventSource("/index/nps_status");
         es.onmessage = (e) => {

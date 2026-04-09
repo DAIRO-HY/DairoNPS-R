@@ -12,20 +12,19 @@ const HTML_OUT_DIR: &str = "html";
 /// 生成静态资源路由代码，如果是html，替换include部分，然后写入OUT_DIR/html目录
 /// root_dir 是静态资源的根目录， max_age 是 Cache-Control 的 max-age 值（单位秒）
 pub fn make(root_dir: &str, max_age: u32) {
+    let root_dir = root_dir.replace("\\", "/"); // Windows 路径分隔符替换为 URL 斜杠
+
     // 写到 OUT_DIR
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap()).join(HTML_OUT_DIR);
     let mut route = String::new();
-    loop_files(Path::new(root_dir), &mut |p| {
-        let Some(ext) = p.extension() else{
-            println!("cargo:warning=-->文件没有扩展名，跳过: {}", p.display());
-            return;
-        };
-        if ext == "tpl" {
+    loop_files(Path::new(&root_dir), &mut |p| {
+        let path_str = p.to_str().unwrap().to_string();
+        if path_str.ends_with(".tpl.html") {
             // tpl文件不生成路由
             return;
         }
         let mut is_out_dir = false;
-        if ext == "html" {
+        if path_str.ends_with(".html") {
             //读取并合并文件
             let (html, is_handled) = make_html(1, p);
             if is_handled {
@@ -36,13 +35,17 @@ pub fn make(root_dir: &str, max_age: u32) {
                         fs::create_dir_all(parent).unwrap();
                     }
                 }
+                println!(
+                    "cargo:warning=----------------------------->: {}",
+                    out_path.display()
+                );
                 fs::write(&out_path, html).unwrap();
                 is_out_dir = true;
             }
         }
 
         //添加路由
-        route.push_str(&make_route_item(root_dir, max_age, p, is_out_dir));
+        route.push_str(&make_route_item(&root_dir, max_age, p, is_out_dir));
         // println!("{}", out_path.display());
     })
     .unwrap();
@@ -78,7 +81,7 @@ fn make_html(deep: u8, html_path: &Path) -> (String, bool) {
 
 /// 替换 html 中的 {{template include/head.template}} 部分
 fn replace_include(deep: u8, html: &str, cur_path: &Path, include_path_str: &str) -> String {
-    let include_path = cur_path.parent().unwrap().join(include_path_str);
+    let include_path = cur_path.parent().unwrap().join(format!("{}.tpl.html" ,include_path_str));
     if !include_path.exists() {
         // 模板文件不存在，报错并跳过
         return html.to_string();

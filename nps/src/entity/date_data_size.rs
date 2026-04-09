@@ -10,8 +10,8 @@ struct DateDataSizeDto {
 	date: u64,
 
 	//入网流量
-	in_data: u64,
+	in_len: u64,
 
 	//出网流量
-	out_data: u64,
+	out_len: u64,
 }

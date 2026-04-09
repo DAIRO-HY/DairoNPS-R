@@ -1,4 +1,4 @@
-use crate::model::bytes_io::AtomicBytesIO;
+use crate::model::data_io_len::AtomicDataIOLen;
 use dashmap::DashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -9,8 +9,9 @@ use tokio::sync::Notify;
 use tokio::{io, select, try_join};
 
 // TCPBridge TCP桥接信息
+#[derive(Debug)]
 pub struct TCPBridgeInfo {
-    pub data_total: AtomicBytesIO,
+    pub data_len: AtomicDataIOLen,
 
     // 创建时间(毫秒)
     pub create_time: u64,
@@ -20,6 +21,7 @@ pub struct TCPBridgeInfo {
 }
 
 // TCPBridge TCP桥接
+#[derive(Debug)]
 pub struct TCPBridge {
     pub bridge_info_map: Arc<DashMap<u64, TCPBridgeInfo>>,
 
@@ -30,7 +32,7 @@ pub struct TCPBridge {
     pub security_state: i64,
     pub proxy_tcp: TcpStream,
     pub client_tcp: TcpStream,
-    pub channel_data_total: AtomicBytesIO,
+    pub channel_data_len: AtomicDataIOLen,
     pub channel_closer: Arc<Notify>,
 }
 
@@ -43,14 +45,14 @@ impl TCPBridge {
      */
     pub async fn start(self) -> io::Result<()> {
         //统计当前桥接流量
-        let data_total = AtomicBytesIO::new();
+        let data_len = AtomicDataIOLen::new();
         let key = NEXT_KEY.fetch_add(1, Ordering::Relaxed);
 
         //保存当前桥接信息，供监控使用
         self.bridge_info_map.insert(
             key,
             TCPBridgeInfo {
-                data_total: data_total.clone(),
+                data_len: data_len.clone(),
                 create_time: 0,
                 last_rw_time: 0,
             },
@@ -70,15 +72,15 @@ impl TCPBridge {
         Self::send_header_to_client(header, &mut client_writer).await?;
 
         let p2c = Self::proxy_to_client(
-            data_total.clone(),
-            self.channel_data_total.clone(),
+            data_len.clone(),
+            self.channel_data_len.clone(),
             proxy_reader,
             client_writer,
             self.channel_closer
         );
         let c2p = Self::client_to_proxy(
-            data_total,
-            self.channel_data_total,
+            data_len,
+            self.channel_data_len,
             client_reader,
             proxy_writer,
         );
@@ -92,8 +94,8 @@ impl TCPBridge {
     }
 
     async fn proxy_to_client(
-        data_total: AtomicBytesIO,
-        channel_data_total: AtomicBytesIO,
+        data_len: AtomicDataIOLen,
+        channel_data_len: AtomicDataIOLen,
         mut proxy_reader: ReadHalf<TcpStream>,
         mut client_writer: WriteHalf<TcpStream>,
         close_notify: Arc<Notify>,
@@ -110,8 +112,8 @@ impl TCPBridge {
                     if n == 0 {
                         break;
                     }
-                    data_total.add_in(n);
-                    channel_data_total.add_in(n);
+                    data_len.add_in(n);
+                    channel_data_len.add_in(n);
                     client_writer.write_all(&buf[..n]).await?;
                 }
             }
@@ -124,8 +126,8 @@ impl TCPBridge {
     }
 
     async fn client_to_proxy(
-        data_total: AtomicBytesIO,
-        channel_data_total: AtomicBytesIO,
+        data_len: AtomicDataIOLen,
+        channel_data_len: AtomicDataIOLen,
         mut client_reader: ReadHalf<TcpStream>,
         mut proxy_writer: WriteHalf<TcpStream>,
     ) -> io::Result<()> {
@@ -135,8 +137,8 @@ impl TCPBridge {
             if n == 0 {
                 break;
             }
-            data_total.add_out(n);
-            channel_data_total.add_out(n);
+            data_len.add_out(n);
+            channel_data_len.add_out(n);
             proxy_writer.write_all(&buf[..n]).await?;
         }
         //这里必须关闭客户端的输出流，否则对方无法感知到已经关闭连接了（写失败或者读失败没有必要调用shutdown()，即使调用大概率也是失败的，所以没有意义）

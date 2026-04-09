@@ -11,5 +11,5 @@ update channel set enable_state = :enable_state where id = :id
 fn toggle_enable(id: i64, enable_state: i8)
 
 /// 同步入出网流量
-update channel set in_data = :in_data,out_data = :out_data where id = :id
-fn set_data_total(id:i64, in_data: i64, out_data: i64)
+update channel set in_len = :in_len,out_len = :out_len where id = :id
+fn set_data_len(id:i64, in_len: i64, out_len: i64)
