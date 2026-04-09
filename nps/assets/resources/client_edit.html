@@ -1,13 +1,13 @@
 ﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    {{template include/head.tpl}}
+    {{template include/head}}
     <title>客户端编辑</title>
 </head>
 <body>
-{{template include/top-bar.tpl}}
-{{template include/data_size_chart.tpl}}
-{{template include/speed_chart.tpl}}
+{{template include/top-bar}}
+{{template include/data_size_chart}}
+{{template include/speed_chart}}
 <div class="m-3 p-2 bg-white rounded">
     <form action="/client/edit">
         <input type="hidden" id="id" name="id" value="0">

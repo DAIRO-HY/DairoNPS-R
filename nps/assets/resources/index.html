@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    {{template include/head.tpl}}
+    {{template include/head}}
     <title>首页</title>
 </head>
 <body>
-{{template include/top-bar.tpl}}
+{{template include/top-bar}}
 <div class="m-3 p-2">
     <div class="row row-cols-xl-6 row-cols-lg-5 row-cols-md-4 row-cols-sm-3 row-cols-2 text-muted">
         <div class="col text-center p-2">
@@ -68,8 +68,8 @@
         </div>
     </div>
 </div>
-{{template "data_size_chart" .}}
-{{template "speed_chart" .}}
+{{template include/data_size_chart123}}
+{{template include/speed_chart}}
 <script>
     let es = null;
 
@@ -83,7 +83,7 @@
     $(function () {
         initGetDataWebsocket()
         // showDataSizeChart()
-        // showSpeedChart()
+        showSpeedChart()
     })
 
     /**
