@@ -24,8 +24,8 @@ pub fn ready() {
 
 async fn init_router() {
     let app = set_html_routes(Router::new())
-        .route("/", get(super::index::index))
-        .route("/index/test", get(super::index::test))
+        .route("/", get(super::controller::index::index))
+        .route("/index/test", get(super::controller::index::test))
         .route("/common/global", get(super::controller::common::global))
         .route("/common/restart", put(super::controller::common::restart))
         .route(
@@ -33,7 +33,7 @@ async fn init_router() {
             get(super::controller::common::dropdown),
         )
         .route("/login/do_login", post(super::controller::login::do_login))
-        .route("/index/nps_status", get(super::index::get_nps_status))
+        .route("/index/nps_status", get(super::controller::index::get_nps_status))
         .route("/client/list", get(super::controller::client::list))
         .route("/client/detail", get(super::controller::client::detail))
         .route("/client/edit", post(super::controller::client::edit))

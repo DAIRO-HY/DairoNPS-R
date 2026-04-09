@@ -1,7 +1,9 @@
 pub mod login;
+pub mod index;
 pub mod client;
 pub mod channel;
 pub mod common;
+pub mod chart;
 
 use axum::{
     Json, Router,

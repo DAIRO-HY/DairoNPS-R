@@ -5,7 +5,7 @@ pub mod nps_proxy;
 mod nps_timer;
 mod nps_error;
 
-use crate::model::data_io::AtomicDataIO;
+use crate::model::bytes_io::AtomicBytesIO;
 use crate::nps::nps_bridge::tcp_bridge::TCPBridgeInfo;
 use crate::nps::nps_pool::tcp_pool::TCPPool;
 use bytes::Bytes;
@@ -52,7 +52,7 @@ pub struct ChannelNPS {
     pub client_id: i64,
 
     /// 当前流量总和
-    pub data_total: AtomicDataIO,
+    pub data_total: AtomicBytesIO,
 
     /// 关闭通知
     pub closer: Arc<Notify>,

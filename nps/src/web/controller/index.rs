@@ -1,16 +1,11 @@
 use crate::dao::system_config_dao;
-use crate::extension::ResponseEmptyExt;
 use crate::extension::number::ToDataSize;
+use crate::extension::ResponseEmptyExt;
 use crate::nps;
 use axum::response::{IntoResponse, Response};
-use axum::{
-    Json, Router,
-    response::sse::{Event, Sse},
-    routing::get,
-};
+use axum::response::sse::{Event, Sse};
 use futures::{Stream, TryFutureExt};
 use std::{convert::Infallible, time::Duration};
-use sysinfo::System;
 use tokio_stream::StreamExt;
 
 pub async fn index() -> &'static str {
@@ -30,13 +25,6 @@ pub async fn get_nps_status() -> Sse<impl Stream<Item = Result<Event, Infallible
         Ok(Event::default().data(json))
     });
     Sse::new(stream)
-}
-
-fn get_used_memory() -> String {
-    let mut sys = System::new_all();
-    sys.refresh_all();
-    let pid = sysinfo::get_current_pid().unwrap();
-    sys.process(pid).unwrap().memory().data_size()
 }
 
 // 页面初始化

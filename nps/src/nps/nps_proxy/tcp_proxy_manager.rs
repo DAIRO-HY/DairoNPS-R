@@ -1,6 +1,6 @@
 use crate::dao::channel_dao;
 use crate::dao::channel_dao::Channel;
-use crate::model::data_io::AtomicDataIO;
+use crate::model::bytes_io::AtomicBytesIO;
 use crate::nps;
 use crate::nps::nps_proxy::tcp_proxy_accept::TCPProxyAccept;
 use dashmap::DashMap;
@@ -77,7 +77,7 @@ pub async fn accept_channel(channel: Channel) {
 
     let client_id = channel.client_id;
     let channel_id = channel.id;
-    let data_total = AtomicDataIO::from(channel.in_data, channel.out_data);
+    let data_total = AtomicBytesIO::from(channel.in_data, channel.out_data);
     let closer = Arc::new(Notify::new());
     let bridger = Arc::new(DashMap::new());
 

@@ -2,7 +2,7 @@ use crate::constant::nps_constant;
 use crate::dao::channel_data_dao::ChannelData;
 use crate::dao::{channel_dao, channel_data_dao, client_dao, system_config_dao};
 use crate::extension::number::ToDateFormat;
-use crate::model::data_io::DataIO;
+use crate::model::bytes_io::BytesIO;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use crate::nps::{CHANNEL_NPS_MAP, CLIENT_NPS_MAP};
 use crate::{application, nps};
@@ -27,7 +27,7 @@ pub fn init() {
 /// 统计隧道数据总量
 async fn channel_collect_data() {
     //最后一次统计到的隧道数据总量
-    let mut last_total_map: HashMap<i64, DataIO> = HashMap::new();
+    let mut last_total_map: HashMap<i64, BytesIO> = HashMap::new();
 
     //用来缓存数据统计，避免频繁操作数据库
     let mut channel_data_list: Vec<ChannelData> = Vec::new();
@@ -52,7 +52,7 @@ async fn channel_collect_data() {
 /// 收集流量数据
 async fn collect_data(
     channel_data_list: &mut Vec<ChannelData>,
-    last_total_map: &mut HashMap<i64, DataIO>,
+    last_total_map: &mut HashMap<i64, BytesIO>,
     pre_insert_time: &mut u64,
 ) -> Result<(), sqlx::Error> {
     *pre_insert_time += application::DATA_COLLECT_INTERVAL;
@@ -61,7 +61,7 @@ async fn collect_data(
     for (channel_id, channel_nps) in channel_nps_map.iter() {
         let last_total = match last_total_map.get(channel_id) {
             Some(v) => v.clone(),
-            None => DataIO::default(),
+            None => BytesIO::default(),
         };
         if last_total == channel_nps.data_total.load() {
             //如果数据总量没有变化，跳过

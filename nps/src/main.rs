@@ -9,11 +9,12 @@ mod nps;
 mod util;
 mod web;
 
+use std::sync::atomic::AtomicU64;
 use itertools::Itertools;
 use sqlx::{Column, Executor, Statement, TypeInfo};
 
 #[tokio::main]
-async fn main() -> tokio::io::Result<()> {
+async fn main() -> tokio::io::Result<()> {    
     // let arg = application::Args::try_parse().unwrap();
     // println!("-->ARG: {:?}", arg);
     // if arg.is_restart_mode {

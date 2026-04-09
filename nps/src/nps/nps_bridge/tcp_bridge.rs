@@ -1,4 +1,4 @@
-use crate::model::data_io::AtomicDataIO;
+use crate::model::bytes_io::AtomicBytesIO;
 use dashmap::DashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -10,7 +10,7 @@ use tokio::{io, select, try_join};
 
 // TCPBridge TCP桥接信息
 pub struct TCPBridgeInfo {
-    pub data_total: AtomicDataIO,
+    pub data_total: AtomicBytesIO,
 
     // 创建时间(毫秒)
     pub create_time: u64,
@@ -30,7 +30,7 @@ pub struct TCPBridge {
     pub security_state: i64,
     pub proxy_tcp: TcpStream,
     pub client_tcp: TcpStream,
-    pub channel_data_total: AtomicDataIO,
+    pub channel_data_total: AtomicBytesIO,
     pub channel_closer: Arc<Notify>,
 }
 
@@ -43,7 +43,7 @@ impl TCPBridge {
      */
     pub async fn start(self) -> io::Result<()> {
         //统计当前桥接流量
-        let data_total = AtomicDataIO::new();
+        let data_total = AtomicBytesIO::new();
         let key = NEXT_KEY.fetch_add(1, Ordering::Relaxed);
 
         //保存当前桥接信息，供监控使用
@@ -92,8 +92,8 @@ impl TCPBridge {
     }
 
     async fn proxy_to_client(
-        data_total: AtomicDataIO,
-        channel_data_total: AtomicDataIO,
+        data_total: AtomicBytesIO,
+        channel_data_total: AtomicBytesIO,
         mut proxy_reader: ReadHalf<TcpStream>,
         mut client_writer: WriteHalf<TcpStream>,
         close_notify: Arc<Notify>,
@@ -124,8 +124,8 @@ impl TCPBridge {
     }
 
     async fn client_to_proxy(
-        data_total: AtomicDataIO,
-        channel_data_total: AtomicDataIO,
+        data_total: AtomicBytesIO,
+        channel_data_total: AtomicBytesIO,
         mut client_reader: ReadHalf<TcpStream>,
         mut proxy_writer: WriteHalf<TcpStream>,
     ) -> io::Result<()> {

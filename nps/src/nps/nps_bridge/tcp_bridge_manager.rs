@@ -1,6 +1,6 @@
 use super::tcp_bridge::{TCPBridge, TCPBridgeInfo};
 use crate::dao::channel_dao::Channel;
-use crate::model::data_io::AtomicDataIO;
+use crate::model::bytes_io::AtomicBytesIO;
 use crate::nps::nps_pool::tcp_pool_manager;
 use dashmap::DashMap;
 use std::sync::Arc;
@@ -43,7 +43,7 @@ pub async fn make_bridge(
     bridge_info_map: Arc<DashMap<u64, TCPBridgeInfo>>,
     channel: &Channel,
     proxy_tcp: TcpStream,
-    data_total: AtomicDataIO,
+    data_total: AtomicBytesIO,
     close_notify: Arc<Notify>,
 ) {
     //NPS客户端Socket
