@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use super::mapper_info::MapperInfo;
 use crate::utils;
 use serde::Serialize;
@@ -631,8 +632,12 @@ impl TableInfo {
     /// 生成映射函数的源代码
     pub async fn make_mapper_func(&self,conn: &mut SqliteConnection) -> String {
         let mut func_src = String::new();
+        
+        //记录已经生成了的entity，防止重复生成entity
+        let mut exists_entity_set = HashSet::new();
+        exists_entity_set.insert(self.get_entity_name());
         for it in &self.mappers {
-            func_src.push_str(it.make_mapper_source(conn, self).await.as_str());
+            func_src.push_str(it.make_mapper_source(conn, &mut exists_entity_set, self).await.as_str());
         }
         func_src
     }

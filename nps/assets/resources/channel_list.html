@@ -110,7 +110,7 @@
                         <div>客户端:<span>${item.clientName}</span></div>
                         <div>模式:<span>${item.mode === 1 ? "TCP" : "UDP"}</span></div>
                         <div>端口:<span>${item.serverPort}</span> ⇒ <span>${item.targetPort}</span></div>
-                        <div>入网:<span>${item.inData}</span> &nbsp;&nbsp;出网<span>${item.outData}</span></div>
+                        <div>入网:<span>${item.inLen}</span> &nbsp;&nbsp;出网<span>${item.outLen}</span></div>
                         <div class="text-danger" style="${item.error ? "" : "display: none"}">${item.error ?? ""}</div>
                         <div class="text-end">
                             <button class="btn btn-sm btn-outline-danger" onclick="onToggleEnableClick(${item.id})">

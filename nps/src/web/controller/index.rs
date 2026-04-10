@@ -1,7 +1,9 @@
 use crate::dao::system_config_dao;
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::ToDataSize;
+use crate::model::data_io_len::DataIOLen;
 use crate::nps;
+use crate::nps::nps_timer::INSERT_CACHE_LIST;
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
 use futures::{Stream, TryFutureExt};
@@ -31,7 +33,17 @@ pub async fn get_nps_status() -> Sse<impl Stream<Item = Result<Event, Infallible
 
 // 页面初始化
 async fn get_data() -> model::NPSStatus {
+    //系统配置
     let system_config = system_config_dao::get(&db::get()).await.unwrap_or_default();
+
+    //等待写入部分数据大小
+    let insert_cache_len = INSERT_CACHE_LIST
+        .lock()
+        .await
+        .iter()
+        .fold(DataIOLen::default(), |pre, it| {
+            DataIOLen::from(pre.in_len + it.in_len as u64, pre.out_len + it.out_len as u64)
+        });
     //
     // // 获取内存使用情况
     // var memStats runtime.MemStats
@@ -57,8 +69,8 @@ async fn get_data() -> model::NPSStatus {
         tcp_pool_count,      //当前TCP连接池
         // UdpBridgeCount:     udp_bridge.GetBridgeCount(),          //当前UDP桥接数
         // UdpPoolCount:       udp_pool.GetPoolCount(),              //当前UDP连接池
-        in_len: system_config.in_len.data_size(), //入网流量
-        out_len: system_config.out_len.data_size(), //出网流量
+        in_len: (system_config.in_len as u64 + insert_cache_len.in_len).data_size(), //入网流量
+        out_len: (system_config.out_len as u64 + insert_cache_len.out_len).data_size(), //出网流量
     }
 }
 

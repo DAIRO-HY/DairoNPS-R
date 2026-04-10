@@ -2,7 +2,7 @@ pub mod nps_bridge;
 pub mod nps_client;
 pub mod nps_pool;
 pub mod nps_proxy;
-mod nps_timer;
+pub mod nps_timer;
 mod nps_error;
 
 use crate::model::data_io_len::AtomicDataIOLen;

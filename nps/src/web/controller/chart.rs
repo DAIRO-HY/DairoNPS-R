@@ -1,6 +1,6 @@
 use crate::dao::channel_data_dao;
 use crate::extension::ResponseEmptyExt;
-use crate::extension::number::{ToDataSize, ToDateFormat};
+use crate::extension::number::{Div, ToDataSize, ToDateFormat};
 use crate::model::data_io_len::{DataIOLen, ToU64};
 use crate::nps;
 use crate::web::extract::AppQuery;
@@ -12,8 +12,8 @@ use itertools::Itertools;
 use std::{convert::Infallible, time::Duration};
 use tokio_stream::StreamExt;
 
-///　获取当前时间点的数量流量
-pub async fn current_len(
+///　实时获取当前流量大小
+pub async fn real_len(
     AppQuery(param): AppQuery<model::ChartParam>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let stream = tokio_stream::iter(0..).then(move |i| {
@@ -26,7 +26,7 @@ pub async fn current_len(
             //     .duration_since(UNIX_EPOCH)
             //     .unwrap()
             //     .as_millis());
-            let data = get_current_len(param).await;
+            let data = get_real_len(param).await;
             Ok(Event::default().data(data))
         }
     });
@@ -58,10 +58,29 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         "%Y"
     };
 
-    let data_len_list =
+    let data_len_list = if param.client_id > 0 {
+        channel_data_dao::select_io_len_by_client(
+            &db::get(),
+            param.client_id,
+            param.start_time,
+            param.end_time,
+        )
+        .await
+        .unwrap()
+    } else if param.channel_id > 0 {
+        channel_data_dao::select_io_len_by_channel(
+            &db::get(),
+            param.channel_id,
+            param.start_time,
+            param.end_time,
+        )
+        .await
+        .unwrap()
+    } else {
         channel_data_dao::select_io_len(&db::get(), param.start_time, param.end_time)
             .await
-            .unwrap();
+            .unwrap()
+    };
 
     let label2data_len = data_len_list
         .iter()
@@ -97,25 +116,29 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         (1, "B")
     };
 
-    let mut loop_time = DateTime::from_timestamp_secs(param.start_time).unwrap().with_timezone(&chrono::Local);;
-    let end_time = DateTime::from_timestamp_secs(param.end_time).unwrap().with_timezone(&chrono::Local);;
+    let mut loop_time = DateTime::from_timestamp_secs(param.start_time)
+        .unwrap()
+        .with_timezone(&chrono::Local);
+    let end_time = DateTime::from_timestamp_secs(param.end_time)
+        .unwrap()
+        .with_timezone(&chrono::Local);
 
     //报表标题列表
     let mut labels: Vec<String> = Default::default();
 
     //入网数据列表
-    let mut in_lens: Vec<f64> = Default::default();
+    let mut in_lens: Vec<String> = Default::default();
 
     //出网数据列表
-    let mut out_lens: Vec<f64> = Default::default();
+    let mut out_lens: Vec<String> = Default::default();
 
     //为每个时间点生成数据
     while loop_time <= end_time {
         let label = loop_time.format(label_format).to_string();
 
         if let Some(it) = label2data_len.get(&label) {
-            in_lens.push(it.in_len as f64 / unit_size as f64);
-            out_lens.push(it.out_len as f64 / unit_size as f64);
+            in_lens.push((it.in_len as f64).div(unit_size as f64, 2));
+            out_lens.push((it.out_len as f64).div(unit_size as f64, 2));
         } else {
             in_lens.push(Default::default());
             out_lens.push(Default::default());
@@ -153,18 +176,18 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
 }
 
 /// 获取当前流量数据
-async fn get_current_len(param: model::ChartParam) -> String {
+async fn get_real_len(param: model::ChartParam) -> String {
     let channel_nps_map = nps::CHANNEL_NPS_MAP.lock().await;
-    let data_len = if let Some(channel_id) = param.channel_id {
-        match channel_nps_map.get(&channel_id) {
+    let data_len = if param.channel_id > 0 {
+        match channel_nps_map.get(&param.channel_id) {
             Some(v) => v.data_len.load(),
             None => DataIOLen::default(),
         }
-    } else if let Some(client_id) = param.client_id {
+    } else if param.client_id > 0 {
         channel_nps_map
             .iter()
             .filter_map(|(_, v)| {
-                if v.client_id != client_id {
+                if v.client_id != param.client_id {
                     return None;
                 }
                 Some(v.data_len.load())
@@ -187,22 +210,22 @@ mod model {
     #[derive(Debug, Clone, Default, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ChartParam {
-        pub client_id: Option<i64>,
-        pub channel_id: Option<i64>,
-        pub forward_id: Option<i64>,
+        pub client_id: i64,
+        pub channel_id: i64,
+        pub forward_id: i64,
     }
 
     #[derive(Debug, Clone, Default, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct DataLenQuery {
         //客户端id
-        pub client_id: Option<i64>,
+        pub client_id: i64,
 
         //隧道id
-        pub channel_id: Option<i64>,
+        pub channel_id: i64,
 
         //端口转发id
-        pub forward_id: Option<i64>,
+        pub forward_id: i64,
 
         //入网流量
         pub start_time: i64,
@@ -222,12 +245,12 @@ mod model {
         /**
          * 入网流量
          */
-        pub in_lens: Vec<f64>,
+        pub in_lens: Vec<String>,
 
         /**
          * 出网流量
          */
-        pub out_lens: Vec<f64>,
+        pub out_lens: Vec<String>,
 
         /**
          * 单位

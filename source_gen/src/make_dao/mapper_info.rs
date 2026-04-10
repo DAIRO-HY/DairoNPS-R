@@ -4,7 +4,7 @@ use serde::Serialize;
 // use sqlparser::dialect::GenericDialect;
 // use sqlparser::parser::Parser;
 use sqlx::{Column, Executor, SqliteConnection, Statement, TypeInfo};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Default, Serialize)]
 pub enum CrudType {
@@ -111,7 +111,12 @@ impl MapperInfo {
     // }
 
     /// 生成映射函数的源代码字符串
-    pub async fn make_mapper_source(&self, conn: &mut SqliteConnection, table: &TableInfo) -> String {
+    pub async fn make_mapper_source(
+        &self,
+        conn: &mut SqliteConnection,
+        exists_entity_set: &mut HashSet<String>,
+        table: &TableInfo,
+    ) -> String {
         //从 SQL 中提取参数名称列表
         let sql_params = Self::extract_params(self.sql.as_str());
 
@@ -142,28 +147,46 @@ impl MapperInfo {
         // });
 
         let mut return_struct_src = String::new();
-        if self.return_type != table.get_entity_name(){//如果当前返回值不是表的Entity，只自动生产Entity
-            let name_2_column: HashMap<String, &ColumnInfo> = table.columns.iter().map(|it|(it.name.clone(), it)).collect();
+        if !exists_entity_set.contains(&self.return_type) {
+            //如果当前返回值的Entity不存在，则自动生产Entity
+            let name_2_column: HashMap<String, &ColumnInfo> = table
+                .columns
+                .iter()
+                .map(|it| (it.name.clone(), it))
+                .collect();
 
             //预编译sql，拿到matedata
-            let member_src =   conn.prepare(sql.as_str()).await.unwrap().columns().iter().map(|it| {
-                if let Some(exists_col) = name_2_column.get(it.name()){
-                    return exists_col.make_member_src();
-                }
-                let is_nullable = match it.type_info().name() {
-                    "INTEGER"=> false,
-                    _ => true
-                };
-                ColumnInfo{
-                    name: it.name().to_string(),
-                    data_type: it.type_info().name().to_string(),
-                    is_nullable,
-                    ..Default::default()
-                }.make_member_src()
-            }).collect::<Vec<_>>().join("");
-            return_struct_src = format!("#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]\npub struct {} {{ {} }}", self.return_type, member_src);
+            let member_src = conn
+                .prepare(sql.as_str())
+                .await
+                .unwrap()
+                .columns()
+                .iter()
+                .map(|it| {
+                    if let Some(exists_col) = name_2_column.get(it.name()) {
+                        return exists_col.make_member_src();
+                    }
+                    let is_nullable = match it.type_info().name() {
+                        "INTEGER" => false,
+                        _ => true,
+                    };
+                    ColumnInfo {
+                        name: it.name().to_string(),
+                        data_type: it.type_info().name().to_string(),
+                        is_nullable,
+                        ..Default::default()
+                    }
+                    .make_member_src()
+                })
+                .collect::<Vec<_>>()
+                .join("");
+            return_struct_src = format!(
+                "#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]\npub struct {} {{ {} }}",
+                self.return_type, member_src
+            );
+            exists_entity_set.insert(self.return_type.clone());
         }
-        
+
         let sql_template = match self.crud_type {
             CrudType::Read => {
                 if self.is_list {
@@ -212,7 +235,7 @@ impl MapperInfo {
                     }
                 "##
             }
-                _ => "",
+            _ => "",
         };
 
         sql_template

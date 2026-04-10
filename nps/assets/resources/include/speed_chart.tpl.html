@@ -48,28 +48,17 @@
         }
     });
 
-    function showSpeedChart(id = "A") {
-        //let ws = new WebSocket(`ws://${location.host}/ws/speed_chart`);
-        //ws.onopen = function () {
-        //    $("#speedChatDiv").show()
-        //    initSpeedChart()
-        //    ws.send(id)
-        //};
-//
-        //ws.onmessage = function (event) {
-        //    const datas = event.data.split(":")
-        //    computeSpeed(parseInt(datas[0]), parseInt(datas[1]))
-//
-        //    //每隔一段时间去取新的数据
-        //    setTimeout(function () {
-        //        ws.send(id)
-        //    }, 1000)
-        //};
-
+    function showSpeedChart(option) {
         if (chartEs) return; // 防止重复创建
         $("#speedChatDiv").show()
         initSpeedChart()
-        chartEs = new EventSource("/chart/current_len");
+        const query = new URLSearchParams({
+            clientId:0,
+            channelId:0,
+            forwardId:0,
+            ...option
+        }).toString();
+        chartEs = new EventSource("/chart/real_len?" + query);
         chartEs.onmessage = (e) => {
             const datas = e.data.split(":")
             computeSpeed(parseInt(datas[0]), parseInt(datas[1]))

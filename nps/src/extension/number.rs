@@ -59,14 +59,42 @@ impl<T> ToDateFormat for T
 where
     T: IntegerTimestamp,
 {
-
     /// 将时间戳毫秒转换为日期格式
     fn date_format(&self) -> String {
         let timestamp = (*self).try_into().unwrap_or(0);
         if timestamp == 0 {
             return String::new();
         }
-        let dt = DateTime::from_timestamp_millis(timestamp).unwrap().with_timezone(&chrono::Local);
+        let dt = DateTime::from_timestamp_millis(timestamp)
+            .unwrap()
+            .with_timezone(&chrono::Local);
         dt.format("%Y-%m-%d %H:%M:%S").to_string()
+    }
+}
+
+/// 将数字转换为更友好的数据大小格式
+pub trait Div {
+    fn div(&self, b: f64, digits: usize) -> String;
+}
+pub trait FromDivType: Copy + TryInto<f64> {}
+
+impl FromDivType for f32 {}
+impl FromDivType for f64 {}
+impl FromDivType for i8 {}
+impl FromDivType for i16 {}
+impl FromDivType for i32 {}
+impl FromDivType for u8 {}
+impl FromDivType for u16 {}
+impl FromDivType for u32 {}
+
+impl<T> Div for T
+where
+    T: FromDivType,
+{
+    fn div(&self, b: f64, digits: usize) -> String {
+        if b == 0.0 {
+            return "NaN".to_string();
+        }
+        format!("{:.*}", digits, (*self).try_into().unwrap_or(0.0) / b)
     }
 }

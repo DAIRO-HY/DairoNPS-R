@@ -6,7 +6,7 @@
 </head>
 <body>
 {{template include/top-bar}}
-{{template include/data_size_chart}}
+{{template include/data_len_chart}}
 {{template include/speed_chart}}
 <div class="m-3 p-2 bg-white rounded">
     <form action="/channel/edit">
@@ -84,7 +84,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">入网流量</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="inData" disabled>
+                        <input type="text" class="form-control" name="inLen" disabled>
                     </div>
                 </div>
             </div>
@@ -92,7 +92,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">出网流量</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="outData" disabled>
+                        <input type="text" class="form-control" name="outLen" disabled>
                     </div>
                 </div>
             </div>
@@ -129,13 +129,13 @@
     </form>
 </div>
 <input id="initAclIp" type="hidden" th:value="${aclIp}">
-<script th:inline="javascript">
+<script>
     $(function () {
-        // const channelId = getParam("id")
-        // if (channelId !== "") {//网速统计报表显示
-        //     showDataLenChart(0, channelId, 0)
-        //     showSpeedChart("N" + channelId)
-        // }
+        const channelId = getParam("id")
+        if (channelId !== "") {//网速统计报表显示
+            showDataLenChart(0, channelId, 0)
+            showSpeedChart({channelId})
+        }
 
         //初始化数据
         init()

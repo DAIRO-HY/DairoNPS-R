@@ -1,0 +1,2 @@
+#将指定的源码文件导出汇编（性能分析时用到）
+rustc -O --emit=asm nps/src/main.rs
