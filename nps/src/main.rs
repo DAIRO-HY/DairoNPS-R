@@ -22,19 +22,8 @@ async fn main() -> tokio::io::Result<()> {
     //     // tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     // }
 
-    let ss = AtomicDataIOLen::from(1,1);
-    let bb = ss.clone();
-    ss.add_in(1);
-    ss.add_out(1);
-
-    println!("-->{:?}", bb.load());
-    println!("-->{:?}", bb.load());
-
-
-
     println!("-->START<--");
     db::init().await;
-    util::security_util::init();
     nps::init();
     web::router::ready();
     nps::nps_client::tcp_client::tcp_client_accept::accept().await?;

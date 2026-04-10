@@ -54,6 +54,8 @@ pub async fn accept_channel(channel: Channel) {
     //     "-->开始监听隧道: {} 代理端口: {} 目标端口: {}",
     //     channel.id, channel.server_port, channel.target_port
     // );
+
+    //@TODO:将错误信息写入数据库
     let tcp_listener = TcpListener::bind(format!("0.0.0.0:{}", channel.server_port))
         .await
         .unwrap();

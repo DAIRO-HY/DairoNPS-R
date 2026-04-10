@@ -34,9 +34,6 @@ async fn channel_collect_data() {
     //上一次统计到的隧道数据长度
     let mut pre_channel_len_map: HashMap<i64, DataIOLen> = HashMap::new();
 
-    //准备用来存入数据库的数据缓存，避免频繁操作数据库
-    let mut insert_cache_list: Vec<ChannelData> = Vec::new();
-
     // 记录距离上次统计间隔时间
     let mut pre_insert_time: u64 = 0;
     loop {
@@ -80,6 +77,7 @@ async fn collect_data(
 
         //每隔STATS_INTERVAL毫秒统计一次数据总量
         let current_data_io = channel_nps.data_len.load();
+        println!("-->current_data_io.in_len:{} pre_len.in_len:{}",current_data_io.in_len,pre_len.in_len);
         insert_cache_list.push(ChannelData {
             client_id: channel_nps.client_id,
             channel_id: channel_id.clone(),

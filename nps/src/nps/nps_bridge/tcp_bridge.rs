@@ -1,4 +1,5 @@
 use crate::model::data_io_len::AtomicDataIOLen;
+use crate::util::security_util::SERVER_SECURITY_KEY;
 use dashmap::DashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -72,13 +73,15 @@ impl TCPBridge {
         Self::send_header_to_client(header, &mut client_writer).await?;
 
         let p2c = Self::proxy_to_client(
+            self.security_state == 1,
             data_len.clone(),
             self.channel_data_len.clone(),
             proxy_reader,
             client_writer,
-            self.channel_closer
+            self.channel_closer,
         );
         let c2p = Self::client_to_proxy(
+            self.security_state == 1,
             data_len,
             self.channel_data_len,
             client_reader,
@@ -94,6 +97,7 @@ impl TCPBridge {
     }
 
     async fn proxy_to_client(
+        need_encryption: bool,
         data_len: AtomicDataIOLen,
         channel_data_len: AtomicDataIOLen,
         mut proxy_reader: ReadHalf<TcpStream>,
@@ -114,6 +118,11 @@ impl TCPBridge {
                     }
                     data_len.add_in(n);
                     channel_data_len.add_in(n);
+                    if need_encryption{//需要加密处理
+                        for b in &mut buf[..n] {
+                            *b = SERVER_SECURITY_KEY[*b as usize];
+                        }
+                    }
                     client_writer.write_all(&buf[..n]).await?;
                 }
             }
@@ -126,6 +135,7 @@ impl TCPBridge {
     }
 
     async fn client_to_proxy(
+        need_encryption: bool,
         data_len: AtomicDataIOLen,
         channel_data_len: AtomicDataIOLen,
         mut client_reader: ReadHalf<TcpStream>,
@@ -139,6 +149,12 @@ impl TCPBridge {
             }
             data_len.add_out(n);
             channel_data_len.add_out(n);
+            if need_encryption {
+                //需要解密处理
+                for b in &mut buf[..n] {
+                    *b = SERVER_SECURITY_KEY[*b as usize];
+                }
+            }
             proxy_writer.write_all(&buf[..n]).await?;
         }
         //这里必须关闭客户端的输出流，否则对方无法感知到已经关闭连接了（写失败或者读失败没有必要调用shutdown()，即使调用大概率也是失败的，所以没有意义）

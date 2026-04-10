@@ -55,7 +55,7 @@ impl ClientSession {
 
         // 将加密秘钥发送到客户端
         tcp_stream
-            .write_all(security_util::CLIENT_SECURITY_KEY.get().unwrap())
+            .write_all(&*security_util::CLIENT_SECURITY_KEY)
             .await?;
 
         //拆分读写流,接收和发送分开处理
