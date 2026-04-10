@@ -4,17 +4,16 @@ use crate::application;
 use crate::dao::client_dao;
 use crate::nps::nps_error::NpsError;
 use crate::nps::nps_pool::tcp_pool_manager;
+use crate::util::time_util;
 use sqlx::Error;
 use std::net::SocketAddr;
 use std::sync::atomic::Ordering;
-use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
 
 // 监听客户端连接
-pub async fn accept() -> io::Result<()> {
+pub async fn accept() -> Result<(), NpsError> {
     let listener = TcpListener::bind("0.0.0.0:1781").await?;
     loop {
         select! {
@@ -76,15 +75,15 @@ async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<()
 }
 
 // 验证客户端回话
-async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> io::Result<()> {
+async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<(), NpsError> {
     //得到头部数据
     let header = header_util::get_header(&mut tcp_stream).await?;
     let headers: Vec<&str> = header.split("|").collect();
 
     //得到客户端key
     let key = headers[0];
-    let client = client_dao::select_by_key(&db::get(), key).await;
-    match client {
+    let client = match client_dao::select_by_key(&db::get(), key).await {
+        Ok(v) => v,
         Err(Error::RowNotFound) => {
             println!("客户端：{}获取失败", key);
             tcp_stream.shutdown().await?;
@@ -95,31 +94,12 @@ async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> io::Re
             tcp_stream.shutdown().await?;
             return Ok(());
         }
-        _ => {}
-    }
-    let client = client.unwrap();
+    };
     if client.enable_state == 0 {
         // println!("客户端：{}已被停止服务,IP:%s", key);
         tcp_stream.shutdown().await?;
         return Ok(());
     }
-
-    // //设置客户端登录信息-------------------------------------------------------------------------------START
-    // remoteAddr := tcp.RemoteAddr().String()
-    //
-    // //客户端ip
-    // ip := strings.Split(remoteAddr, ":")[0]
-    //
-    // //从头部信息中得到客户端版本号
-    // version := headers[1]
-    // loginClientDto := dto.ClientDto{
-    //     Id:      client.Id,
-    //     Ip:      ip,
-    //     Version: version,
-    // }
-    // ClientDao.SetClientInfo(loginClientDto)
-    // //设置客户端登录信息-------------------------------------------------------------------------------END
-    //
     let client_id = client.id;
 
     //得到客户端版本号
@@ -129,12 +109,8 @@ async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> io::Re
         client_id,
         addr.ip().to_string(),
         client_version,
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as i64,
+        time_util::current_millis() as i64,
     )
     .await;
-    tcp_client_session_manager::hold_on_client(client, tcp_stream).await?;
-    Ok(())
+    tcp_client_session_manager::hold_on_client(client, tcp_stream).await
 }

@@ -12,12 +12,6 @@ struct Assets;
 // VERSION 数据库版本号
 const VERSION: i32 = 1;
 
-//由于对数据操作比较少，全局一个连接池就够了
-// pub static CONN: OnceLock<Mutex<Connection>> = OnceLock::new();
-// pub async fn connection() -> tokio::sync::MutexGuard<'static, Connection> {
-//     CONN.get().unwrap().lock().await
-// }
-
 /// 全局数据库连接池
 static DB_CONN: LazyLock<SqlitePool> = LazyLock::new(|| {
     SqlitePoolOptions::new()
@@ -51,18 +45,6 @@ async fn init_db() -> Result<(), Box<dyn Error>> {
     tx.commit().await?;
     Ok(())
 }
-
-// 获取数据库连接
-// async fn create_connection() {
-//     let conn = new_connection();
-//     conn.busy_timeout(std::time::Duration::from_millis(10000))
-//         .unwrap();
-//     CONN.set(Mutex::new(conn)).ok();
-// }
-
-// pub fn new_connection() -> Connection {
-//     rusqlite::Connection::open(crate::constant::nps_constant::SQLITE_FILE).unwrap()
-// }
 
 // 数据库升级
 async fn upgrade(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>> {

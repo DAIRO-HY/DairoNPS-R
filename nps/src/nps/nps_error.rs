@@ -7,6 +7,18 @@ pub enum NpsError {
 
     #[error("系统级别的错误")]
     IoError(std::io::Error),
+
+    #[error("sqlx执行的错误")]
+    SqlxError(sqlx::Error),
+
+    #[error("未知的Flag")]
+    UnknowFlagError,
+
+    #[error("发送数据失败")]
+    SendDataError,
+
+    #[error("其他错误")]
+    OtherError(String),
 }
 
 // impl std::error::Error for NpsError {}
@@ -15,5 +27,10 @@ pub enum NpsError {
 impl From<std::io::Error> for NpsError {
     fn from(err: std::io::Error) -> Self {
         NpsError::IoError(err)
+    }
+}
+impl From<sqlx::Error> for NpsError {
+    fn from(err: sqlx::Error) -> Self {
+        NpsError::SqlxError(err)
     }
 }

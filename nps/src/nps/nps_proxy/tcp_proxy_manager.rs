@@ -2,80 +2,39 @@ use crate::dao::channel_dao;
 use crate::dao::channel_dao::Channel;
 use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps;
+use crate::nps::nps_error::NpsError;
 use crate::nps::nps_proxy::tcp_proxy_accept::TCPProxyAccept;
 use dashmap::DashMap;
 use std::sync::Arc;
 use tokio::{net::TcpListener, sync::Notify};
-// // 隧道id对应的服务端口监听
-// var proxyAcceptMap = make(map[int]*TCPProxyAccept)
-
-// // proxyAcceptMap操作互斥锁
-// var proxyAcceptLock sync.Mutex
-
-// // 隧道代理端口数量
-// func GetProxyCount() int {
-// 	count := 0
-// 	proxyAcceptLock.Lock()
-// 	count = len(proxyAcceptMap)
-// 	proxyAcceptLock.Unlock()
-// 	return count
-// }
-
-pub fn init() {}
 
 // 开始客户端的所有监听
-pub async fn accept_client(client_id: i64) {
-    // //加载统计数据
-    // ChannelStatisticsUtil.Init()
-
+pub async fn accept_client(client_id: i64) -> Result<(), NpsError> {
     //开启NPS客户端ID下所有的隧道
-    let active_list = channel_dao::select_active_by_client_id(&db::get(), client_id)
-        .await
-        .unwrap();
+    let active_list = channel_dao::select_active_by_client_id(&db::get(), client_id).await?;
     for it in active_list {
         if it.mode == 1 {
             //只监听TCP隧道
-            accept_channel(it).await;
+            accept_channel(it).await?;
         }
     }
+    Ok(())
 }
 
 // 开始监听某个隧道
-pub async fn accept_channel(channel: Channel) {
-    // proxyAcceptLock.Lock()
-    // oldProxyTCPAccept := proxyAcceptMap[channel.Id]
-    // if oldProxyTCPAccept != nil { //若该隧道已经在监听,则先停止
-    // 	shutdown(oldProxyTCPAccept)
-    // }
-
+pub async fn accept_channel(channel: Channel) -> Result<(), NpsError> {
     //关闭隧道正在通信的连接
     shutdown_by_channel(channel.id).await;
-    // println!(
-    //     "-->开始监听隧道: {} 代理端口: {} 目标端口: {}",
-    //     channel.id, channel.server_port, channel.target_port
-    // );
+    let tcp_listener = match TcpListener::bind(format!("0.0.0.0:{}", channel.server_port)).await {
+        Ok(v) => v,
+        Err(e) => {
+            channel_dao::set_error(&db::get(), channel.id, format!("监听端口失败:{:?}", e)).await?;
+            return Ok(());
+        }
+    };
 
-    //@TODO:将错误信息写入数据库
-    let tcp_listener = TcpListener::bind(format!("0.0.0.0:{}", channel.server_port))
-        .await
-        .unwrap();
-    // listener, err := net.Listen("tcp", ":"+strconv.Itoa(channel.ServerPort))
-    // if err != nil {
-    // 	errMsg := fmt.Sprintf("端口:%d 监听失败。err:%q\n", channel.ServerPort, err)
-    // 	ChannelDao.SetError(channel.Id, &errMsg)
-    // 	LogUtil.Error(errMsg)
-    // 	proxyAcceptLock.Unlock()
-    // 	return
-    // }
-    // ChannelDao.SetError(channel.Id, nil)
-    // LogUtil.Info(fmt.Sprintf("端口:%d 监听开始\n", channel.ServerPort))
-    // proxyAccept := &TCPProxyAccept{
-    // 	ClientId: ClientId,
-    // 	Channel:  channel,
-    // 	listen:   listener,
-    // }
-    // proxyAcceptMap[channel.Id] = proxyAccept
-    // proxyAcceptLock.Unlock()
+    //清除错误消息
+    channel_dao::clear_error(&db::get(), channel.id).await?;
 
     let client_id = channel.client_id;
     let channel_id = channel.id;
@@ -101,32 +60,15 @@ pub async fn accept_channel(channel: Channel) {
             bridger,
         },
     );
-
-    //
-    // //保存关闭通知器
-    // CHANNEL_CLOSE_NOTIFY
-    //     .lock()
-    //     .await
-    //     .insert(channel_id, notify.clone());
-    //
-    // //初始化隧道数据总量
-    // CHANNEL_DATA_TOTAL
-    //     .lock()
-    //     .await
-    //     .insert(channel_id, data_len);
-    //
-    // //初始化隧道对应的桥接信息
-    // nps::BRIDGE_INFO
-    //     .lock()
-    //     .await
-    //     .insert(channel_id, bridge_info_map.clone());
-
     tokio::spawn(async move {
-        let _ = proxy_tcp_accept.accept().await;
+        if let Err(e) = proxy_tcp_accept.accept().await {
+            println!("监听隧道发生了错误:{:?}", e);
+        }
 
         //接受到accept结束的通知,说明监听已经停止,可以安全地删除关闭通知器
         nps::CHANNEL_NPS_MAP.lock().await.remove(&channel_id);
     });
+    Ok(())
 }
 
 // 关闭监听

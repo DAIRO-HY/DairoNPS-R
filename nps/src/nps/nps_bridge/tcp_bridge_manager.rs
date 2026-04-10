@@ -47,15 +47,13 @@ pub async fn make_bridge(
     close_notify: Arc<Notify>,
 ) {
     //NPS客户端Socket
-    let npc_pool_tcp = tcp_pool_manager::get_and_add_pool(channel.client_id).await;
-    if npc_pool_tcp.is_none() {
+    let Some(npc_pool_tcp) = tcp_pool_manager::get_and_add_pool(channel.client_id).await else {
         // println!("-->客户端: {}没有可用的连接池。", channel.client_id);
 
         //这里无需关闭，生命周期结束之后会自动关闭
         // tcp.shutdown().await?;
         return;
-    }
-    let npc_pool_tcp = npc_pool_tcp.unwrap();
+    };
     let bridge = TCPBridge {
         bridge_info_map,
         target_port: channel.target_port.clone(),
@@ -63,65 +61,11 @@ pub async fn make_bridge(
         proxy_tcp,
         client_tcp: npc_pool_tcp,
         channel_data_len: data_len,
-        channel_closer: close_notify
+        channel_closer: close_notify,
     };
-    tokio::spawn(bridge.start());
-}
-
-// 关闭客户端所有正在通信的连接
-fn ShutdownByClient(client_id: u8) {
-    // bridgeLock.Lock()
-
-    // //帅选出要删除的客户端桥接
-    // for bridge := range bridgeMap {
-    // 	if bridge.ClientId == client_id {
-    // 		bridge.shutdown()
-    // 	}
-    // }
-    // bridgeLock.Unlock()
-}
-
-// 关闭隧道所有正在通信的连接
-fn ShutdownByChannel(channel_id: u8) {
-    // bridgeLock.Lock()
-
-    // //帅选出要删除的客户端桥接
-    // for bridge := range bridgeMap {
-    // 	if bridge.Channel.Id == channelId {
-    // 		bridge.shutdown()
-    // 	}
-    // }
-    // bridgeLock.Unlock()
-}
-
-// 移除桥接通信
-fn removeBridge(bridge: TCPBridge) {
-    // bridgeLock.Lock()
-    // delete(bridgeMap, bridge)
-    // bridgeLock.Unlock()
-}
-
-/**
- * 回收长时间不用的连接
- */
-fn Recycle() {
-    //while (true) {
-    //    delay(CLSConfig.BRIDGE_SESSION_TIMEOUT)
-    //    try {
-    //
-    //        //当前是同时间戳
-    //        val now = System.currentTimeMillis()
-    //    result: List<TCPBridge>? = null
-    //        this.BridgeListLock.synchronized {
-    //            result = this.BridgeList.filter {
-    //                (now - it.lastSessionTime) > CLSConfig.BRIDGE_SESSION_TIMEOUT
-    //            }
-    //        }
-    //        result?.forEach { //关掉长时间不通信的连接
-    //            it.close()
-    //        }
-    //    } catch (e: Exception) {
-    //        //e.printStackTrace()
-    //    }
-    //}
+    tokio::spawn(async {
+        if let Err(e) = bridge.start().await {
+            println!("桥接通信接发生了错误:{:?}", e);
+        }
+    });
 }

@@ -13,3 +13,11 @@ fn toggle_enable(id: i64, enable_state: i8)
 /// 同步入出网流量
 update channel set in_len = :in_len,out_len = :out_len where id = :id
 fn set_data_len(id:i64, in_len: i64, out_len: i64)
+
+/// 设置错误消息
+update channel set error = :error where id = :id
+fn set_error(id:i64, error: String)
+
+/// 清除错误消息
+update channel set error = null where id = :id
+fn clear_error(id:i64)

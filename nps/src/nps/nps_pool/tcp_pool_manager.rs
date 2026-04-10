@@ -7,20 +7,6 @@ use crate::nps::nps_error::NpsError;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
-// func init() {
-//     go timeoutCheck()
-// }
-//
-// // 当前连接池数量
-// func GetPoolCount() int {
-//     count := 0
-//     poolLock.Lock()
-//     for _, pools := range poolMap {
-//         count += len(*pools)
-//     }
-//     poolLock.Unlock()
-//     return count
-// }
 
 // 获取某个客户端连接池数量
 pub async fn get_pool_count(client_id: &i64) -> usize {
@@ -31,21 +17,17 @@ pub async fn get_pool_count(client_id: &i64) -> usize {
         .map_or(0, |it| it.tcp_pool.len())
 }
 
-/**
- * 为客户端创建一个空的连接池
- * @param client_id 客户端ID
- */
-// pub async fn init_empty_pool_by_client(client_id: i64) {
-//     //移除旧的连接池并创建新的连接池
-//     POOL_MAP.lock().await.insert(client_id, Vec::new());
-// }
-
 // 添加TCP连接池
 // clientSocket tcp连接
 pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
     //从头部信息中得到客户端id
     let client_id_str = header_util::get_header(&mut tcp).await?;
-    let client_id: i64 = client_id_str.parse().unwrap();
+    let Ok(client_id) = client_id_str.parse() else {
+        return Err(NpsError::OtherError(format!(
+            "从头部信息中得到客户端id:{}无效",
+            client_id_str
+        )));
+    };
 
     let mut client_nps_map = nps::CLIENT_NPS_MAP.lock().await;
 
@@ -89,9 +71,6 @@ async fn get(client_id: i64) -> Option<(TcpStream, usize)> {
         return None;
     }
 
-    //从连接池取出并移除最后一次添加到连接池的连接
-    // return Some(pools.pop().unwrap().tcp);
-
     //从连接池取出并移除最旧的连接，较少连接池中存在过期连接
     Some((client_nps.tcp_pool.remove(0).tcp, count))
 }
@@ -127,61 +106,5 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
         },
     ));
     // println!("-->当前连接池数量: {} ", count);
-    return Some(tcp);
+    Some(tcp)
 }
-
-// /**
-//  * 发起连接池申请请求
-//  * 每取走一个连接,则请求创建2个新的连接,直到达到最大连接数
-//  * @param clientID 客户端ID
-//  */
-// async fn pool_request(client_id: u64, count: u8) {
-//     let mut pool_map = POOL_MAP.lock().await;
-
-//     //得到客户端连接池列表
-//     let pools = pool_map.get(&client_id);
-//     if pools.is_none() {
-//         return;
-//     }
-//     let pools = pools.unwrap();
-//     if pools.len() >= crate::constant::nps_constant::MAX_POOL_COUNT {//已经达到最大连接数
-//         return;
-//     }
-//     tcp_client_session_manager::send_tcp_pool_request(client_id, count).await;
-// }
-
-// /**
-//  * 移除某个客户端所有的连接池
-//  * @param clientID 客户端ID
-//  */
-// pub async fn shutdown_by_client(client_id: i64) {
-//     POOL_MAP.lock().await.remove(&client_id);
-//     println!("tcp连接池被关闭了...");
-// }
-
-// // 超时连接池整理
-// func timeoutCheck() {
-//     for {
-//         time.Sleep(NPSConstant.RECYLE_POOL_TIME_OUT * time.Millisecond)
-//
-//         //当前时间戳秒
-//         now := time.Now().UnixMilli()
-//         poolLock.Lock()
-//         for clientId, pools := range poolMap { //遍历所有客户端的连接池
-//             poolList := *pools
-//             poolSize := len(poolList)
-//             for i := poolSize - 1; i > -1; i-- {
-//                 pool := (*pools)[i]
-//                 if now-pool.CreateTime > NPSConstant.RECYLE_POOL_TIME_OUT { //连接池超过指定时间
-//                     pool.PoolTCP.Close()
-//                     poolList = poolList[0:i]
-//                 }
-//             }
-//             if len(poolList) == 0 { //如果连接池被清空，则请求创建一个新的连接池
-//                 Csmi.SendTCPPoolRequest(clientId, 1)
-//             }
-//             *pools = poolList
-//         }
-//         poolLock.Unlock()
-//     }
-// }

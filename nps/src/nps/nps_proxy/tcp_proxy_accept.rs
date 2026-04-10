@@ -8,6 +8,7 @@ use tokio::select;
 use tokio::sync::Notify;
 use crate::application;
 use crate::nps::nps_bridge::tcp_bridge::TCPBridgeInfo;
+use crate::nps::nps_error::NpsError;
 
 /**
  * TCP隧道代理
@@ -31,7 +32,7 @@ impl TCPProxyAccept {
     /**
      * 等待代理客户端连接
      */
-    pub async fn accept(self) -> tokio::io::Result<()> {
+    pub async fn accept(self) -> Result<(), NpsError> {
         loop {
             select! {
                 // 接收到关闭通知：退出 accept 循环

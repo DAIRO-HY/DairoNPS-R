@@ -14,6 +14,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 /// 一些定时任务
 use tokio::time::sleep;
+use crate::util::time_util;
 
 //准备用来存入数据库的数据缓存，避免频繁操作数据库
 pub static INSERT_CACHE_LIST: LazyLock<Mutex<Vec<ChannelData>>> = LazyLock::new(|| Mutex::new(Vec::new()));
@@ -77,7 +78,6 @@ async fn collect_data(
 
         //每隔STATS_INTERVAL毫秒统计一次数据总量
         let current_data_io = channel_nps.data_len.load();
-        println!("-->current_data_io.in_len:{} pre_len.in_len:{}",current_data_io.in_len,pre_len.in_len);
         insert_cache_list.push(ChannelData {
             client_id: channel_nps.client_id,
             channel_id: channel_id.clone(),
@@ -153,10 +153,7 @@ async fn collect_data(
 async fn close_not_heart_client() {
     loop {
         sleep(Duration::from_millis(application::HEART_TIME * 2)).await;
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
+        let now = time_util::current_millis();
         let not_heart_client_id: Vec<i64> = CLIENT_NPS_MAP
             .lock()
             .await

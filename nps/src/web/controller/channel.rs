@@ -210,7 +210,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
             .contains_key(&channel.client_id)
         {
             //如果当前客户端在线
-            tcp_proxy_manager::accept_channel(channel).await; //开启隧道监听
+            tcp_proxy_manager::accept_channel(channel).await.unwrap(); //开启隧道监听
         }
         1
         // clientDto := ClientDao.SelectOne(channel.ClientId)

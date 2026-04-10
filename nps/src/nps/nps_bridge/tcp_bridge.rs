@@ -8,6 +8,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::{io, select, try_join};
+use crate::nps::nps_error::NpsError;
 
 // TCPBridge TCP桥接信息
 #[derive(Debug)]
@@ -44,7 +45,7 @@ impl TCPBridge {
     /**
      * 开始桥接传输数据
      */
-    pub async fn start(self) -> io::Result<()> {
+    pub async fn start(self) -> Result<(),NpsError> {
         //统计当前桥接流量
         let data_len = AtomicDataIOLen::new();
         let key = NEXT_KEY.fetch_add(1, Ordering::Relaxed);
@@ -177,124 +178,4 @@ impl TCPBridge {
         client_writer.write_all(&data).await?;
         Ok(())
     }
-
-    /**
-     * 从代理服务接收数据发送到客户端
-     */
-    async fn receiveByProxySendToClient(&mut self) {
-        // let mut buf = [0u8; 1024];
-        // loop {
-        //     match self.proxy_reader.read(&mut buf).await {
-        //         Ok(0) => {
-        //             println!("s:连接已关闭");
-        //             return;
-        //         }
-        //         Ok(n) => {
-        //             // tx.send(&buf[..n]).await.unwrap();
-
-        //             // let received = String::from_utf8_lossy(&buf[..n]);
-        //             // println!("s:收到客户端消息: {}", received);
-        //             // tx.send("-->server:我已经收到你的消息".to_string()).await.unwrap();
-
-        //             self.client_writer.write_all(&buf[..n]).await.unwrap();
-        //         }
-        //         Err(e) => {
-        //             eprintln!("s:读取错误: {}", e);
-        //             return;
-        //         }
-        //     }
-        // }
-
-        // data := make([]uint8, NPSConstant.READ_CACHE_SIZE)
-        // for {
-        //     n, readErr := mine.ProxyTCP.Read(data)
-        //     if n > 0 {
-        //
-        //         //记录最后通信时间
-        //         mine.LastRWTime = time.Now().UnixMilli()
-        //
-        //         //原子递增
-        //         atomic.AddInt64(&mine.channelDataSize.InData, int64(n))
-        //         if mine.Channel.SecurityState == 1 { //加密数据
-        //             SecurityUtil.Mapping(data, n)
-        //         }
-        //
-        //         //将读取到的数据立即发送客户端
-        //         writeErr := WriterUtil.WriteFull(mine.ClientTCP, data[:n])
-        //         if writeErr != nil {
-        //             break
-        //         }
-        //     }
-        //     if readErr != nil {
-        //         break
-        //     }
-        // }
-        //
-        // //关闭客户端的输出流
-        // mine.ClientTCP.(*net.TCPConn).CloseWrite()
-        //
-        // //关闭代理端的输入流
-        // mine.ProxyTCP.(*net.TCPConn).CloseRead()
-        //
-        // //标记代理连接读操作已经关闭
-        // mine.proxyInIsClosed = true
-        // mine.recycle()
-    }
-    //
-    // // 从客户端接收发送到代理服务器
-    // func (mine *TCPBridge) receiveByClientSendToProxy() {
-    //     data := make([]uint8, NPSConstant.READ_CACHE_SIZE)
-    //     for {
-    //         n, readErr := mine.ClientTCP.Read(data)
-    //         if n > 0 {
-    //
-    //             //记录最后通信时间
-    //             mine.LastRWTime = time.Now().UnixMilli()
-    //
-    //             //出网统计 原子递增
-    //             atomic.AddInt64(&mine.channelDataSize.OutData, int64(n))
-    //             if mine.Channel.SecurityState == 1 { //加密数据
-    //                 SecurityUtil.Mapping(data, n)
-    //             }
-    //
-    //             //将读取到的数据立即发送客户端
-    //             writeErr := WriterUtil.WriteFull(mine.ProxyTCP, data[:n])
-    //             if writeErr != nil {
-    //                 break
-    //             }
-    //         }
-    //         if readErr != nil {
-    //             break
-    //         }
-    //     }
-    //
-    //     //关闭客户端的输出流
-    //     mine.ProxyTCP.(*net.TCPConn).CloseWrite()
-    //
-    //     //关闭代理端的输入流
-    //     mine.ClientTCP.(*net.TCPConn).CloseRead()
-    //
-    //     //标记客户端读操作已经关闭
-    //     mine.clientInIsClosed = true
-    //     mine.recycle()
-    // }
-    //
-    // /**
-    // * 资源回收
-    //  */
-    // func (mine *TCPBridge) recycle() {
-    //     if mine.proxyInIsClosed && mine.clientInIsClosed {
-    //         mine.ClientTCP.Close()
-    //         mine.ProxyTCP.Close()
-    //         removeBridge(mine)
-    //     }
-    // }
-    //
-    // /**
-    // * 关闭连接
-    //  */
-    // func (mine *TCPBridge) shutdown() {
-    //     mine.ClientTCP.Close()
-    //     mine.ProxyTCP.Close()
-    // }
 }

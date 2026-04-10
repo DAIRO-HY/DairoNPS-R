@@ -12,23 +12,19 @@ use tokio::io;
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::time::Duration;
-
+use crate::nps::nps_error::NpsError;
+use crate::util::time_util;
 //往客户端发送指令的专用连接
 
 // 保持客户端连接
-pub async fn hold_on_client(client: Client, tcp: TcpStream) -> io::Result<()> {
+pub async fn hold_on_client(client: Client, tcp: TcpStream) -> Result<(),NpsError> {
     let client_id = client.id;
 
     // 先尝试关闭之前的连接
     shutdown(client_id).await?;
 
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64;
-
     //用来记录最后一次心跳时间
-    let heart_time = Arc::new(AtomicU64::new(now));
+    let heart_time = Arc::new(AtomicU64::new(time_util::current_millis()));
     let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(1024);
     nps::CLIENT_NPS_MAP.lock().await.insert(
         client_id,
@@ -47,18 +43,16 @@ pub async fn hold_on_client(client: Client, tcp: TcpStream) -> io::Result<()> {
     };
 
     //初始化客户端连接池
-    // tcp_pool_manager::init_empty_pool_by_client(client_id).await;
     // udp_pool.InitEmptyPoolByClient(client.Id)
     //
     // //开启该客户端下所有隧道监听
-    tcp_proxy_manager::accept_client(client_id).await;
+    tcp_proxy_manager::accept_client(client_id).await?;
     // udp_proxy.AcceptClient(client)
     let rs = session.start(rx).await;
 
     //会话结束后,移除会话
     remove_session(client_id).await;
-    rs?;
-    Ok(())
+    rs
 }
 
 /**

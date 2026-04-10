@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::LazyLock;
 use tokio::sync::RwLock;
 use validator::Validate;
-
+use crate::util::time_util;
 
 pub static LOGGED_INFO: LazyLock<RwLock<LoggedInfo>> = LazyLock::new(|| {
     RwLock::new(LoggedInfo {
@@ -57,10 +57,7 @@ pub async fn do_login(AppForm(form): AppForm<LoginForm>) -> Response {
     let token = Alphanumeric.sample_string(&mut rand::rng(), 32);
 
     let mut logged_info = LOGGED_INFO.write().await;
-    logged_info.last_time = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_millis();
+    logged_info.last_time = time_util::current_millis();
     logged_info.token = token.clone();
     Response::empty()
 }
@@ -98,5 +95,5 @@ pub struct LoggedInfo {
     pub token: String,
 
     //登录时间戳，单位毫秒
-    pub last_time: u128,
+    pub last_time: u64,
 }
