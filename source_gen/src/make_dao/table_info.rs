@@ -698,7 +698,11 @@ impl ColumnInfo {
 
     /// 生成变量定义代码
     pub fn make_member_src(&self) -> String {
-        let mut field_type = Self::map_data_type_to_rust_type(self.data_type.as_str()).to_string();
+        let mut field_type = if self.name.starts_with("is"){
+            "bool".to_string()
+        } else {
+            Self::map_data_type_to_rust_type(self.data_type.as_str()).to_string()
+        };
         if self.is_nullable {
             field_type = format!("Option<{}>", field_type);
         }

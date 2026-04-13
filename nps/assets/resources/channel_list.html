@@ -114,7 +114,7 @@
                         <div class="text-danger" style="${item.error ? "" : "display: none"}">${item.error ?? ""}</div>
                         <div class="text-end">
                             <button class="btn btn-sm btn-outline-danger" onclick="onToggleEnableClick(${item.id})">
-                                <i class="bi ${item.enableState === 1 ? "bi-pause-fill" : "bi-play-fill"}"></i>
+                                <i class="bi ${item.isEnabled ? "bi-pause-fill" : "bi-play-fill"}"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-danger" onclick="onDeleteClick(${item.id})">
                                 <i class="bi bi-trash3"></i></button>

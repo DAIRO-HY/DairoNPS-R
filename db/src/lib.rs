@@ -94,7 +94,14 @@ async fn init_data(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error
 
 // 创建表
 async fn create_table(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Error>> {
-    for sql_file in ["xxx.sql", "client.sql", "channel.sql", "channel_data.sql","system_config.sql"] {
+    for sql_file in [
+        "xxx.sql",
+        "client.sql",
+        "channel.sql",
+        "channel_data.sql",
+        "system_config.sql",
+        "forward.sql",
+    ] {
         execute_sql_file(tx, sql_file).await?;
     }
     Ok(())

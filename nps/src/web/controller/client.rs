@@ -35,7 +35,7 @@ pub async fn list() -> Response {
             key: it.key,
             ip: it.ip.unwrap_or("未连接".to_string()),
             client_version: it.client_version.unwrap_or("未连接".to_string()),
-            enable_state: it.enable_state,
+            is_enabled: it.is_enabled,
             in_len: it.in_len.data_size(),
             out_len: it.out_len.data_size(),
             is_online: online_client_set.contains(&it.id),
@@ -64,10 +64,10 @@ pub async fn detail(Query(id): Query<IdQuery>) -> Response {
             } else {
                 "离线".to_string()
             },
-            enable_state: if client.enable_state == 0 {
-                "关闭"
-            } else {
+            is_enabled: if client.is_enabled {
                 "开启"
+            } else {
+                "关闭"
             }
             .to_string(),
             last_login_date: client.last_login_date.date_format(),
@@ -94,7 +94,7 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
     let conn = db::get();
     let mut client = if form.id == 0 {
         Client {
-            enable_state: 1,
+            is_enabled: true,
             ..Default::default()
         }
     } else {
@@ -110,7 +110,7 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
     client.version = form.version; //乐观排他用的版本号
     client.key = form.key; //连接认证秘钥
     client.remark = form.remark; //一些备注信息,错误信息等
-    client.enable_state = 1; //启用状态
+    client.is_enabled = true; //启用状态
 
     let mut err = None;
     if form.id == 0 {
@@ -136,7 +136,7 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
 
 /// 通过id删除一个客户端
 pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
-    client_dao::set_delete_ignone_version(&db::get(), query.id)
+    client_dao::delete(&db::get(), query.id)
         .await
         .unwrap();
     tcp_client_session_manager::shutdown(query.id)
@@ -149,14 +149,14 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     let conn = db::get();
     let client = client_dao::select_one(&conn, query.id).await.unwrap();
-    let to = if client.enable_state == 0 {
-        1
-    } else {
+    let to = if client.is_enabled {
         //关闭客户端
         tcp_client_session_manager::shutdown(query.id)
             .await
             .unwrap();
-        0
+        false
+    } else {
+        true
     };
     client_dao::toggle_enable(&conn, query.id, to)
         .await
@@ -176,7 +176,7 @@ mod model {
         pub key: String,
         pub ip: String,
         pub client_version: String,
-        pub enable_state: i64,
+        pub is_enabled: bool,
         pub in_len: String,
         pub out_len: String,
         pub is_online: bool,
@@ -214,7 +214,7 @@ mod model {
         pub online_state: String,
 
         // 启用状态
-        pub enable_state: String,
+        pub is_enabled: String,
 
         // 最后一次连接时间
         pub last_login_date: String,

@@ -1,0 +1,121 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    {{template include/head}}
+    <title>数据转发编辑/添加</title>
+</head>
+<body>
+{{template include/top-bar}}
+{{template include/data_len_chart}}
+{{template include/speed_chart}}
+<div class="m-3 p-2 bg-white rounded">
+    <form action="/forward_list/forward_edit/edit">
+        <input type="hidden" name="Id">
+        <div class="row row-cols-1 row-cols-sm-2">
+            <div class="col mt-2">
+                <div class="row">
+                    <label class="col-4 col-form-label text-end">转发名称</label>
+                    <div class="col-8">
+                        <input type="text" class="form-control" name="Name" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="col mt-2">
+                <div class="row">
+                    <label class="col-4 col-form-label text-end">端口</label>
+                    <div class="col-8">
+                        <input type="text" class="form-control" name="Port" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="col mt-2">
+                <div class="row">
+                    <label class="col-4 col-form-label text-end">目标端口(ip:端口)</label>
+                    <div class="col-8">
+                        <input type="text" class="form-control" name="TargetPort" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="col mt-2">
+                <div class="row">
+                    <label class="col-4 col-form-label text-end">入网流量</label>
+                    <div class="col-8">
+                        <input type="text" class="form-control" name="InData" disabled>
+                    </div>
+                </div>
+            </div>
+            <div class="col mt-2">
+                <div class="row">
+                    <label class="col-4 col-form-label text-end">出网流量</label>
+                    <div class="col-8">
+                        <input type="text" class="form-control" name="OutData" disabled>
+                    </div>
+                </div>
+            </div>
+            <div class="col mt-2">
+                <div class="row">
+                    <label class="col-4 col-form-label text-end">启用状态</label>
+                    <div class="col-8">
+                        <input type="text" class="form-control" name="EnableState" disabled>
+                    </div>
+                </div>
+            </div>
+            <div class="col mt-2">
+                <div class="row">
+                    <label class="col-4 col-form-label text-end">创建时间</label>
+                    <div class="col-8">
+                        <input type="text" class="form-control" name="Date" disabled>
+                    </div>
+                </div>
+            </div>
+            <div class="col mt-2">
+                <div class="row">
+                    <label class="col-4 col-form-label text-end">备注</label>
+                    <div class="col-8">
+                        <textarea class="form-control" name="Remark"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="text-end mt-3">
+                <button type="button" class="btn btn-primary" onclick="onSubmitClick()">提交</button>
+            </div>
+        </div>
+    </form>
+</div>
+<input id="initAclIp" type="hidden" th:value="${aclIp}">
+<script th:inline="javascript">
+    $(function () {
+        const forwardId = getParam("id")
+        if (forwardId !== "") {//网速统计报表显示
+            showDataSizeChart(0, 0, forwardId)
+            showSpeedChart("F" + forwardId)
+        }
+        getInfo()
+    })
+
+    /**
+     * 获取初始数据
+     */
+    function getInfo() {
+        $.ajaxByData("/forward_list/forward_edit/info")
+            .addAll({
+                id: getParam("id")
+            })
+            .success(data => {
+                $("form").bindValue(data)
+            }).post()
+    }
+
+    /**
+     * 表单提交点击事件
+     */
+    function onSubmitClick() {
+        $("form").ajaxByForm().success(() => {
+            window.location = document.referrer
+        }).post()
+    }
+</script>
+</body>
+</html>

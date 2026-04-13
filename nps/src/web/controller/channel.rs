@@ -40,7 +40,7 @@ pub async fn list() -> Response {
             mode: it.mode,
             server_port: it.server_port,
             target_port: it.target_port,
-            enable_state: it.enable_state,
+            is_enabled: it.is_enabled,
             in_len: it.in_len.data_size(),
             out_len: it.out_len.data_size(),
             security_state: it.security_state,
@@ -67,10 +67,10 @@ pub async fn detail(AppQuery(query): AppQuery<model::DetailQuery>) -> Response {
             target_port: channel.target_port,
             remark: channel.remark,
             created_at: channel.created_at.date_format(),
-            enable_state: if channel.enable_state == 0 {
-                "关闭"
-            } else {
+            is_enabled: if channel.is_enabled {
                 "开启"
+            } else {
+                "关闭"
             }
             .to_string(),
             in_len: channel.in_len.data_size(),
@@ -86,32 +86,6 @@ pub async fn detail(AppQuery(query): AppQuery<model::DetailQuery>) -> Response {
         }
     };
     Json(detail).into_response()
-
-    // client := ClientDao.SelectOne(ClientId)
-    // var outForm form.ChannelEditForm
-    // if Id == 0 {
-    // 	outForm = form.ChannelEditForm{
-    // 		Mode: 1,
-    // 	}
-    // } else { //修改时
-    // 	channelDto := ChannelDao.SelectOne(Id)
-    // 	outForm = form.ChannelEditForm{
-    // 		Id:            channelDto.Id,
-    // 		Name:          channelDto.Name,
-    // 		Mode:          channelDto.Mode,
-    // 		Remark:        channelDto.Remark,
-    // 		ServerPort:    channelDto.ServerPort,
-    // 		TargetPort:    channelDto.TargetPort,
-    // 		Date:          Date.FormatByTimespan(channelDto.Date),
-    // 		EnableState:   Bool.Is(channelDto.EnableState == 0, "关闭", "开启"),
-    // 		InData:        Number.ToDataSize(channelDto.InData),
-    // 		OutData:       Number.ToDataSize(channelDto.OutData),
-    // 		SecurityState: channelDto.SecurityState,
-    // 	}
-    // }
-    // outForm.ClientId = ClientId
-    // outForm.ClientName = client.Name
-    // return outForm
 }
 
 // Edit 提交表单API
@@ -124,7 +98,7 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
     let conn = db::get();
     let mut channel = if form.id == 0 {
         Channel {
-            enable_state: 1,
+            is_enabled: true,
             ..Default::default()
         }
     } else {
@@ -164,7 +138,7 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
         }
         return biz_error!(e.to_string());
     }
-    if channel.enable_state == 1
+    if channel.is_enabled
         && nps::CLIENT_NPS_MAP
             .lock()
             .await
@@ -203,7 +177,11 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     let conn = db::get();
     let channel = channel_dao::select_one(&conn, query.id).await.unwrap();
-    let to = if channel.enable_state == 0 {
+    let to = if channel.is_enabled {
+        //关闭代理监听
+        tcp_proxy_manager::shutdown_by_channel(query.id).await;
+        false
+    } else {
         if nps::CLIENT_NPS_MAP
             .lock()
             .await
@@ -212,16 +190,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
             //如果当前客户端在线
             tcp_proxy_manager::accept_channel(channel).await.unwrap(); //开启隧道监听
         }
-        1
-        // clientDto := ClientDao.SelectOne(channel.ClientId)
-        // if tcp_client.IsOnline(clientDto.Id) {
-        // 	udp_proxy.AcceptClient(clientDto) //重新开启监听该客户端
-        // }
-    } else {
-        // //关闭代理监听
-        // udp_proxy.ShutdownByChannel(channel.Id)
-        tcp_proxy_manager::shutdown_by_channel(query.id).await;
-        0
+        true
     };
     channel_dao::toggle_enable(&conn, query.id, to)
         .await
@@ -299,7 +268,7 @@ mod model {
         pub mode: i64,
         pub server_port: i64,
         pub target_port: String,
-        pub enable_state: i64,
+        pub is_enabled: bool,
         pub in_len: String,
         pub out_len: String,
         pub security_state: i64,
@@ -326,7 +295,7 @@ mod model {
         pub target_port: String,
         pub remark: Option<String>,
         pub created_at: String,
-        pub enable_state: String,
+        pub is_enabled: String,
         pub in_len: String,
         pub out_len: String,
         pub security_state: i64,
