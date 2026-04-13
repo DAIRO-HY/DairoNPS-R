@@ -1,6 +1,6 @@
 use crate::dao::channel_dao::Channel;
 use crate::dao::client_dao;
-use crate::dao::{channel_dao, data_io_dao};
+use crate::dao::{channel_dao, traffic_stats_dao};
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::ToDataSize;
 use crate::extension::number::ToDateFormat;
@@ -73,6 +73,7 @@ pub async fn detail(AppQuery(query): AppQuery<model::DetailQuery>) -> Response {
                 "关闭"
             }
             .to_string(),
+            is_stats_traffic: channel.is_stats_traffic,
             in_len: channel.in_len.data_size(),
             out_len: channel.out_len.data_size(),
             security_state: channel.security_state,
@@ -89,7 +90,6 @@ pub async fn detail(AppQuery(query): AppQuery<model::DetailQuery>) -> Response {
 }
 
 // Edit 提交表单API
-// post:/channel_list/channel_edit/edit
 pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
     if let Err(e) = form.validate() {
         //验证表单数据是否合法
@@ -116,8 +116,13 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
     channel.server_port = form.server_port;
     channel.target_port = form.target_port;
     channel.security_state = form.security_state;
+    channel.is_stats_traffic = form.is_stats_traffic;
     channel.remark = form.remark;
     channel.version = form.version;
+
+    if channel.security_state == 1 && !channel.is_stats_traffic{
+        return biz_error!("加密传输模式必须开启流量统计");
+    }
 
     let mut err = None;
     if form.id == 0 {
@@ -157,7 +162,7 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
     if let Err(e) = channel_dao::delete(&mut *tx, query.id).await {
         return biz_errorf!("删除失败:{}", e);
     }
-    data_io_dao::delete_by_channel_id(&mut *tx, query.id)
+    traffic_stats_dao::delete_by_channel_id(&mut *tx, query.id)
         .await
         .unwrap();
 
@@ -174,25 +179,25 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
 /// 修改可用状态
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     let conn = db::get();
-    let channel = channel_dao::select_one(&conn, query.id).await.unwrap();
-    let to = if channel.is_enabled {
+    let mut channel = channel_dao::select_one(&conn, query.id).await.unwrap();
+    channel_dao::toggle_enable(&conn, query.id, !channel.is_enabled)
+        .await
+        .unwrap();
+    if channel.is_enabled {
         //关闭代理监听
         tcp_proxy_manager::shutdown_by_channel(query.id).await;
-        false
     } else {
         if nps::CLIENT_LIVE_MAP
             .lock()
             .await
             .contains_key(&channel.client_id)
         {
+            channel.is_enabled = true;
+
             //如果当前客户端在线
             tcp_proxy_manager::accept_channel(channel).await.unwrap(); //开启隧道监听
         }
-        true
     };
-    channel_dao::toggle_enable(&conn, query.id, to)
-        .await
-        .unwrap();
 }
 
 mod model {
@@ -247,6 +252,9 @@ mod model {
         pub out_len: String,
         pub security_state: i64,
 
+        ///是否统计流量
+        pub is_stats_traffic: bool,
+
         // 乐观排他用的版本号
         pub version: i64,
     }
@@ -263,6 +271,9 @@ mod model {
         pub server_port: i64,
         pub target_port: String,
         pub security_state: i64,
+
+        ///是否统计流量
+        pub is_stats_traffic: bool,
         pub remark: Option<String>,
 
         // 乐观排他用的版本号

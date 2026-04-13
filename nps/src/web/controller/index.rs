@@ -2,13 +2,15 @@ use crate::dao::system_config_dao;
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::ToDataSize;
 use crate::model::data_io_len::DataIOLen;
-use crate::nps::nps_timer::INSERT_CACHE_LIST;
 use crate::{forward, nps};
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
 use futures::{Stream, TryFutureExt};
 use std::{convert::Infallible, time::Duration};
+use std::sync::atomic::Ordering;
 use tokio_stream::StreamExt;
+use crate::forward::forward_timer;
+use crate::nps::nps_timer;
 
 pub async fn index() -> &'static str {
     "Hello, Index!"
@@ -36,9 +38,12 @@ async fn get_data() -> model::NPSStatus {
     //系统配置
     let system_config = system_config_dao::get(&db::get()).await.unwrap_or_default();
 
-    //等待写入部分数据大小
-    let insert_cache_len =
-        INSERT_CACHE_LIST
+    //系统总流量
+    let system_len = DataIOLen::from(system_config.in_len,system_config.out_len);
+
+    //隧道等待写入部分数据大小
+    let channel_cache_len =
+        nps_timer::INSERT_CACHE_LIST
             .lock()
             .await
             .iter()
@@ -49,25 +54,39 @@ async fn get_data() -> model::NPSStatus {
                 )
             });
 
-    let client_nps_map = nps::CLIENT_LIVE_MAP.lock().await;
-    let online_client_count = client_nps_map.len();
-    let tcp_pool_count = client_nps_map
+    //端口转发等待写入部分数据大小
+    let forward_cache_len =
+        forward_timer::INSERT_CACHE_LIST
+            .lock()
+            .await
+            .iter()
+            .fold(DataIOLen::default(), |pre, it| {
+                DataIOLen::from(
+                    pre.in_len + it.in_len as u64,
+                    pre.out_len + it.out_len as u64,
+                )
+            });
+    let total_len = system_len + channel_cache_len + forward_cache_len;
+
+    let client_live_map = nps::CLIENT_LIVE_MAP.lock().await;
+    let online_client_count = client_live_map.len();
+    let tcp_pool_count = client_live_map
         .iter()
         .fold(0, |p, (_, it)| p + it.tcp_pool.len());
-    drop(client_nps_map);
+    drop(client_live_map);
 
-    let channel_nps_map = nps::CHANNEL_LIVE_MAP.lock().await;
-    let channel_count = channel_nps_map.len();
-    let tcp_bridge_count = channel_nps_map
+    let channel_live_map = nps::CHANNEL_LIVE_MAP.lock().await;
+    let channel_count = channel_live_map.len();
+    let tcp_bridge_count = channel_live_map
         .iter()
-        .fold(0, |p, (_, it)| p + it.bridger.len());
-    drop(channel_nps_map);
+        .fold(0, |p, (_, it)| p + it.bridge_count.load(Ordering::Relaxed));
+    drop(channel_live_map);
 
     let forward_live_map = forward::FORWARD_LIVE_MAP.lock().await;
     let forward_count = forward_live_map.len();
     let forward_bridge_count = forward_live_map
         .iter()
-        .fold(0, |p, (_, it)| p + it.bridger.len());
+        .fold(0, |p, (_, it)| p + it.bridge_count.load(Ordering::Relaxed));
     drop(forward_live_map);
 
     model::NPSStatus {
@@ -77,8 +96,8 @@ async fn get_data() -> model::NPSStatus {
         tcp_pool_count,       //当前TCP连接池
         forward_count,        //端口转发监听数量
         forward_bridge_count, //端口转发会话数
-        in_len: (system_config.in_len as u64 + insert_cache_len.in_len).data_size(), //入网流量
-        out_len: (system_config.out_len as u64 + insert_cache_len.out_len).data_size(), //出网流量
+        in_len: total_len.in_len.data_size(), //入网流量
+        out_len: total_len.out_len.data_size(), //出网流量
     }
 }
 

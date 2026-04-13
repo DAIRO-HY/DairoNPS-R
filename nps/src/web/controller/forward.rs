@@ -1,8 +1,12 @@
+use crate::dao::forward_dao::Forward;
+use crate::dao::{forward_dao, traffic_stats_dao};
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::ToDataSize;
 use crate::extension::number::ToDateFormat;
+use crate::forward::tcp_accept_manager;
 use crate::nps::nps_proxy::tcp_proxy_manager;
 use crate::web::extract::{AppForm, AppQuery};
+use crate::web::router::IdQuery;
 use crate::{biz_error, biz_errorf, nps};
 use axum::{
     Json,
@@ -10,9 +14,6 @@ use axum::{
 };
 use std::collections::HashMap;
 use validator::Validate;
-use crate::dao::{data_io_dao, forward_dao};
-use crate::dao::forward_dao::Forward;
-use crate::web::router::IdQuery;
 
 ///  转发列表
 pub async fn list() -> Response {
@@ -61,7 +62,8 @@ pub async fn detail(AppQuery(query): AppQuery<IdQuery>) -> Response {
             } else {
                 "关闭"
             }
-                .to_string(),
+            .to_string(),
+            is_stats_traffic: channel.is_stats_traffic,
             in_len: channel.in_len.data_size(),
             out_len: channel.out_len.data_size(),
         }
@@ -94,6 +96,7 @@ pub async fn edit(AppForm(form): AppForm<model::ForwardEdit>) -> Response {
     forward.name = form.name;
     forward.server_port = form.server_port;
     forward.target_port = form.target_port;
+    forward.is_stats_traffic = form.is_stats_traffic;
     forward.remark = form.remark;
 
     let mut err = None;
@@ -115,9 +118,9 @@ pub async fn edit(AppForm(form): AppForm<model::ForwardEdit>) -> Response {
         }
         return biz_error!(e.to_string());
     }
-    if forward.is_enabled    {
+    if forward.is_enabled {
         //当前隧道有效并且当前客户端在线，则开启隧道监听
-        // tcp_proxy_manager::accept_channel(forward).await; //开启隧道监听
+        tcp_accept_manager::accept_forward(forward).await.unwrap();
     }
     Response::empty()
 }
@@ -129,7 +132,7 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
     if let Err(e) = forward_dao::delete(&mut *tx, query.id).await {
         return biz_errorf!("删除失败:{}", e);
     }
-    data_io_dao::delete_by_forward_id(&mut *tx, query.id)
+    traffic_stats_dao::delete_by_forward_id(&mut *tx, query.id)
         .await
         .unwrap();
 
@@ -146,20 +149,17 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
 /// 修改可用状态
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     let conn = db::get();
-    let forward = forward_dao::select_one(&conn, query.id).await.unwrap();
-    let to = if forward.is_enabled {
-        //关闭代理监听
-        // tcp_proxy_manager::shutdown_by_channel(query.id).await;
-        false
-    } else {
-
-            //如果当前客户端在线
-            // tcp_proxy_manager::accept_channel(channel).await.unwrap(); //开启隧道监听
-        true
-    };
-    forward_dao::toggle_enable(&conn, query.id, to)
+    let mut forward = forward_dao::select_one(&conn, query.id).await.unwrap();
+    forward_dao::toggle_enable(&conn, query.id, !forward.is_enabled)
         .await
         .unwrap();
+    if forward.is_enabled {
+        //关闭代理监听
+        tcp_accept_manager::shutdown(query.id).await;
+    } else {
+        forward.is_enabled = true;
+        tcp_accept_manager::accept_forward(forward).await.unwrap();
+    };
 }
 
 mod model {
@@ -189,6 +189,9 @@ mod model {
         pub remark: Option<String>,
         pub created_at: String,
         pub is_enabled: String,
+
+        ///是否统计流量
+        pub is_stats_traffic: bool,
         pub in_len: String,
         pub out_len: String,
     }
@@ -202,5 +205,9 @@ mod model {
         pub name: String,
         pub server_port: i64,
         pub target_port: String,
-        pub remark: Option<String>,    }
+
+        ///是否统计流量
+        pub is_stats_traffic: bool,
+        pub remark: Option<String>,
+    }
 }

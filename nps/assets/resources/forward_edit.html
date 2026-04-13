@@ -22,6 +22,23 @@
             </div>
             <div class="col mt-2">
                 <div class="row">
+                    <label class="col-4 col-form-label text-end">流量实时统计</label>
+                    <div class="col-8 pt-2">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="isStatsTraffic" id="isStatsTrafficFalse"
+                                   value="false">
+                            <label class="form-check-label" for="isStatsTrafficFalse">否（高性能）</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="isStatsTraffic" id="isStatsTrafficTrue"
+                                   value="true">
+                            <label class="form-check-label" for="isStatsTrafficTrue">是</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col mt-2">
+                <div class="row">
                     <label class="col-4 col-form-label text-end">端口</label>
                     <div class="col-8">
                         <input type="text" class="form-control" name="serverPort" autocomplete="off">
@@ -87,11 +104,11 @@
 <input id="initAclIp" type="hidden" th:value="${aclIp}">
 <script>
     $(function () {
-        // const forwardId = getParam("id")
-        // if (forwardId !== "") {//网速统计报表显示
-        //     showDataSizeChart(0, 0, forwardId)
-        //     showSpeedChart("F" + forwardId)
-        // }
+        const forwardId = getParam("id")
+        if (forwardId !== "") {//网速统计报表显示
+            showDataLenChart(0, 0, forwardId)
+            showSpeedChart({forwardId})
+        }
         getDetail()
     })
 

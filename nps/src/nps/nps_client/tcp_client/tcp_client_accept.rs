@@ -95,7 +95,7 @@ async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result
             return Ok(());
         }
     };
-    if client.is_enabled {
+    if !client.is_enabled {
         // println!("客户端：{}已被停止服务,IP:%s", key);
         tcp_stream.shutdown().await?;
         return Ok(());

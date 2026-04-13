@@ -1,9 +1,9 @@
-use crate::dao::data_io_dao;
+use crate::dao::traffic_stats_dao;
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::{Div, ToDataSize, ToDateFormat};
 use crate::model::data_io_len::{DataIOLen, ToU64};
-use crate::nps;
 use crate::web::extract::AppQuery;
+use crate::{forward, nps};
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
 use chrono::DateTime;
@@ -22,15 +22,55 @@ pub async fn real_len(
             if i > 0 {
                 tokio::time::sleep(Duration::from_secs(1)).await;
             }
-            // println!("-->:::::::::::::{}:::::::::::::::::",SystemTime::now()
-            //     .duration_since(UNIX_EPOCH)
-            //     .unwrap()
-            //     .as_millis());
             let data = get_real_len(param).await;
             Ok(Event::default().data(data))
         }
     });
     Sse::new(stream)
+}
+
+/// 获取当前流量数据
+async fn get_real_len(param: model::ChartParam) -> String {
+    let channel_live_map = nps::CHANNEL_LIVE_MAP.lock().await;
+    let forward_live_map = forward::FORWARD_LIVE_MAP.lock().await;
+    let data_len = if param.channel_id > 0 {
+        //查看该隧道实时流量记录
+        match channel_live_map.get(&param.channel_id) {
+            Some(v) => v.data_len.load(),
+            None => DataIOLen::default(),
+        }
+    } else if param.client_id > 0 {
+        //查看该客户端实时流量记录
+        channel_live_map
+            .iter()
+            .filter_map(|(_, v)| {
+                if v.client_id != param.client_id {
+                    return None;
+                }
+                Some(v.data_len.load())
+            })
+            .fold(DataIOLen::default(), |pre, it| pre + it)
+    } else if param.forward_id > 0 {
+        //查看该端口转发实时流量记录
+        match forward_live_map.get(&param.forward_id) {
+            Some(v) => v.data_len.load(),
+            None => DataIOLen::default(),
+        }
+    } else {
+        //查看内网穿透+端口转发实时流量记录
+        let channel_total = channel_live_map
+            .iter()
+            .fold(DataIOLen::default(), |pre, (_, it)| {
+                pre + it.data_len.load()
+            });
+        let forward_total = forward_live_map
+            .iter()
+            .fold(DataIOLen::default(), |pre, (_, it)| {
+                pre + it.data_len.load()
+            });
+        channel_total + forward_total
+    };
+    format!("{}:{}", data_len.in_len, data_len.out_len)
 }
 
 ///　获取指定时间段的流量数据
@@ -59,7 +99,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
     };
 
     let data_len_list = if param.client_id > 0 {
-        data_io_dao::select_io_len_by_client(
+        traffic_stats_dao::select_io_len_by_client(
             &db::get(),
             param.client_id,
             param.start_time,
@@ -68,7 +108,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         .await
         .unwrap()
     } else if param.channel_id > 0 {
-        data_io_dao::select_io_len_by_channel(
+        traffic_stats_dao::select_io_len_by_channel(
             &db::get(),
             param.channel_id,
             param.start_time,
@@ -76,8 +116,17 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         )
         .await
         .unwrap()
+    }  else if param.forward_id > 0 {
+        traffic_stats_dao::select_io_len_by_forward(
+            &db::get(),
+            param.forward_id,
+            param.start_time,
+            param.end_time,
+        )
+        .await
+        .unwrap()
     } else {
-        data_io_dao::select_io_len(&db::get(), param.start_time, param.end_time)
+        traffic_stats_dao::select_io_len(&db::get(), param.start_time, param.end_time)
             .await
             .unwrap()
     };
@@ -173,34 +222,6 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         out_lens,
         unit: unit.to_string(),
     })
-}
-
-/// 获取当前流量数据
-async fn get_real_len(param: model::ChartParam) -> String {
-    let channel_nps_map = nps::CHANNEL_LIVE_MAP.lock().await;
-    let data_len = if param.channel_id > 0 {
-        match channel_nps_map.get(&param.channel_id) {
-            Some(v) => v.data_len.load(),
-            None => DataIOLen::default(),
-        }
-    } else if param.client_id > 0 {
-        channel_nps_map
-            .iter()
-            .filter_map(|(_, v)| {
-                if v.client_id != param.client_id {
-                    return None;
-                }
-                Some(v.data_len.load())
-            })
-            .fold(DataIOLen::default(), |pre, it| pre + it)
-    } else {
-        channel_nps_map
-            .iter()
-            .fold(DataIOLen::default(), |pre, (_, it)| {
-                pre + it.data_len.load()
-            })
-    };
-    format!("{}:{}", data_len.in_len, data_len.out_len)
 }
 
 mod model {

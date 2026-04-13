@@ -98,7 +98,7 @@ async fn create_table(tx: &mut Transaction<'_, Sqlite>) -> Result<(), Box<dyn Er
         "xxx.sql",
         "client.sql",
         "channel.sql",
-        "data_io.sql",
+        "traffic_stats.sql",
         "system_config.sql",
         "forward.sql",
     ] {

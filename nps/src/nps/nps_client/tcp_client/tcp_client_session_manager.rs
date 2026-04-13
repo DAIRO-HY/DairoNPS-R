@@ -94,8 +94,8 @@ pub async fn send_tcp_pool_request(client_id: i64, count: u8) {
  */
 async fn send(client_id: i64, flag: u8, message: &str) {
     let tx = {
-        if let Some(client_nps) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
-            client_nps.sender.clone()
+        if let Some(client_live) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
+            client_live.sender.clone()
         } else {
             return;
         }
@@ -119,8 +119,8 @@ pub async fn remove_session(client_id: i64) {
         .lock()
         .await
         .iter()
-        .filter(|(channel_id, channel_nps)| channel_nps.client_id == client_id)
-        .map(|(channel_id, channel_nps)| channel_nps.closer.clone())
+        .filter(|(channel_id, channel_live)| channel_live.client_id == client_id)
+        .map(|(channel_id, channel_live)| channel_live.closer.clone())
         .collect();
 
     // 关闭正在监听的隧道
@@ -155,8 +155,8 @@ pub async fn remove_session(client_id: i64) {
 // 关闭一个客户端
 pub async fn shutdown(client_id: i64) -> io::Result<()> {
     let tx = {
-        if let Some(client_nps) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
-            client_nps.sender.clone()
+        if let Some(client_live) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
+            client_live.sender.clone()
         } else {
             return Ok(());
         }

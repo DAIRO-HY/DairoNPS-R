@@ -1,12 +1,13 @@
 use crate::dao::forward_dao;
+use crate::dao::forward_dao::Forward;
+use crate::forward;
+use crate::forward::tcp_accept;
 use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps_error::NpsError;
 use dashmap::DashMap;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use tokio::{net::TcpListener, sync::Notify};
-use crate::dao::forward_dao::Forward;
-use crate::forward;
-use crate::forward::tcp_accept::TCPForwardAccept;
 
 // 开始客户端的所有监听
 pub async fn accept() -> Result<(), NpsError> {
@@ -38,26 +39,29 @@ pub async fn accept_forward(forward: Forward) -> Result<(), NpsError> {
     let data_len = AtomicDataIOLen::from(forward.in_len, forward.out_len);
     let closer = Arc::new(Notify::new());
     let bridger = Arc::new(DashMap::new());
-
-    let proxy_tcp_accept = TCPForwardAccept {
-        forward,
-        tcp_listener,
-        closer: closer.clone(),
-        data_len: data_len.clone(),
-        bridger: bridger.clone(),
-    };
+    let bridge_count = Arc::new(AtomicUsize::new(0));
 
     //保存关闭通知器
     forward::FORWARD_LIVE_MAP.lock().await.insert(
         forward_id,
         forward::ForwardLive {
-            data_len,
-            closer,
-            bridger,
+            closer: closer.clone(),
+            data_len: data_len.clone(),
+            bridger: bridger.clone(),
+            bridge_count: bridge_count.clone(),
         },
     );
     tokio::spawn(async move {
-        if let Err(e) = proxy_tcp_accept.accept().await {
+        if let Err(e) = tcp_accept::accept(
+            forward,
+            tcp_listener,
+            closer,
+            data_len,
+            bridger,
+            bridge_count,
+        )
+        .await
+        {
             println!("监听隧道发生了错误:{:?}", e);
         }
 

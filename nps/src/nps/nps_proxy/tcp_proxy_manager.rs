@@ -3,10 +3,11 @@ use crate::dao::channel_dao::Channel;
 use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps;
 use crate::nps::nps_proxy::tcp_proxy_accept::TCPProxyAccept;
+use crate::nps_error::NpsError;
 use dashmap::DashMap;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use tokio::{net::TcpListener, sync::Notify};
-use crate::nps_error::NpsError;
 
 // 开始客户端的所有监听
 pub async fn accept_client(client_id: i64) -> Result<(), NpsError> {
@@ -41,6 +42,7 @@ pub async fn accept_channel(channel: Channel) -> Result<(), NpsError> {
     let data_len = AtomicDataIOLen::from(channel.in_len, channel.out_len);
     let closer = Arc::new(Notify::new());
     let bridger = Arc::new(DashMap::new());
+    let bridge_count = Arc::new(AtomicUsize::new(0));
 
     let proxy_tcp_accept = TCPProxyAccept {
         channel,
@@ -48,6 +50,7 @@ pub async fn accept_channel(channel: Channel) -> Result<(), NpsError> {
         closer: closer.clone(),
         data_len: data_len.clone(),
         bridger: bridger.clone(),
+        bridge_count: bridge_count.clone(),
     };
 
     //保存关闭通知器
@@ -58,6 +61,7 @@ pub async fn accept_channel(channel: Channel) -> Result<(), NpsError> {
             data_len,
             closer,
             bridger,
+            bridge_count,
         },
     );
     tokio::spawn(async move {
@@ -83,8 +87,8 @@ pub async fn shutdown_by_channel(channel_id: i64) {
 
     loop {
         //等待隧道代理监听停止,否则可能导致下次监听同一端口失败
-        if let Some(channel_nps) = nps::CHANNEL_LIVE_MAP.lock().await.get(&channel_id) {
-            let _ = channel_nps.closer.notify_waiters();
+        if let Some(channel_live) = nps::CHANNEL_LIVE_MAP.lock().await.get(&channel_id) {
+            let _ = channel_live.closer.notify_waiters();
             tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
         } else {
             return;

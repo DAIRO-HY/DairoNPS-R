@@ -53,9 +53,9 @@
         $("#speedChatDiv").show()
         initSpeedChart()
         const query = new URLSearchParams({
-            clientId:0,
-            channelId:0,
-            forwardId:0,
+            clientId: 0,
+            channelId: 0,
+            forwardId: 0,
             ...option
         }).toString();
         chartEs = new EventSource("/chart/real_len?" + query);

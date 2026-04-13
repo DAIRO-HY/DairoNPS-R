@@ -11,7 +11,7 @@ use bytes::Bytes;
 use dashmap::DashMap;
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::sync::Arc;
 use std::sync::LazyLock;
 use serde::Serialize;
@@ -41,6 +41,9 @@ pub struct ChannelLive {
 
     /// 正在通信的桥接信息
     pub bridger: Arc<DashMap<u64, TCPBridgeInfo>>,
+
+    /// 用来统计桥接数量，虽然bridger也可以统计桥接数量，但是当不统计数据流量时bridger将无效
+    pub bridge_count: Arc<AtomicUsize>,
 }
 
 /// 穿透客户端监听相关的连接信息
@@ -57,10 +60,10 @@ pub struct ClientLive {
 
 // NPS模块开启
 pub fn ready() {
-    tokio::spawn(async {
 
-        // 启动定时任务
-        nps_timer::init();
+    // 启动定时任务
+    nps_timer::init();
+    tokio::spawn(async {
         if let Err(e) = nps_client::tcp_client::tcp_client_accept::accept().await{
             eprintln!("监听客户端发生了错误:{:?}", e);
         }

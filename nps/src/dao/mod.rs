@@ -1,5 +1,5 @@
 pub mod channel_dao;
-pub mod data_io_dao;
+pub mod traffic_stats_dao;
 pub mod client_dao;
 pub mod forward_dao;
 pub mod system_config_dao;

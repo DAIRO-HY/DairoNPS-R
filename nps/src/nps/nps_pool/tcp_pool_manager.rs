@@ -29,16 +29,16 @@ pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
         )));
     };
 
-    let mut client_nps_map = nps::CLIENT_LIVE_MAP.lock().await;
+    let mut client_live_map = nps::CLIENT_LIVE_MAP.lock().await;
 
     //得到客户端连接池列表
-    let Some(mut client_nps) = client_nps_map.get_mut(&client_id) else {
+    let Some(mut client_live) = client_live_map.get_mut(&client_id) else {
         return Ok(());
     };
-    if client_nps.tcp_pool.len() >= nps_constant::MAX_POOL_COUNT {
+    if client_live.tcp_pool.len() >= nps_constant::MAX_POOL_COUNT {
         // println!("-->客户端: {}连接池已满,拒绝新连接。count: {}", client_id, pools.len());
         //已经达到最大连接数,拒绝新连接
-        drop(client_nps_map); // 释放锁
+        drop(client_live_map); // 释放锁
 
         //已经达到最大连接数,拒绝新连接
         tcp.shutdown().await?;
@@ -51,7 +51,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
             .as_secs(),
         tcp: tcp,
     };
-    (client_nps.tcp_pool).push(pool);
+    (client_live.tcp_pool).push(pool);
     Ok(())
 }
 
@@ -60,19 +60,19 @@ pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
  * @param clientID 客户端ID
  */
 async fn get(client_id: i64) -> Option<(TcpStream, usize)> {
-    let mut client_nps_map = nps::CLIENT_LIVE_MAP.lock().await;
+    let mut client_live_map = nps::CLIENT_LIVE_MAP.lock().await;
 
     //得到客户端连接池列表
-    let Some(mut client_nps) = client_nps_map.get_mut(&client_id) else {
+    let Some(mut client_live) = client_live_map.get_mut(&client_id) else {
         return None;
     };
-    let count = client_nps.tcp_pool.len();
+    let count = client_live.tcp_pool.len();
     if count == 0 {
         return None;
     }
 
     //从连接池取出并移除最旧的连接，较少连接池中存在过期连接
-    Some((client_nps.tcp_pool.remove(0).tcp, count))
+    Some((client_live.tcp_pool.remove(0).tcp, count))
 }
 
 /**

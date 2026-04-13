@@ -7,3 +7,11 @@ pub fn current_millis() -> u64 {
         .unwrap()
         .as_millis() as u64
 }
+
+/// 获取系统时间戳（秒）
+pub fn current_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+}

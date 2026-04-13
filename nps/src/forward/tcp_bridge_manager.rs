@@ -1,12 +1,13 @@
-use super::tcp_bridge::{TCPBridge, TCPBridgeInfo};
+use super::tcp_bridge::TCPBridgeInfo;
+use crate::dao::forward_dao::Forward;
+use crate::forward::tcp_bridge;
 use crate::model::data_io_len::AtomicDataIOLen;
-use crate::nps::nps_pool::tcp_pool_manager;
 use dashmap::DashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
-use crate::dao::forward_dao::Forward;
 
 /**
  * 开始会话
@@ -21,27 +22,37 @@ pub async fn make_bridge(
     mut proxy_tcp: TcpStream,
     data_len: AtomicDataIOLen,
     close_notify: Arc<Notify>,
+    bridge_count: Arc<AtomicUsize>,
 ) {
     let target_port = forward.target_port.clone();
-    tokio::spawn(async {
-
-        // 1. 建立连接
-        let mut target_tcp = match TcpStream::connect(target_port).await{
+    let is_stats_traffic = forward.is_stats_traffic.clone();
+    tokio::spawn(async move {
+        // 建立连接
+        let target_tcp = match TcpStream::connect(target_port).await {
             Ok(v) => v,
-            Err(e)=>{//与目标服务器连接失败时，直接关闭
+            Err(e) => {
+                //与目标服务器连接失败时，直接关闭
                 let _ = proxy_tcp.shutdown().await;
-                return
-            },
+                return;
+            }
         };
-        let bridge = TCPBridge {
+
+        //并发数+1
+        bridge_count.fetch_add(1, Ordering::Relaxed);
+        if let Err(e) = tcp_bridge::start(
+            is_stats_traffic,
             bridge_info_map,
             proxy_tcp,
             target_tcp,
             data_len,
-            closer: close_notify,
-        };
-        if let Err(e) = bridge.start().await {
+            close_notify,
+        )
+        .await
+        {
             println!("桥接通信接发生了错误:{:?}", e);
         }
+
+        //并发数-1
+        bridge_count.fetch_sub(1, Ordering::Relaxed);
     });
 }

@@ -1,6 +1,6 @@
 use crate::constant::nps_constant;
-use crate::dao::data_io_dao::DataIo;
-use crate::dao::{channel_dao, data_io_dao, client_dao, system_config_dao};
+use crate::dao::traffic_stats_dao::TrafficStats;
+use crate::dao::{channel_dao, traffic_stats_dao, client_dao, system_config_dao};
 use crate::extension::number::ToDateFormat;
 use crate::model::data_io_len::DataIOLen;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
@@ -17,7 +17,7 @@ use tokio::time::sleep;
 use crate::util::time_util;
 
 //准备用来存入数据库的数据缓存，避免频繁操作数据库
-pub static INSERT_CACHE_LIST: LazyLock<Mutex<Vec<DataIo>>> = LazyLock::new(|| Mutex::new(Vec::new()));
+pub static INSERT_CACHE_LIST: LazyLock<Mutex<Vec<TrafficStats>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 
 pub fn init() {
     //统计隧道数据总量
@@ -40,7 +40,6 @@ async fn channel_collect_data() {
     loop {
         sleep(Duration::from_millis(application::DATA_COLLECT_INTERVAL)).await;
         collect_data(
-            // &mut insert_cache_list,
             &mut pre_channel_len_map,
             &mut pre_insert_time,
         )
@@ -54,14 +53,16 @@ async fn channel_collect_data() {
 
 /// 收集流量数据
 async fn collect_data(
-    // insert_cache_list: &mut Vec<ChannelData>,
     pre_channel_len_map: &mut HashMap<i64, DataIOLen>,
     pre_insert_time: &mut u64,
 ) -> Result<(), sqlx::Error> {
     let mut insert_cache_list = INSERT_CACHE_LIST.lock().await;
     *pre_insert_time += application::DATA_COLLECT_INTERVAL;
-    let channel_nps_map = CHANNEL_LIVE_MAP.lock().await;
-    for (channel_id, channel_nps) in channel_nps_map.iter() {
+
+    //当前时间戳
+    let now = time_util::current_secs() as i64;
+    let channel_live_map = CHANNEL_LIVE_MAP.lock().await;
+    for (channel_id, channel_live) in channel_live_map.iter() {
         let mut pre_len = match pre_channel_len_map.get_mut(channel_id) {
             Some(it) => it,
             None => {
@@ -70,22 +71,19 @@ async fn collect_data(
                 pre_channel_len_map.get_mut(channel_id).unwrap()
             }
         };
-        if *pre_len == channel_nps.data_len.load() {
+        if *pre_len == channel_live.data_len.load() {
             //如果数据总量没有变化，跳过
             // println!("-->数据总量没有变化，跳过");
             continue;
         }
 
         //每隔STATS_INTERVAL毫秒统计一次数据总量
-        let current_data_io = channel_nps.data_len.load();
-        insert_cache_list.push(DataIo {
+        let current_data_io = channel_live.data_len.load();
+        insert_cache_list.push(TrafficStats {
             forward_id:0,
-            client_id: channel_nps.client_id,
+            client_id: channel_live.client_id,
             channel_id: channel_id.clone(),
-            date: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
+            date: now,
             in_len: (current_data_io.in_len - pre_len.in_len) as i64, //计算数据长度差
             out_len: (current_data_io.out_len - pre_len.out_len) as i64,
         });
@@ -93,13 +91,13 @@ async fn collect_data(
         //更新上次统计数量
         *pre_len = current_data_io;
     }
-    drop(channel_nps_map);
+    drop(channel_live_map);
     if *pre_insert_time > application::DATA_COLLECT_INSERT_INTERVAL {
         let mut tx = db::get().begin().await?;
 
         //批量循环插入数据
         for it in &*insert_cache_list {
-            data_io_dao::insert(&mut *tx, it).await?
+            traffic_stats_dao::insert(&mut *tx, it).await?
         }
 
         //-------------------------------------统计隧道流量------------------------------------------
@@ -186,8 +184,8 @@ async fn tcp_pool_timeout_check() {
 
         //用来记录连接池被清空的客户端ID,用于请求创建新的连接池
         let mut empty_pool_clients = Vec::new();
-        for (client_id, client_nps) in client_map.iter_mut() {
-            client_nps.tcp_pool.retain(|it| {
+        for (client_id, client_live) in client_map.iter_mut() {
+            client_live.tcp_pool.retain(|it| {
                 //连接池超过指定时间,关闭连接
                 if now - it.create_time > nps_constant::RECYLE_POOL_TIME_OUT {
                     //连接池超过指定时间,关闭连接
@@ -196,7 +194,7 @@ async fn tcp_pool_timeout_check() {
                 }
                 return true;
             });
-            if client_nps.tcp_pool.len() == 0 {
+            if client_live.tcp_pool.len() == 0 {
                 //如果连接池被清空，则记录客户端ID,用于请求创建新的连接池,而不是直接在这里请求创建新的连接池,因为这里还持有连接池的锁,如果在这里请求创建新的连接池,可能会导致死锁
                 empty_pool_clients.push(*client_id);
             }

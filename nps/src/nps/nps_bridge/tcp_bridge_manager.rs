@@ -1,11 +1,13 @@
-use super::tcp_bridge::{TCPBridge, TCPBridgeInfo};
+use super::tcp_bridge::{TCPBridgeInfo};
 use crate::dao::channel_dao::Channel;
 use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps::nps_pool::tcp_pool_manager;
 use dashmap::DashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
+use crate::nps::nps_bridge::tcp_bridge;
 
 /**
  * 开始会话
@@ -20,27 +22,33 @@ pub async fn make_bridge(
     proxy_tcp: TcpStream,
     data_len: AtomicDataIOLen,
     close_notify: Arc<Notify>,
+    bridge_count:Arc<AtomicUsize>,
 ) {
     //NPS客户端Socket
     let Some(npc_pool_tcp) = tcp_pool_manager::get_and_add_pool(channel.client_id).await else {
-        // println!("-->客户端: {}没有可用的连接池。", channel.client_id);
-
-        //这里无需关闭，生命周期结束之后会自动关闭
-        // tcp.shutdown().await?;
         return;
     };
-    let bridge = TCPBridge {
-        bridge_info_map,
-        target_port: channel.target_port.clone(),
-        security_state: channel.security_state,
-        proxy_tcp,
-        client_tcp: npc_pool_tcp,
-        channel_data_len: data_len,
-        channel_closer: close_notify,
-    };
-    tokio::spawn(async {
-        if let Err(e) = bridge.start().await {
+    let target_port = channel.target_port.clone();
+    let is_stats_traffic = channel.is_stats_traffic.clone();
+    let security_state = channel.security_state.clone();
+    tokio::spawn(async move{
+
+        //并发数+1
+        bridge_count.fetch_add(1, Ordering::Relaxed);
+        if let Err(e) = tcp_bridge::start(
+            is_stats_traffic,
+            bridge_info_map,
+            target_port,
+            security_state,
+            proxy_tcp,
+            npc_pool_tcp,
+            data_len,
+            close_notify,
+        ).await {
             println!("桥接通信接发生了错误:{:?}", e);
         }
+
+        //并发数-1
+        bridge_count.fetch_sub(1,Ordering::Relaxed);
     });
 }
