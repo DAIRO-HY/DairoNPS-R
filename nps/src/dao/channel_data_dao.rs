@@ -1,1 +1,0 @@
-include!(concat!(env!("OUT_DIR"), "/dao/channel_data_dao.rs"));

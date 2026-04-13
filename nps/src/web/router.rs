@@ -1,5 +1,5 @@
 use crate::extension::ResponseEmptyExt;
-use crate::web::extract::{ AppJson, AppPath, AppQuery};
+use crate::web::extract::{AppJson, AppPath, AppQuery};
 use axum::{
     Json, Router,
     http::{StatusCode, header},
@@ -35,7 +35,10 @@ async fn init_router() {
         .route("/login/do_login", post(super::controller::login::do_login))
         .route("/chart/real_len", get(super::controller::chart::real_len))
         .route("/chart/data_len", get(super::controller::chart::data_len))
-        .route("/index/nps_status", get(super::controller::index::get_nps_status))
+        .route(
+            "/index/nps_status",
+            get(super::controller::index::get_nps_status),
+        )
         .route("/client/list", get(super::controller::client::list))
         .route("/client/detail", get(super::controller::client::detail))
         .route("/client/edit", post(super::controller::client::edit))
@@ -54,6 +57,17 @@ async fn init_router() {
         .route(
             "/channel/toggle_enable",
             put(super::controller::channel::toggle_enable),
+        )
+        .route("/forward/list", get(super::controller::forward::list))
+        .route("/forward/detail", get(super::controller::forward::detail))
+        .route("/forward/edit", post(super::controller::forward::edit))
+        .route(
+            "/forward/delete",
+            delete(super::controller::forward::delete),
+        )
+        .route(
+            "/forward/toggle_enable",
+            put(super::controller::forward::toggle_enable),
         )
         .route(
             "/test",
@@ -91,7 +105,6 @@ async fn init_router() {
             crate::application::IS_AXUM_DROP.store(true, std::sync::atomic::Ordering::Release);
         })
         .await;
-
 }
 
 /// 处理静态文件请求

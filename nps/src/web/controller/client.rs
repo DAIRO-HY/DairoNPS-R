@@ -18,7 +18,7 @@ use validator::Validate;
 
 /// 客户端列表
 pub async fn list() -> Response {
-    let online_client_set: HashSet<i64> = nps::CLIENT_NPS_MAP
+    let online_client_set: HashSet<i64> = nps::CLIENT_LIVE_MAP
         .lock()
         .await
         .keys()
@@ -59,7 +59,7 @@ pub async fn detail(Query(id): Query<IdQuery>) -> Response {
             ip: client.ip,
             in_len: client.in_len.data_size(),
             out_len: client.out_len.data_size(),
-            online_state: if nps::CLIENT_NPS_MAP.lock().await.contains_key(&client.id) {
+            online_state: if nps::CLIENT_LIVE_MAP.lock().await.contains_key(&client.id) {
                 "在线".to_string()
             } else {
                 "离线".to_string()

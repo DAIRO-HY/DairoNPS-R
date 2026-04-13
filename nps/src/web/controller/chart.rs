@@ -1,4 +1,4 @@
-use crate::dao::channel_data_dao;
+use crate::dao::data_io_dao;
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::{Div, ToDataSize, ToDateFormat};
 use crate::model::data_io_len::{DataIOLen, ToU64};
@@ -59,7 +59,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
     };
 
     let data_len_list = if param.client_id > 0 {
-        channel_data_dao::select_io_len_by_client(
+        data_io_dao::select_io_len_by_client(
             &db::get(),
             param.client_id,
             param.start_time,
@@ -68,7 +68,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         .await
         .unwrap()
     } else if param.channel_id > 0 {
-        channel_data_dao::select_io_len_by_channel(
+        data_io_dao::select_io_len_by_channel(
             &db::get(),
             param.channel_id,
             param.start_time,
@@ -77,7 +77,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         .await
         .unwrap()
     } else {
-        channel_data_dao::select_io_len(&db::get(), param.start_time, param.end_time)
+        data_io_dao::select_io_len(&db::get(), param.start_time, param.end_time)
             .await
             .unwrap()
     };
@@ -177,7 +177,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
 
 /// 获取当前流量数据
 async fn get_real_len(param: model::ChartParam) -> String {
-    let channel_nps_map = nps::CHANNEL_NPS_MAP.lock().await;
+    let channel_nps_map = nps::CHANNEL_LIVE_MAP.lock().await;
     let data_len = if param.channel_id > 0 {
         match channel_nps_map.get(&param.channel_id) {
             Some(v) => v.data_len.load(),

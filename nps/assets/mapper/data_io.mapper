@@ -1,0 +1,17 @@
+delete from data_io where client_id = :client_id;
+fn delete_by_client_id(client_id: i64)
+
+delete from data_io where channel_id = :channel_id;
+fn delete_by_channel_id(channel_id: i64)
+
+delete from data_io where forward_id = :forward_id;
+fn delete_by_forward_id(forward_id: i64)
+
+select date,in_len,out_len from data_io where date between :start_date and :end_date
+fn select_io_len(start_date:i64, end_date:i64) ->Vec<DateLen>
+
+select date,in_len,out_len from data_io where client_id = :client_id and date between :start_date and :end_date
+fn select_io_len_by_client(client_id:i64, start_date:i64, end_date:i64) ->Vec<DateLen>
+
+select date,in_len,out_len from data_io where channel_id = :channel_id and date between :start_date and :end_date
+fn select_io_len_by_channel(channel_id:i64, start_date:i64, end_date:i64) ->Vec<DateLen>

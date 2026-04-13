@@ -7,7 +7,7 @@
 <body>
 {{template include/top-bar}}
 <div class="mx-0 mt-3">
-    <div id="listDiv" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-0">
+    <div id="list" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-0">
     </div>
 </div>
 <script>
@@ -15,13 +15,13 @@
         addNavBtn("添加", () => {
             window.location.href = "/forward_edit.html"
         })
-        getList()
+        init()
     });
 
-    function getList() {
-        $.ajaxByData("/forward_list/get_list").success(data => {
+    function init() {
+        $.ajaxByData("/forward/list").success(data => {
             fillData(data)
-        }).post()
+        }).get()
     }
 
     /**
@@ -29,23 +29,23 @@
      * @param data
      */
     function fillData(data) {
-        const $listDiv = $("#listDiv")
+        const $list = $("#list").empty()
         data.forEach(item => {
-            $listDiv.append(`
+            $list.append(`
             <div class="col px-0 pb-3 px-3">
                 <div class="bg-white rounded p-2 position-relative">
-                    <div class="text-center fs-5">${item.Name}</div>
-                    <div>端口:<span>${item.Port}</span> -> <span>${item.TargetPort}</span></div>
-                    <div>入网:<span>${item.InData}</span> &nbsp;&nbsp;出网<span>${item.OutData}</span></div>
-                    <div class="text-danger" style="${item.Error === "" ? "display: none":""}">${item.Error}</div>
+                    <div class="text-center fs-5">${item.name}</div>
+                    <div>端口:<span>${item.serverPort}</span> -> <span>${item.targetPort}</span></div>
+                    <div>入网:<span>${item.inLen}</span> &nbsp;&nbsp;出网<span>${item.outLen}</span></div>
+                    <div class="text-danger" style="${item.error ? "":"display: none"}">${item.error ?? ""}</div>
                     <div class="text-end">
-                        <button class="btn btn-sm btn-outline-danger" onclick="onSetStateClick(${item.Id})">
-                            <i class="bi ${item.EnableState === 1 ? "bi-pause-fill" : "bi-play-fill"}"></i>
+                        <button class="btn btn-sm btn-outline-danger" onclick="onSetStateClick(${item.id})">
+                            <i class="bi ${item.isEnabled ? "bi-pause-fill" : "bi-play-fill"}"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="onDeleteClick(${item.Id})">
+                        <button class="btn btn-sm btn-outline-danger" onclick="onDeleteClick(${item.id})">
                             <i class="bi bi-trash3"></i>
                         </button>
-                        <a class="btn btn-sm btn-outline-primary" href="/forward_edit.html?id=${item.Id}">
+                        <a class="btn btn-sm btn-outline-primary" href="/forward_edit.html?id=${item.id}">
                            <i class="bi bi-pencil-square"></i>
                         </a>
                     </div>
@@ -53,10 +53,6 @@
             </div>
           `)
         })
-    }
-
-    function onSearchSubmit() {
-        $("form").submit()
     }
 
     /**
@@ -67,9 +63,9 @@
         if (!confirm("确定删除?")) {
             return
         }
-        $.ajaxByData("/forward_list/delete?id=" + id).success(() => {
-            history.go(0)
-        }).post()
+        $.ajaxByData("/forward/delete?id=" + id).success(() => {
+            init()
+        }).delete()
     }
 
     /**
@@ -77,9 +73,9 @@
      * @param id
      */
     function onSetStateClick(id) {
-        $.ajaxByData("/forward_list/set_state?id=" + id).success(() => {
-            history.go(0)
-        }).post()
+        $.ajaxByData("/forward/toggle_enable?id=" + id).success(() => {
+            init()
+        }).put()
     }
 </script>
 </body>

@@ -48,14 +48,14 @@ async fn get_data() -> model::NPSStatus {
     // // 获取内存使用情况
     // var memStats runtime.MemStats
     // runtime.ReadMemStats(&memStats)
-    let client_nps_map = nps::CLIENT_NPS_MAP.lock().await;
+    let client_nps_map = nps::CLIENT_LIVE_MAP.lock().await;
     let online_client_count = client_nps_map.len();
     let tcp_pool_count = client_nps_map
         .iter()
         .fold(0, |p, (_, it)| p + it.tcp_pool.len());
     drop(client_nps_map);
 
-    let channel_nps_map = nps::CHANNEL_NPS_MAP.lock().await;
+    let channel_nps_map = nps::CHANNEL_LIVE_MAP.lock().await;
     let channel_count = channel_nps_map.len();
     let tcp_bridge_count = channel_nps_map
         .iter()

@@ -1,0 +1,1 @@
+include!(concat!(env!("OUT_DIR"), "/dao/data_io_dao.rs"));

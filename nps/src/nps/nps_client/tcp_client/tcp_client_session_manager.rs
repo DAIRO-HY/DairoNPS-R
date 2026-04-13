@@ -1,18 +1,17 @@
 use super::tcp_client_session::ClientSession;
 use crate::dao::client_dao::Client;
 use crate::nps;
-use crate::nps::ClientNPS;
+use crate::nps::ClientLive;
 use crate::nps::nps_client::header_util;
 use crate::nps::nps_proxy::tcp_proxy_manager;
 use bytes::Bytes;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io;
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::time::Duration;
-use crate::nps::nps_error::NpsError;
+use crate::nps_error::NpsError;
 use crate::util::time_util;
 //往客户端发送指令的专用连接
 
@@ -26,9 +25,9 @@ pub async fn hold_on_client(client: Client, tcp: TcpStream) -> Result<(),NpsErro
     //用来记录最后一次心跳时间
     let heart_time = Arc::new(AtomicU64::new(time_util::current_millis()));
     let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(1024);
-    nps::CLIENT_NPS_MAP.lock().await.insert(
+    nps::CLIENT_LIVE_MAP.lock().await.insert(
         client_id,
-        ClientNPS {
+        ClientLive {
             tcp_pool: Vec::new(),
             sender: tx,
             heart_time: heart_time.clone(),
@@ -95,7 +94,7 @@ pub async fn send_tcp_pool_request(client_id: i64, count: u8) {
  */
 async fn send(client_id: i64, flag: u8, message: &str) {
     let tx = {
-        if let Some(client_nps) = nps::CLIENT_NPS_MAP.lock().await.get(&client_id) {
+        if let Some(client_nps) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
             client_nps.sender.clone()
         } else {
             return;
@@ -113,10 +112,10 @@ pub async fn remove_session(client_id: i64) {
     // shutdown_proxy_and_pool_and_bridge(client_id).await;
 
     //移除连接
-    nps::CLIENT_NPS_MAP.lock().await.remove(&client_id);
+    nps::CLIENT_LIVE_MAP.lock().await.remove(&client_id);
 
     //获取当前客户端下的所有隧道关闭监听器
-    let channel_ids: Vec<Arc<Notify>> = nps::CHANNEL_NPS_MAP
+    let channel_ids: Vec<Arc<Notify>> = nps::CHANNEL_LIVE_MAP
         .lock()
         .await
         .iter()
@@ -156,7 +155,7 @@ pub async fn remove_session(client_id: i64) {
 // 关闭一个客户端
 pub async fn shutdown(client_id: i64) -> io::Result<()> {
     let tx = {
-        if let Some(client_nps) = nps::CLIENT_NPS_MAP.lock().await.get(&client_id) {
+        if let Some(client_nps) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
             client_nps.sender.clone()
         } else {
             return Ok(());
@@ -172,7 +171,7 @@ pub async fn shutdown(client_id: i64) -> io::Result<()> {
     }
 
     // 等待一段时间让旧连接关闭
-    while nps::CLIENT_NPS_MAP.lock().await.contains_key(&client_id) {
+    while nps::CLIENT_LIVE_MAP.lock().await.contains_key(&client_id) {
         //这里很快就会被关闭，所以不需要设置过长的等待时间
         // println!("-->等待旧连接关闭...");
         tokio::time::sleep(Duration::from_millis(10)).await;

@@ -86,8 +86,7 @@
      * 填充数据
      */
     function fillData() {
-        const $list = $("#list")
-        $list.empty()
+        const $list = $("#list").empty()
         const searchData = getSearchData()
         dataList.filter(it=>{
             if (searchData.clientId && it.clientId != searchData.clientId){

@@ -3,7 +3,6 @@ pub mod nps_client;
 pub mod nps_pool;
 pub mod nps_proxy;
 pub mod nps_timer;
-pub mod nps_error;
 
 use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps::nps_bridge::tcp_bridge::TCPBridgeInfo;
@@ -18,18 +17,19 @@ use std::sync::LazyLock;
 use serde::Serialize;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, Notify};
+use crate::nps;
 
 //隧道穿透信息
-pub static CHANNEL_NPS_MAP: LazyLock<Mutex<HashMap<i64, ChannelNPS>>> =
+pub static CHANNEL_LIVE_MAP: LazyLock<Mutex<HashMap<i64, ChannelLive>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 //客户端连接池
-pub static CLIENT_NPS_MAP: LazyLock<Mutex<HashMap<i64, ClientNPS>>> =
+pub static CLIENT_LIVE_MAP: LazyLock<Mutex<HashMap<i64, ClientLive>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-/// 隧道相关的连接信息
+/// 隧道监听相关的连接信息
 #[derive(Debug)]
-pub struct ChannelNPS {
+pub struct ChannelLive {
     /// 所属客户端ID
     pub client_id: i64,
 
@@ -43,8 +43,8 @@ pub struct ChannelNPS {
     pub bridger: Arc<DashMap<u64, TCPBridgeInfo>>,
 }
 
-/// 穿透客户端相关的连接信息
-pub struct ClientNPS {
+/// 穿透客户端监听相关的连接信息
+pub struct ClientLive {
     /// 与客户端的tcp连接池
     pub tcp_pool: Vec<TCPPool>,
 
@@ -55,9 +55,14 @@ pub struct ClientNPS {
     pub heart_time: Arc<AtomicU64>,
 }
 
-// NPS模块初始化
-pub fn init() {
+// NPS模块开启
+pub fn ready() {
+    tokio::spawn(async {
 
-    // 启动定时任务
-    nps_timer::init();
+        // 启动定时任务
+        nps_timer::init();
+        if let Err(e) = nps_client::tcp_client::tcp_client_accept::accept().await{
+            eprintln!("监听客户端发生了错误:{:?}", e);
+        }
+    });
 }

@@ -3,14 +3,14 @@ use crate::constant::nps_constant;
 use crate::nps;
 use crate::nps::nps_client::header_util;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
-use crate::nps::nps_error::NpsError;
+use crate::nps_error::NpsError;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 
 // 获取某个客户端连接池数量
 pub async fn get_pool_count(client_id: &i64) -> usize {
-    nps::CLIENT_NPS_MAP
+    nps::CLIENT_LIVE_MAP
         .lock()
         .await
         .get(&client_id)
@@ -29,7 +29,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
         )));
     };
 
-    let mut client_nps_map = nps::CLIENT_NPS_MAP.lock().await;
+    let mut client_nps_map = nps::CLIENT_LIVE_MAP.lock().await;
 
     //得到客户端连接池列表
     let Some(mut client_nps) = client_nps_map.get_mut(&client_id) else {
@@ -60,7 +60,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
  * @param clientID 客户端ID
  */
 async fn get(client_id: i64) -> Option<(TcpStream, usize)> {
-    let mut client_nps_map = nps::CLIENT_NPS_MAP.lock().await;
+    let mut client_nps_map = nps::CLIENT_LIVE_MAP.lock().await;
 
     //得到客户端连接池列表
     let Some(mut client_nps) = client_nps_map.get_mut(&client_id) else {

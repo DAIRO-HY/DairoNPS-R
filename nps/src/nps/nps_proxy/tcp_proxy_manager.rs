@@ -2,11 +2,11 @@ use crate::dao::channel_dao;
 use crate::dao::channel_dao::Channel;
 use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps;
-use crate::nps::nps_error::NpsError;
 use crate::nps::nps_proxy::tcp_proxy_accept::TCPProxyAccept;
 use dashmap::DashMap;
 use std::sync::Arc;
 use tokio::{net::TcpListener, sync::Notify};
+use crate::nps_error::NpsError;
 
 // 开始客户端的所有监听
 pub async fn accept_client(client_id: i64) -> Result<(), NpsError> {
@@ -51,9 +51,9 @@ pub async fn accept_channel(channel: Channel) -> Result<(), NpsError> {
     };
 
     //保存关闭通知器
-    nps::CHANNEL_NPS_MAP.lock().await.insert(
+    nps::CHANNEL_LIVE_MAP.lock().await.insert(
         channel_id,
-        nps::ChannelNPS {
+        nps::ChannelLive {
             client_id,
             data_len,
             closer,
@@ -66,7 +66,7 @@ pub async fn accept_channel(channel: Channel) -> Result<(), NpsError> {
         }
 
         //接受到accept结束的通知,说明监听已经停止,可以安全地删除关闭通知器
-        nps::CHANNEL_NPS_MAP.lock().await.remove(&channel_id);
+        nps::CHANNEL_LIVE_MAP.lock().await.remove(&channel_id);
     });
     Ok(())
 }
@@ -83,7 +83,7 @@ pub async fn shutdown_by_channel(channel_id: i64) {
 
     loop {
         //等待隧道代理监听停止,否则可能导致下次监听同一端口失败
-        if let Some(channel_nps) = nps::CHANNEL_NPS_MAP.lock().await.get(&channel_id) {
+        if let Some(channel_nps) = nps::CHANNEL_LIVE_MAP.lock().await.get(&channel_id) {
             let _ = channel_nps.closer.notify_waiters();
             tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
         } else {

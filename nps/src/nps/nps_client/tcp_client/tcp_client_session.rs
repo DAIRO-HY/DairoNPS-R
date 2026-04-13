@@ -1,6 +1,6 @@
 use crate::dao::client_dao::Client;
 use crate::nps::nps_client::header_util;
-use crate::nps::nps_error::NpsError;
+use crate::nps_error::NpsError;
 use crate::util::{security_util, time_util};
 use bytes::Bytes;
 use std::sync::Arc;

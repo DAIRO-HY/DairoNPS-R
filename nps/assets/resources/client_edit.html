@@ -129,10 +129,7 @@
     })
 
     function init() {
-        let id = getParam("id")
-        if (id === "") {
-            id = "0"
-        }
+        let id = getParam("id", "0")
         $.ajaxByData("/client/detail?id=" + id).success(data => {
             $("form").bindValue(data)
         }).get()

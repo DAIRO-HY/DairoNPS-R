@@ -1,10 +1,10 @@
 use crate::constant::nps_constant;
-use crate::dao::channel_data_dao::ChannelData;
-use crate::dao::{channel_dao, channel_data_dao, client_dao, system_config_dao};
+use crate::dao::data_io_dao::DataIo;
+use crate::dao::{channel_dao, data_io_dao, client_dao, system_config_dao};
 use crate::extension::number::ToDateFormat;
 use crate::model::data_io_len::DataIOLen;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
-use crate::nps::{CHANNEL_NPS_MAP, CLIENT_NPS_MAP};
+use crate::nps::{CHANNEL_LIVE_MAP, CLIENT_LIVE_MAP};
 use crate::{application, nps};
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -17,7 +17,7 @@ use tokio::time::sleep;
 use crate::util::time_util;
 
 //准备用来存入数据库的数据缓存，避免频繁操作数据库
-pub static INSERT_CACHE_LIST: LazyLock<Mutex<Vec<ChannelData>>> = LazyLock::new(|| Mutex::new(Vec::new()));
+pub static INSERT_CACHE_LIST: LazyLock<Mutex<Vec<DataIo>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 
 pub fn init() {
     //统计隧道数据总量
@@ -60,7 +60,7 @@ async fn collect_data(
 ) -> Result<(), sqlx::Error> {
     let mut insert_cache_list = INSERT_CACHE_LIST.lock().await;
     *pre_insert_time += application::DATA_COLLECT_INTERVAL;
-    let channel_nps_map = CHANNEL_NPS_MAP.lock().await;
+    let channel_nps_map = CHANNEL_LIVE_MAP.lock().await;
     for (channel_id, channel_nps) in channel_nps_map.iter() {
         let mut pre_len = match pre_channel_len_map.get_mut(channel_id) {
             Some(it) => it,
@@ -78,7 +78,8 @@ async fn collect_data(
 
         //每隔STATS_INTERVAL毫秒统计一次数据总量
         let current_data_io = channel_nps.data_len.load();
-        insert_cache_list.push(ChannelData {
+        insert_cache_list.push(DataIo {
+            forward_id:0,
             client_id: channel_nps.client_id,
             channel_id: channel_id.clone(),
             date: SystemTime::now()
@@ -98,7 +99,7 @@ async fn collect_data(
 
         //批量循环插入数据
         for it in &*insert_cache_list {
-            channel_data_dao::insert(&mut *tx, it).await?
+            data_io_dao::insert(&mut *tx, it).await?
         }
 
         //-------------------------------------统计隧道流量------------------------------------------
@@ -154,7 +155,7 @@ async fn close_not_heart_client() {
     loop {
         sleep(Duration::from_millis(application::HEART_TIME * 2)).await;
         let now = time_util::current_millis();
-        let not_heart_client_id: Vec<i64> = CLIENT_NPS_MAP
+        let not_heart_client_id: Vec<i64> = CLIENT_LIVE_MAP
             .lock()
             .await
             .iter()
@@ -181,7 +182,7 @@ async fn tcp_pool_timeout_check() {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let mut client_map = nps::CLIENT_NPS_MAP.lock().await;
+        let mut client_map = nps::CLIENT_LIVE_MAP.lock().await;
 
         //用来记录连接池被清空的客户端ID,用于请求创建新的连接池
         let mut empty_pool_clients = Vec::new();

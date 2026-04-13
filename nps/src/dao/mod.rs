@@ -1,6 +1,7 @@
 pub mod channel_dao;
-pub mod channel_data_dao;
+pub mod data_io_dao;
 pub mod client_dao;
+pub mod forward_dao;
 pub mod system_config_dao;
 
 /// 生成的DAO文件，包含了增删改查等基本操作的函数定义，以及分页查询条件实体类的定义。

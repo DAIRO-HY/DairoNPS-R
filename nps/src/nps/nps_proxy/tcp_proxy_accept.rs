@@ -8,7 +8,7 @@ use tokio::select;
 use tokio::sync::Notify;
 use crate::application;
 use crate::nps::nps_bridge::tcp_bridge::TCPBridgeInfo;
-use crate::nps::nps_error::NpsError;
+use crate::nps_error::NpsError;
 
 /**
  * TCP隧道代理
@@ -37,7 +37,7 @@ impl TCPProxyAccept {
             select! {
                 // 接收到关闭通知：退出 accept 循环
                 _ = self.closer.notified() => {
-                    println!("-->接收到关闭通知：退出 accept 循环");
+                    // println!("-->接收到关闭通知：退出 accept 循环");
                     break;
                 }
                 // 接收到全局关闭通知：退出 accept 循环

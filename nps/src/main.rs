@@ -4,16 +4,15 @@ mod constant;
 mod dao;
 mod entity;
 mod extension;
+mod forward;
 mod model;
 mod nps;
+mod nps_error;
 mod util;
 mod web;
 
-use crate::model::data_io_len::AtomicDataIOLen;
 use itertools::Itertools;
 use sqlx::{Column, Executor, Statement, TypeInfo};
-use tokio::{io, try_join};
-use crate::nps::nps_error::NpsError;
 
 #[tokio::main]
 async fn main() -> tokio::io::Result<()> {
@@ -25,14 +24,20 @@ async fn main() -> tokio::io::Result<()> {
     // }
     println!("-->START<--");
     db::init().await;
-    nps::init();
     web::router::ready();
-    if let Err(e) = nps::nps_client::tcp_client::tcp_client_accept::accept().await{
-        println!("监听客户端发生了错误:{:?}", e);
-    }
 
-    //防止重启时，新进程还未完全启动，旧进程就已经退出了
-    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+    //开启内网穿透监听
+    nps::ready();
+
+    //开启端口转发监听
+    forward::read();
+
+    //等待程序推出
+    application::SHUTDOWN_NOTIFY.notified().await;
+    println!("-->即将退出");
+    
+    // 等待一段时间再退出确保监听端口都已经关闭
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     println!("-->FINISH<--");
     Ok(())
 }

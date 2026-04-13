@@ -9,14 +9,14 @@
 {{template include/data_len_chart}}
 {{template include/speed_chart}}
 <div class="m-3 p-2 bg-white rounded">
-    <form action="/forward_list/forward_edit/edit">
-        <input type="hidden" name="Id">
+    <form action="/forward/edit">
+        <input type="hidden" name="id" value="0">
         <div class="row row-cols-1 row-cols-sm-2">
             <div class="col mt-2">
                 <div class="row">
                     <label class="col-4 col-form-label text-end">转发名称</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="Name" autocomplete="off">
+                        <input type="text" class="form-control" name="name" autocomplete="off">
                     </div>
                 </div>
             </div>
@@ -24,7 +24,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">端口</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="Port" autocomplete="off">
+                        <input type="text" class="form-control" name="serverPort" autocomplete="off">
                     </div>
                 </div>
             </div>
@@ -32,7 +32,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">目标端口(ip:端口)</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="TargetPort" autocomplete="off">
+                        <input type="text" class="form-control" name="targetPort" autocomplete="off">
                     </div>
                 </div>
             </div>
@@ -40,7 +40,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">入网流量</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="InData" disabled>
+                        <input type="text" class="form-control" name="inLen" disabled>
                     </div>
                 </div>
             </div>
@@ -48,7 +48,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">出网流量</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="OutData" disabled>
+                        <input type="text" class="form-control" name="outLen" disabled>
                     </div>
                 </div>
             </div>
@@ -56,7 +56,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">启用状态</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="EnableState" disabled>
+                        <input type="text" class="form-control" name="isEnabled" disabled>
                     </div>
                 </div>
             </div>
@@ -64,7 +64,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">创建时间</label>
                     <div class="col-8">
-                        <input type="text" class="form-control" name="Date" disabled>
+                        <input type="text" class="form-control" name="createdAt" disabled>
                     </div>
                 </div>
             </div>
@@ -72,7 +72,7 @@
                 <div class="row">
                     <label class="col-4 col-form-label text-end">备注</label>
                     <div class="col-8">
-                        <textarea class="form-control" name="Remark"></textarea>
+                        <textarea class="form-control" name="remark"></textarea>
                     </div>
                 </div>
             </div>
@@ -85,27 +85,25 @@
     </form>
 </div>
 <input id="initAclIp" type="hidden" th:value="${aclIp}">
-<script th:inline="javascript">
+<script>
     $(function () {
-        const forwardId = getParam("id")
-        if (forwardId !== "") {//网速统计报表显示
-            showDataSizeChart(0, 0, forwardId)
-            showSpeedChart("F" + forwardId)
-        }
-        getInfo()
+        // const forwardId = getParam("id")
+        // if (forwardId !== "") {//网速统计报表显示
+        //     showDataSizeChart(0, 0, forwardId)
+        //     showSpeedChart("F" + forwardId)
+        // }
+        getDetail()
     })
 
     /**
      * 获取初始数据
      */
-    function getInfo() {
-        $.ajaxByData("/forward_list/forward_edit/info")
-            .addAll({
-                id: getParam("id")
-            })
+    function getDetail() {
+        let id = getParam("id" , "0")
+        $.ajaxByData("/forward/detail?id=" + id)
             .success(data => {
                 $("form").bindValue(data)
-            }).post()
+            }).get()
     }
 
     /**
@@ -113,7 +111,7 @@
      */
     function onSubmitClick() {
         $("form").ajaxByForm().success(() => {
-            window.location = document.referrer
+            window.location = "/forward_list.html"
         }).post()
     }
 </script>

@@ -1,11 +1,12 @@
 use super::tcp_bridge::{TCPBridge, TCPBridgeInfo};
-use crate::dao::channel_dao::Channel;
 use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps::nps_pool::tcp_pool_manager;
 use dashmap::DashMap;
 use std::sync::Arc;
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
+use crate::dao::forward_dao::Forward;
 
 /**
  * 开始会话
@@ -16,29 +17,29 @@ use tokio::sync::Notify;
  */
 pub async fn make_bridge(
     bridge_info_map: Arc<DashMap<u64, TCPBridgeInfo>>,
-    channel: &Channel,
-    proxy_tcp: TcpStream,
+    forward: &Forward,
+    mut proxy_tcp: TcpStream,
     data_len: AtomicDataIOLen,
     close_notify: Arc<Notify>,
 ) {
-    //NPS客户端Socket
-    let Some(npc_pool_tcp) = tcp_pool_manager::get_and_add_pool(channel.client_id).await else {
-        // println!("-->客户端: {}没有可用的连接池。", channel.client_id);
-
-        //这里无需关闭，生命周期结束之后会自动关闭
-        // tcp.shutdown().await?;
-        return;
-    };
-    let bridge = TCPBridge {
-        bridge_info_map,
-        target_port: channel.target_port.clone(),
-        security_state: channel.security_state,
-        proxy_tcp,
-        client_tcp: npc_pool_tcp,
-        channel_data_len: data_len,
-        channel_closer: close_notify,
-    };
+    let target_port = forward.target_port.clone();
     tokio::spawn(async {
+
+        // 1. 建立连接
+        let mut target_tcp = match TcpStream::connect(target_port).await{
+            Ok(v) => v,
+            Err(e)=>{//与目标服务器连接失败时，直接关闭
+                let _ = proxy_tcp.shutdown().await;
+                return
+            },
+        };
+        let bridge = TCPBridge {
+            bridge_info_map,
+            proxy_tcp,
+            target_tcp,
+            data_len,
+            closer: close_notify,
+        };
         if let Err(e) = bridge.start().await {
             println!("桥接通信接发生了错误:{:?}", e);
         }
