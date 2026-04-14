@@ -3,7 +3,7 @@ use crate::dao::client_dao::Client;
 use crate::nps;
 use crate::nps::ClientLive;
 use crate::nps::nps_client::header_util;
-use crate::nps::nps_proxy::tcp_proxy_manager;
+use crate::nps::nps_proxy::tcp_proxy;
 use bytes::Bytes;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
@@ -40,13 +40,9 @@ pub async fn hold_on_client(client: Client, tcp: TcpStream) -> Result<(),NpsErro
         tcp,
         heart_time,
     };
-
-    //初始化客户端连接池
-    // udp_pool.InitEmptyPoolByClient(client.Id)
-    //
+    
     // //开启该客户端下所有隧道监听
-    tcp_proxy_manager::accept_client(client_id).await?;
-    // udp_proxy.AcceptClient(client)
+    tcp_proxy::ready_client(client_id).await?;
     let rs = session.start(rx).await;
 
     //会话结束后,移除会话
@@ -67,24 +63,6 @@ pub async fn send_tcp_pool_request(client_id: i64, count: u8) {
     )
     .await;
 }
-//
-// /**
-//  * 向客户端申请UDP连接池请求
-//  * @param clientID 客户端ID
-//  * @param count 申请数量
-//  */
-// fn SendUDPPoolRequest(client_id:u64, count: i32) {
-//     send(clientId, HeaderUtil.REQUEST_UDP_POOL, strconv.Itoa(count))
-// }
-//
-// /**
-//  * 向客户端当前激活的UDP端口
-//  * @param clientID 客户端ID
-//  * @param count 申请数量
-//  */
-// func (mine *ClientSessionManager) SendActiveUDPBridge(clientId int, ports string) {
-//     send(clientId, HeaderUtil.SYNC_ACTIVE_BRIDGE_UDP_PORT, ports)
-// }
 
 /**
  * 往客户端发送数据
@@ -107,9 +85,7 @@ async fn send(client_id: i64, flag: u8, message: &str) {
 }
 
 // 关闭客户端
-// - closeSession 当前关闭的对象
 pub async fn remove_session(client_id: i64) {
-    // shutdown_proxy_and_pool_and_bridge(client_id).await;
 
     //移除连接
     nps::CLIENT_LIVE_MAP.lock().await.remove(&client_id);
@@ -126,31 +102,6 @@ pub async fn remove_session(client_id: i64) {
     // 关闭正在监听的隧道
     channel_ids.iter().for_each(|it| it.notify_waiters());
 }
-
-// // 关闭与内网穿透客户端的会话连接
-// async fn shutdown_proxy_and_pool_and_bridge(client_id: i64) {
-// //关闭代理监听
-// tcp_proxy.ShutdownByClient(clientId)
-// udp_proxy.ShutdownByClient(clientId)
-
-//关闭所有连接池
-// tcp_pool_manager::shutdown_by_client(client_id).await;
-// udp_pool.ShutdownByClient(clientId)
-
-//关闭所有UDP连接池
-//try {
-//   UDPPoolManager.closeByClient(this.client.id!!)
-//} catch (e: Exception) {
-//   e.printStackTrace()
-//}
-//
-//try {
-//   //关闭正在通信的UDP连接
-//   UDPBridgeManager.closeByClient(this.client.id!!)
-//} catch (e: Exception) {
-//   e.printStackTrace()
-//}
-// }
 
 // 关闭一个客户端
 pub async fn shutdown(client_id: i64) -> io::Result<()> {
@@ -178,27 +129,3 @@ pub async fn shutdown(client_id: i64) -> io::Result<()> {
     }
     Ok(())
 }
-
-// // 客户端是否在线监测
-// func IsOnline(clientId int) bool {
-//     clientSessionLock.Lock()
-//     session := clientSessionMap[clientId]
-//     clientSessionLock.Unlock()
-//     if session == nil {
-//         return false
-//     }
-//     return session.IsOnline()
-// }
-//
-// // 获取当前在线客户端数量
-// func OnlineCount() int {
-//     onlineClientCount := 0
-//     clientSessionLock.Lock()
-//     for _, session := range clientSessionMap {
-//         if session.IsOnline() {
-//             onlineClientCount++
-//         }
-//     }
-//     clientSessionLock.Unlock()
-//     return onlineClientCount
-// }

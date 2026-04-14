@@ -1,8 +1,8 @@
 use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps_error::NpsError;
 use dashmap::DashMap;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
@@ -20,23 +20,67 @@ pub struct TCPBridgeInfo {
     pub last_rw_time: u64,
 }
 
+pub struct TcpBridgeParam {
+    pub is_stats_traffic: bool,
+    pub target_port: String,
+    pub bridge_map: Arc<DashMap<u64, TCPBridgeInfo>>,
+    pub proxy_tcp: TcpStream,
+    pub data_len: AtomicDataIOLen,
+    pub closer: Arc<Notify>,
+    pub bridge_count: Arc<AtomicUsize>
+}
+
 //用来生成当前桥接唯一标识
 static NEXT_KEY: AtomicU64 = AtomicU64::new(1);
 
 /**
+ * 开始会话
+ * @param client 客户端DTO
+ * @param channel 隧道信息
+ * @param proxySocket 代理服务端Socket
+ * @param clientSocket 内网穿透客户端Socket
+ */
+pub async fn ready(param: TcpBridgeParam) {
+    tokio::spawn(async move {
+        if let Err(e) = start(param).await {
+            println!("桥接通信接发生了错误:{:?}", e);
+        }
+    });
+}
+
+/**
  * 开始桥接传输数据
  */
-pub async fn start(
-    is_stats_traffic: bool,
-    bridge_info_map: Arc<DashMap<u64, TCPBridgeInfo>>,
-    proxy_tcp: TcpStream,
-    target_tcp: TcpStream,
-    forward_data_len: AtomicDataIOLen,
-    closer: Arc<Notify>,
-) -> Result<(), NpsError> {
-    if !is_stats_traffic {
+async fn start(mut param: TcpBridgeParam) -> Result<(), NpsError> {
+
+    //桥接数+1
+    param.bridge_count.fetch_add(1, Ordering::Relaxed);
+
+    // 建立连接
+    let target_tcp = match TcpStream::connect(param.target_port).await {
+        Ok(v) => v,
+        Err(e) => {
+            //与目标服务器连接失败时，直接关闭
+            let _ = param.proxy_tcp.shutdown().await;
+
+            //桥接数-1
+            param.bridge_count.fetch_sub(1, Ordering::Relaxed);
+            return Err(NpsError::IoError(e));
+        }
+    };
+    if !param.is_stats_traffic {
         // 不需要实时统计流量
-        return copy(proxy_tcp, target_tcp, closer, forward_data_len).await;
+        let result = copy(
+            target_tcp,
+            param.proxy_tcp,
+            param.closer,
+            param.data_len,
+        )
+        .await;
+
+        //桥接数-1
+        param.bridge_count.fetch_sub(1, Ordering::Relaxed);
+        return result;
     }
 
     //统计当前桥接流量
@@ -44,44 +88,47 @@ pub async fn start(
     let key = NEXT_KEY.fetch_add(1, Ordering::Relaxed);
 
     //保存当前桥接信息，供监控使用
-    bridge_info_map.insert(
+    param.bridge_map.insert(
         key,
         TCPBridgeInfo {
-            data_len: forward_data_len.clone(),
+            data_len: param.data_len.clone(),
             create_time: 0,
             last_rw_time: 0,
         },
     );
 
-    let (proxy_reader, proxy_writer) = tokio::io::split(proxy_tcp);
-    let (target_reader, target_writer) = tokio::io::split(target_tcp);
+    let (proxy_reader, proxy_writer) = io::split(param.proxy_tcp);
+    let (target_reader, target_writer) = io::split(target_tcp);
 
     let p2t = proxy_to_target(
         bridge_data_len.clone(),
-        forward_data_len.clone(),
+        param.data_len.clone(),
         proxy_reader,
         target_writer,
-        closer.clone(),
+        param.closer.clone(),
     );
     let c2p = target_to_proxy(
         bridge_data_len,
-        forward_data_len,
+        param.data_len,
         target_reader,
         proxy_writer,
-        closer,
+        param.closer,
     );
     let result = try_join!(p2t, c2p);
 
     //桥接结束后,移除桥接信息
-    bridge_info_map.remove(&key);
+    param.bridge_map.remove(&key);
+
+    //桥接数-1
+    param.bridge_count.fetch_sub(1, Ordering::Relaxed);
     result?;
     Ok(())
 }
 
 /// 不需要实时统计流量，高性能模式
 async fn copy(
-    mut proxy_tcp: TcpStream,
     mut target_tcp: TcpStream,
+    mut proxy_tcp: TcpStream,
     closer: Arc<Notify>,
     data_len: AtomicDataIOLen,
 ) -> Result<(), NpsError> {

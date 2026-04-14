@@ -2,7 +2,7 @@ use super::super::header_util;
 use super::tcp_client_session_manager;
 use crate::application;
 use crate::dao::client_dao;
-use crate::nps::nps_pool::tcp_pool_manager;
+use crate::nps::nps_pool::tcp_pool;
 use crate::util::time_util;
 use sqlx::Error;
 use std::net::SocketAddr;
@@ -67,7 +67,7 @@ async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<()
         header_util::CLIENT_TO_SERVER_MAIN_CONNECTION => validate_session(tcp_stream, addr).await?,
 
         //创建客户端Socket连接池
-        header_util::REQUEST_TCP_POOL => tcp_pool_manager::add(tcp_stream).await?,
+        header_util::REQUEST_TCP_POOL => tcp_pool::add(tcp_stream).await?,
 
         _ => {}
     }

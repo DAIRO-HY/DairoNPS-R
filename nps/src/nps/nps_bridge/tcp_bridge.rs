@@ -1,10 +1,9 @@
 use crate::model::data_io_len::AtomicDataIOLen;
+use crate::nps::security_util::SERVER_SECURITY_KEY;
 use crate::nps_error::NpsError;
-use crate::util::security_util::SERVER_SECURITY_KEY;
 use dashmap::DashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::vec::Vec;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
@@ -25,25 +24,75 @@ pub struct TCPBridgeInfo {
 //用来生成当前桥接唯一标识
 static NEXT_KEY: AtomicU64 = AtomicU64::new(1);
 
+/// 桥接参数
+pub struct TcpBridgeParam {
+    pub is_stats_traffic: bool,                       //是否实时统计流量
+    pub bridge_map: Arc<DashMap<u64, TCPBridgeInfo>>, //桥接信息
+    pub target_port: String,                          //目标端口
+    pub security_state: i64,                          //是否加密传输
+    pub proxy_tcp: TcpStream,                         //代码tcp
+    pub client_tcp: TcpStream,                        //客户端tcp
+    pub data_len: AtomicDataIOLen,                    //流量统计
+    pub closer: Arc<Notify>,                          //关闭监听器
+    pub bridge_count: Arc<AtomicUsize>,               //统计桥接数
+}
+
+/// 准备开始桥接
+pub async fn ready(param: TcpBridgeParam) {
+    tokio::spawn(async move {
+        if let Err(e) = start(param).await {
+            println!("桥接通信接发生了错误:{:?}", e);
+        }
+    });
+}
+
 /**
  * 开始桥接传输数据
  */
-pub async fn start(
-    is_stats_traffic: bool,
-    bridge_info_map: Arc<DashMap<u64, TCPBridgeInfo>>,
-    target_port: String,
-    security_state: i64,
-    proxy_tcp: TcpStream,
-    client_tcp: TcpStream,
-    channel_data_len: AtomicDataIOLen,
-    closer: Arc<Notify>,
-) -> Result<(), NpsError> {
+async fn start(param: TcpBridgeParam) -> Result<(), NpsError> {
+    //桥接数+1
+    param.bridge_count.fetch_add(1, Ordering::Relaxed);
+
+    let (proxy_reader, proxy_writer) = tokio::io::split(param.proxy_tcp);
+    let (client_reader, mut client_writer) = tokio::io::split(param.client_tcp);
+
+    //将加密类型及目标端口 格式:加密状态|端口  1|80   1|127.0.0.1:80
+    //1:加密  0:不加密
+    let mut header = String::new();
+    header.push_str(&(param.security_state.to_string()));
+    header.push('|');
+    header.push_str(param.target_port.as_str());
+
+    //发送目标端口信息
+    if let Err(e) = send_header_to_client(header, &mut client_writer).await {
+
+        //桥接数-1
+        param.bridge_count.fetch_sub(1, Ordering::Relaxed);
+        return Err(e);
+    }
+    if !param.is_stats_traffic {
+        // 不需要实时统计流量
+        let result = copy(
+            proxy_reader,
+            proxy_writer,
+            client_writer,
+            client_reader,
+            param.closer,
+            param.data_len,
+        )
+        .await;
+
+        //桥接数-1
+        param.bridge_count.fetch_sub(1, Ordering::Relaxed);
+        return result;
+    }
+
     //统计当前桥接流量
     let data_len = AtomicDataIOLen::new();
     let key = NEXT_KEY.fetch_add(1, Ordering::Relaxed);
 
     //保存当前桥接信息，供监控使用
-    bridge_info_map.insert(
+    param.bridge_map.insert(
         key,
         TCPBridgeInfo {
             data_len: data_len.clone(),
@@ -52,52 +101,29 @@ pub async fn start(
         },
     );
 
-    let (proxy_reader, proxy_writer) = tokio::io::split(proxy_tcp);
-    let (client_reader, mut client_writer) = tokio::io::split(client_tcp);
-
-    //将加密类型及目标端口 格式:加密状态|端口  1|80   1|127.0.0.1:80
-    //1:加密  0:不加密
-    let mut header = String::new();
-    header.push_str(&(security_state.to_string()));
-    header.push('|');
-    header.push_str(&(target_port.to_string()));
-
-    //发送目标端口信息
-    send_header_to_client(header, &mut client_writer).await?;
-    if !is_stats_traffic {
-        // 不需要实时统计流量
-        return copy(
-            proxy_reader,
-            proxy_writer,
-            client_writer,
-            client_reader,
-            closer,
-            data_len,
-        )
-        .await;
-    }
-
     let p2c = proxy_to_client(
-        security_state == 1,
+        param.security_state == 1,
         data_len.clone(),
-        channel_data_len.clone(),
+        param.data_len.clone(),
         proxy_reader,
         client_writer,
-        closer.clone(),
+        param.closer.clone(),
     );
     let c2p = client_to_proxy(
-        security_state == 1,
+        param.security_state == 1,
         data_len,
-        channel_data_len,
+        param.data_len,
         client_reader,
         proxy_writer,
-        closer,
+        param.closer,
     );
     let result = try_join!(p2c, c2p);
 
     //桥接结束后,移除桥接信息
-    bridge_info_map.remove(&key);
-    // println!("-->桥接数据传输结束");
+    param.bridge_map.remove(&key);
+
+    //桥接数-1
+    param.bridge_count.fetch_sub(1, Ordering::Relaxed);
     result?;
     Ok(())
 }
@@ -119,17 +145,28 @@ async fn copy(
         }
         rs = async {
             try_join!(
-                io::copy(&mut proxy_reader, &mut client_writer),
-                io::copy(&mut client_reader, &mut proxy_writer)
+                async{
+                    let len = io::copy(&mut proxy_reader, &mut client_writer).await;
+                    client_writer.shutdown().await?;
+                    len
+                },
+                async{
+                    let len = io::copy(&mut client_reader, &mut proxy_writer).await;
+                    proxy_writer.shutdown().await?;
+                    len
+                }
             )
         } => {
             return match rs{
                 Ok((in_len,out_len))=>{
                     data_len.add_in(in_len);
                     data_len.add_out(out_len);
+                    println!("-->in_len:{}",in_len);
+                    println!("-->out_len:{}",out_len);
                     Ok(())
                 },
                 Err(e) =>{
+                    println!("-->e:{:?}",e);
                     Err(NpsError::IoError(e))
                 }
             }
@@ -218,7 +255,7 @@ async fn client_to_proxy(
 async fn send_header_to_client(
     header: String,
     client_writer: &mut WriteHalf<TcpStream>,
-) -> io::Result<()> {
+) -> Result<(), NpsError> {
     let mut data = Vec::with_capacity(header.len() + 1);
     data.push(header.len() as u8); //写入数据长度标识
     data.extend_from_slice(header.as_bytes()); //写入数据

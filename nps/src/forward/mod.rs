@@ -1,15 +1,13 @@
-use crate::forward::tcp_bridge::TCPBridgeInfo;
 use crate::model::data_io_len::AtomicDataIOLen;
 use dashmap::DashMap;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 use std::sync::atomic::AtomicUsize;
 use tokio::sync::{Mutex, Notify};
+use crate::forward::tcp_bridge::TCPBridgeInfo;
 
 pub mod tcp_accept;
-pub mod tcp_accept_manager;
 pub mod tcp_bridge;
-pub mod tcp_bridge_manager;
 pub mod forward_timer;
 
 //端口转发监听信息
@@ -26,7 +24,7 @@ pub struct ForwardLive {
     pub closer: Arc<Notify>,
 
     /// 正在通信的桥接信息
-    pub bridger: Arc<DashMap<u64, TCPBridgeInfo>>,
+    pub bridge_map: Arc<DashMap<u64, TCPBridgeInfo>>,
 
     /// 用来统计桥接数量，虽然bridger也可以统计桥接数量，但是当不统计数据流量时bridger将无效
     pub bridge_count: Arc<AtomicUsize>,
@@ -38,7 +36,7 @@ pub fn read() {
     // 定时统计端口转发流量
     forward_timer::init();
     tokio::spawn(async {
-        if let Err(e) = tcp_accept_manager::accept().await{
+        if let Err(e) = tcp_accept::ready().await{
             eprintln!("监听端口转发生了错误:{:?}", e);
         }
     });

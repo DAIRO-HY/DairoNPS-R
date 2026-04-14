@@ -3,10 +3,9 @@ pub mod nps_client;
 pub mod nps_pool;
 pub mod nps_proxy;
 pub mod nps_timer;
+pub mod security_util;
 
 use crate::model::data_io_len::AtomicDataIOLen;
-use crate::nps::nps_bridge::tcp_bridge::TCPBridgeInfo;
-use crate::nps::nps_pool::tcp_pool::TCPPool;
 use bytes::Bytes;
 use dashmap::DashMap;
 use itertools::Itertools;
@@ -17,7 +16,8 @@ use std::sync::LazyLock;
 use serde::Serialize;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, Notify};
-use crate::nps;
+use crate::nps::nps_bridge::tcp_bridge::TCPBridgeInfo;
+use crate::nps::nps_pool::tcp_pool::TCPPool;
 
 //隧道穿透信息
 pub static CHANNEL_LIVE_MAP: LazyLock<Mutex<HashMap<i64, ChannelLive>>> =
@@ -40,7 +40,7 @@ pub struct ChannelLive {
     pub closer: Arc<Notify>,
 
     /// 正在通信的桥接信息
-    pub bridger: Arc<DashMap<u64, TCPBridgeInfo>>,
+    pub bridge_map: Arc<DashMap<u64, TCPBridgeInfo>>,
 
     /// 用来统计桥接数量，虽然bridger也可以统计桥接数量，但是当不统计数据流量时bridger将无效
     pub bridge_count: Arc<AtomicUsize>,

@@ -4,7 +4,7 @@ use crate::dao::{channel_dao, traffic_stats_dao};
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::ToDataSize;
 use crate::extension::number::ToDateFormat;
-use crate::nps::nps_proxy::tcp_proxy_manager;
+use crate::nps::nps_proxy::tcp_proxy;
 use crate::web::extract::{AppForm, AppQuery};
 use crate::web::router::IdQuery;
 use crate::{biz_error, biz_errorf, nps};
@@ -150,7 +150,7 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
             .contains_key(&channel.client_id)
     {
         //当前隧道有效并且当前客户端在线，则开启隧道监听
-        tcp_proxy_manager::accept_channel(channel).await.unwrap(); //开启隧道监听
+        tcp_proxy::ready_channel(channel).await.unwrap(); //开启隧道监听
     }
     Response::empty()
 }
@@ -172,7 +172,7 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
 
     // //关闭代理监听
     // udp_proxy.ShutdownByChannel(channel.Id)
-    tcp_proxy_manager::shutdown_by_channel(query.id).await;
+    tcp_proxy::shutdown_by_channel(query.id).await;
     Response::empty()
 }
 
@@ -185,7 +185,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
         .unwrap();
     if channel.is_enabled {
         //关闭代理监听
-        tcp_proxy_manager::shutdown_by_channel(query.id).await;
+        tcp_proxy::shutdown_by_channel(query.id).await;
     } else {
         if nps::CLIENT_LIVE_MAP
             .lock()
@@ -195,7 +195,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
             channel.is_enabled = true;
 
             //如果当前客户端在线
-            tcp_proxy_manager::accept_channel(channel).await.unwrap(); //开启隧道监听
+            tcp_proxy::ready_channel(channel).await.unwrap(); //开启隧道监听
         }
     };
 }

@@ -3,8 +3,8 @@ use crate::dao::{forward_dao, traffic_stats_dao};
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::ToDataSize;
 use crate::extension::number::ToDateFormat;
-use crate::forward::tcp_accept_manager;
-use crate::nps::nps_proxy::tcp_proxy_manager;
+use crate::forward::tcp_accept;
+use crate::nps::nps_proxy::tcp_proxy;
 use crate::web::extract::{AppForm, AppQuery};
 use crate::web::router::IdQuery;
 use crate::{biz_error, biz_errorf, nps};
@@ -120,7 +120,7 @@ pub async fn edit(AppForm(form): AppForm<model::ForwardEdit>) -> Response {
     }
     if forward.is_enabled {
         //当前隧道有效并且当前客户端在线，则开启隧道监听
-        tcp_accept_manager::accept_forward(forward).await.unwrap();
+        tcp_accept::accept_forward(forward).await.unwrap();
     }
     Response::empty()
 }
@@ -155,10 +155,10 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
         .unwrap();
     if forward.is_enabled {
         //关闭代理监听
-        tcp_accept_manager::shutdown(query.id).await;
+        tcp_accept::shutdown(query.id).await;
     } else {
         forward.is_enabled = true;
-        tcp_accept_manager::accept_forward(forward).await.unwrap();
+        tcp_accept::accept_forward(forward).await.unwrap();
     };
 }
 
