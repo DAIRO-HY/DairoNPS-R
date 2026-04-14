@@ -2,9 +2,12 @@ use crate::nps;
 use clap::Parser;
 use std::env;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::sync::Notify;
 use std::sync::LazyLock;
+
+/// 用来生成当前桥接唯一标识
+pub static BRIDGE_NEXT_TAG: AtomicU64 = AtomicU64::new(0);
 
 /// 用来接收关闭通知的全局异步通知器
 pub static SHUTDOWN_NOTIFY: LazyLock<Arc<Notify>> = LazyLock::new(|| Arc::new(Notify::const_new()));

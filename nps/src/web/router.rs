@@ -18,6 +18,12 @@ pub struct IdQuery {
     pub id: i64,
 }
 
+/// 从查询参数中获取一个参数
+#[derive(Deserialize, Serialize, Debug)]
+pub struct SingleQuery<T> {
+    pub value: T,
+}
+
 pub fn ready() {
     tokio::spawn(init_router());
 }
@@ -69,6 +75,8 @@ async fn init_router() {
             "/forward/toggle_enable",
             put(super::controller::forward::toggle_enable),
         )
+        .route("/bridge/list", get(super::controller::bridge::list))
+        .route("/bridge/broken", put(super::controller::bridge::broken))
         .route(
             "/test",
             get(async || -> Response {

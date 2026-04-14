@@ -6,26 +6,29 @@ pub mod nps_timer;
 pub mod security_util;
 
 use crate::model::data_io_len::AtomicDataIOLen;
+use crate::nps::nps_pool::tcp_pool::TCPPool;
 use bytes::Bytes;
 use dashmap::DashMap;
 use itertools::Itertools;
+use serde::Serialize;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::sync::Arc;
 use std::sync::LazyLock;
-use serde::Serialize;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, Notify};
-use crate::nps::nps_bridge::tcp_bridge::TCPBridgeInfo;
-use crate::nps::nps_pool::tcp_pool::TCPPool;
 
-//隧道穿透信息
+/// 客户端连接池
+pub static CLIENT_LIVE_MAP: LazyLock<Mutex<HashMap<i64, ClientLive>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// 隧道穿透信息
 pub static CHANNEL_LIVE_MAP: LazyLock<Mutex<HashMap<i64, ChannelLive>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-//客户端连接池
-pub static CLIENT_LIVE_MAP: LazyLock<Mutex<HashMap<i64, ClientLive>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+/// 正在通信的桥接信息
+pub static CHANNEL_BRIDGING_MAP: LazyLock<DashMap<u64, TCPBridging>> =
+    LazyLock::new(|| DashMap::new());
 
 /// 隧道监听相关的连接信息
 #[derive(Debug)]
@@ -38,9 +41,6 @@ pub struct ChannelLive {
 
     /// 关闭通知
     pub closer: Arc<Notify>,
-
-    /// 正在通信的桥接信息
-    pub bridge_map: Arc<DashMap<u64, TCPBridgeInfo>>,
 
     /// 用来统计桥接数量，虽然bridger也可以统计桥接数量，但是当不统计数据流量时bridger将无效
     pub bridge_count: Arc<AtomicUsize>,
@@ -58,13 +58,34 @@ pub struct ClientLive {
     pub heart_time: Arc<AtomicU64>,
 }
 
+/// TCP桥接通信信息
+#[derive(Debug,Clone)]
+pub struct TCPBridging {
+    /// 代理客户端ip地址
+    pub ip: String,
+
+    /// 隧道ID
+    pub channel_id: i64,
+
+    /// 流量
+    pub data_len: AtomicDataIOLen,
+
+    /// 创建时间(毫秒)
+    pub create_time: u64,
+
+    /// 记录最后通信时间(毫秒)
+    pub last_rw_time: Arc<AtomicU64>,
+
+    ///关闭监听器
+    pub closer: Arc<Notify>,
+}
+
 // NPS模块开启
 pub fn ready() {
-
     // 启动定时任务
     nps_timer::init();
     tokio::spawn(async {
-        if let Err(e) = nps_client::tcp_client::tcp_client_accept::accept().await{
+        if let Err(e) = nps_client::tcp_client::tcp_client_accept::accept().await {
             eprintln!("监听客户端发生了错误:{:?}", e);
         }
     });

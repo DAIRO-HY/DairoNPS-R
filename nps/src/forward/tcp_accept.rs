@@ -1,7 +1,6 @@
 use crate::dao::forward_dao;
 use crate::dao::forward_dao::Forward;
-use crate::forward::tcp_bridge;
-use crate::forward::tcp_bridge::TCPBridgeInfo;
+use crate::forward::{tcp_bridge, TCPBridging};
 use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps_error::NpsError;
 use crate::{application, forward};
@@ -39,7 +38,6 @@ pub async fn accept_forward(forward: Forward) -> Result<(), NpsError> {
     let forward_id = forward.id;
     let data_len = AtomicDataIOLen::from(forward.in_len, forward.out_len);
     let closer = Arc::new(Notify::new());
-    let bridge_map = Arc::new(DashMap::new());
     let bridge_count = Arc::new(AtomicUsize::new(0));
 
     //保存关闭通知器
@@ -48,7 +46,6 @@ pub async fn accept_forward(forward: Forward) -> Result<(), NpsError> {
         forward::ForwardLive {
             closer: closer.clone(),
             data_len: data_len.clone(),
-            bridge_map: bridge_map.clone(),
             bridge_count: bridge_count.clone(),
         },
     );
@@ -58,7 +55,6 @@ pub async fn accept_forward(forward: Forward) -> Result<(), NpsError> {
             forward,
             closer,
             data_len,
-            bridge_map,
             bridge_count,
         )
         .await
@@ -81,7 +77,6 @@ async fn accept(
     forward: Forward, //端口转发信息
     closer: Arc<Notify>,
     data_len: AtomicDataIOLen,
-    bridge_map: Arc<DashMap<u64, TCPBridgeInfo>>,
     bridge_count: Arc<AtomicUsize>,
 ) -> Result<(), NpsError> {
     loop {
@@ -97,12 +92,13 @@ async fn accept(
             }
 
             accept_res = tcp_listener.accept() => {
-                let (proxy_tcp,_) = accept_res?;
+                let (proxy_tcp,addr) = accept_res?;
                 tcp_bridge::ready(
                     tcp_bridge::TcpBridgeParam{
+                        ip:addr.ip().to_string(),
+                        forward_id:forward.id,
                         is_stats_traffic:forward.is_stats_traffic,
                         target_port: forward.target_port.clone(),
-                        bridge_map:bridge_map.clone(),
                         proxy_tcp,
                         data_len:data_len.clone(),
                         closer:closer.clone(),

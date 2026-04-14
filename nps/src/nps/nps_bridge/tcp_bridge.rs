@@ -1,33 +1,21 @@
 use crate::model::data_io_len::AtomicDataIOLen;
+use crate::{application, nps};
 use crate::nps::security_util::SERVER_SECURITY_KEY;
+use crate::nps::TCPBridging;
 use crate::nps_error::NpsError;
-use dashmap::DashMap;
-use std::sync::Arc;
+use crate::util::time_util;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::{io, select, try_join};
 
-// TCPBridge TCP桥接信息
-#[derive(Debug)]
-pub struct TCPBridgeInfo {
-    pub data_len: AtomicDataIOLen,
-
-    // 创建时间(毫秒)
-    pub create_time: u64,
-
-    // 记录最后通信时间(毫秒)
-    pub last_rw_time: u64,
-}
-
-//用来生成当前桥接唯一标识
-static NEXT_KEY: AtomicU64 = AtomicU64::new(1);
-
 /// 桥接参数
 pub struct TcpBridgeParam {
+    pub ip: String,                                   // 代理客户端ip地址
+    pub channel_id: i64,                              // 隧道ID
     pub is_stats_traffic: bool,                       //是否实时统计流量
-    pub bridge_map: Arc<DashMap<u64, TCPBridgeInfo>>, //桥接信息
     pub target_port: String,                          //目标端口
     pub security_state: i64,                          //是否加密传输
     pub proxy_tcp: TcpStream,                         //代码tcp
@@ -65,7 +53,6 @@ async fn start(param: TcpBridgeParam) -> Result<(), NpsError> {
 
     //发送目标端口信息
     if let Err(e) = send_header_to_client(header, &mut client_writer).await {
-
         //桥接数-1
         param.bridge_count.fetch_sub(1, Ordering::Relaxed);
         return Err(e);
@@ -89,15 +76,20 @@ async fn start(param: TcpBridgeParam) -> Result<(), NpsError> {
 
     //统计当前桥接流量
     let data_len = AtomicDataIOLen::new();
-    let key = NEXT_KEY.fetch_add(1, Ordering::Relaxed);
+    let tag = application::BRIDGE_NEXT_TAG.fetch_add(1, Ordering::Relaxed);
+    let bridge_closer = Arc::new(Notify::new());
+    let last_rw_time = Arc::new(AtomicU64::new(time_util::current_millis()));
 
     //保存当前桥接信息，供监控使用
-    param.bridge_map.insert(
-        key,
-        TCPBridgeInfo {
+    nps::CHANNEL_BRIDGING_MAP.insert(
+        tag,
+        TCPBridging {
+            ip: param.ip,
+            channel_id: param.channel_id,
             data_len: data_len.clone(),
-            create_time: 0,
-            last_rw_time: 0,
+            create_time: time_util::current_millis(),
+            last_rw_time: last_rw_time.clone(),
+            closer:bridge_closer.clone()
         },
     );
 
@@ -108,6 +100,8 @@ async fn start(param: TcpBridgeParam) -> Result<(), NpsError> {
         proxy_reader,
         client_writer,
         param.closer.clone(),
+        bridge_closer.clone(),
+        last_rw_time.clone(),
     );
     let c2p = client_to_proxy(
         param.security_state == 1,
@@ -116,11 +110,13 @@ async fn start(param: TcpBridgeParam) -> Result<(), NpsError> {
         client_reader,
         proxy_writer,
         param.closer,
+        bridge_closer,
+        last_rw_time,
     );
     let result = try_join!(p2c, c2p);
 
     //桥接结束后,移除桥接信息
-    param.bridge_map.remove(&key);
+    nps::CHANNEL_BRIDGING_MAP.remove(&tag);
 
     //桥接数-1
     param.bridge_count.fetch_sub(1, Ordering::Relaxed);
@@ -181,19 +177,26 @@ async fn proxy_to_client(
     mut proxy_reader: ReadHalf<TcpStream>,
     mut client_writer: WriteHalf<TcpStream>,
     closer: Arc<Notify>,
+    bridge_closer: Arc<Notify>,
+    last_rw_time:Arc<AtomicU64>
 ) -> io::Result<()> {
-    let mut buf = [0u8; 4096];
+    let mut buf = [0u8; 1024 * 8];
     loop {
         select! {
             _ = closer.notified() => {
-                // println!("-->接收到关闭通知：退出 proxy_to_client 循环");
                 break;
             }
-            read_data = proxy_reader.read(&mut buf) =>{
+            _ = bridge_closer.notified() => {
+                break;
+            }
+            read_data = proxy_reader.read(&mut buf) => {
                 let n = read_data?;
                 if n == 0 {
                     break;
                 }
+
+                //记录最后一次读写时间
+                last_rw_time.store(time_util::current_millis(),Ordering::Relaxed);
                 bridge_data_len.add_in(n);
                 channel_data_len.add_in(n);
                 if need_encryption{//需要加密处理
@@ -219,11 +222,16 @@ async fn client_to_proxy(
     mut client_reader: ReadHalf<TcpStream>,
     mut proxy_writer: WriteHalf<TcpStream>,
     closer: Arc<Notify>,
+    bridge_closer: Arc<Notify>,
+    last_rw_time:Arc<AtomicU64>,
 ) -> io::Result<()> {
-    let mut buf = [0u8; 4096];
+    let mut buf = [0u8; 1024 * 8];
     loop {
         select! {
             _ = closer.notified() => {
+                break;
+            }
+            _ = bridge_closer.notified() => {
                 break;
             }
             read_data = client_reader.read(&mut buf) =>{
@@ -231,6 +239,9 @@ async fn client_to_proxy(
                 if n == 0 {
                     break;
                 }
+
+                //记录最后一次读写时间
+                last_rw_time.store(time_util::current_millis(),Ordering::Relaxed);
                 bridge_data_len.add_out(n);
                 channel_data_len.add_out(n);
                 if need_encryption {

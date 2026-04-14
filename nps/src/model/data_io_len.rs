@@ -54,6 +54,16 @@ impl AtomicDataIOLen {
         self.out_len.fetch_add(v.to_u64(), Ordering::Relaxed);
     }
 
+    /// 获取当前入网流量
+    pub fn load_in(&self) -> u64 {
+        self.in_len.load(Ordering::Relaxed)
+    }
+
+    /// 获取当前出网流量
+    pub fn load_out(&self) -> u64 {
+        self.out_len.load(Ordering::Relaxed)
+    }
+
     // 获取当前出站流量总和
     pub fn load(&self) -> DataIOLen {
         DataIOLen {

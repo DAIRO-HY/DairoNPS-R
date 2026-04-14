@@ -40,7 +40,7 @@
             <div class="bg-white border rounded">
                 <div class="py-2">TCP桥接数/连接池</div>
                 <div class="border-top fs-2" id="">
-                    <span id="tcpBridgeCount"></span>/<span id="tcpPoolCount"></span>
+                    <a id="tcpBridgeCount" href="/bridge.html?flag=nps"></a>/<span id="tcpPoolCount"></span>
                 </div>
             </div>
         </div>
@@ -62,7 +62,8 @@
         <div class="col text-center p-2">
             <div class="bg-white border rounded">
                 <div class="py-2">端口转发桥接</div>
-                <div class="border-top fs-2" id="forwardBridgeCount">
+                <div class="border-top fs-2">
+                    <a id="forwardBridgeCount" href="/bridge.html?flag=forward"></a>
                 </div>
             </div>
         </div>
@@ -74,7 +75,7 @@
     let es = null;
 
     $(window).on('beforeunload', function () {
-        if(es){
+        if (es) {
             es.close()
             es = null
         }
@@ -110,7 +111,7 @@
     /**
      * 垃圾回收
      */
-    function onGCClick(){
+    function onGCClick() {
         $.ajaxByData("/index/gc").post()
     }
 

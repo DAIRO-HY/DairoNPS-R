@@ -1,0 +1,110 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    {{template include/head}}
+    <title>桥接列表</title>
+</head>
+<body>
+{{template include/top-bar}}
+<div class="m-3 p-2 bg-white rounded" style="display: none">
+    <form onchange="loadData()" action="/bridge_list/load_data">
+        <div class="row row-cols-sm-2 row-cols-md-3 row-cols-lg-4">
+            <div class="col">
+                <div class="row">
+                    <label class="col-sm-4 col-form-label text-end">客户端</label>
+                    <div class="col-sm-8">
+                        <select class="form-select" name="clientId" dropdown-tag="client">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="row">
+                    <label class="col-sm-4 col-form-label text-end">隧道</label>
+                    <div class="col-sm-8">
+                        <select class="form-select" name="channelId" dropdown-tag="channel">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="col" style="display: none">
+                <div class="row">
+                    <label class="col-sm-4 col-form-label text-end">隧道模式</label>
+                    <div class="col-sm-8">
+                        <select class="form-select" name="type">
+                            <option value="">全部</option>
+                            <option value="1">TCP</option>
+                            <option value="2">UDP</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <button type="button" class="btn btn-primary" onclick="loadData();">查询</button>
+            </div>
+        </div>
+    </form>
+</div>
+<div class="m-3 p-2 bg-white rounded">
+    <table class="table table-hover">
+        <thead>
+        <tr>
+            <th>标记</th>
+            <th>名称</th>
+            <th>入出网流量</th>
+            <th>IP</th>
+            <th>在线时间</th>
+            <th>空闲时间</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody id="tbody">
+
+        </tbody>
+    </table>
+</div>
+<script>
+    $(function () {
+        init()
+    });
+
+    /**
+     * 修改可用状态
+     */
+    function init() {
+        $("#tbody").empty()
+        let flag = getParam("flag")
+        $("form").ajaxByForm("/bridge/list?value=" + flag).success(data => {
+            fillData(data)
+        }).get()
+    }
+
+    function fillData(data) {
+        const $tbody = $("#tbody")
+        data.forEach(item=>{
+            $tbody.append(`
+                <tr>
+                    <td>${item.tag}</td>
+                    <td>${item.name}</td>
+                    <td>${item.inLen}/${item.outLen}</td>
+                    <td>${item.ip}</td>
+                    <td>${item.aliveTime}</td>
+                    <td>${item.idleTime}</td>
+                    <td><button class="btn btn-link" onclick="onBrokenClick(${item.tag})" type="button">中断</button></td>
+                </tr>`)
+        })
+    }
+
+    /**
+     * 强制中断点击事件
+     */
+    function onBrokenClick(tag){
+        $.ajaxByData("/bridge/broken?value=" + tag).success(() => {
+            init()
+        }).put()
+    }
+</script>
+</body>
+</html>

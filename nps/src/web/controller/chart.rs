@@ -1,6 +1,6 @@
 use crate::dao::traffic_stats_dao;
 use crate::extension::ResponseEmptyExt;
-use crate::extension::number::{Div, ToDataSize, ToDateFormat};
+use crate::extension::number::{Div, NumberExtension};
 use crate::model::data_io_len::{DataIOLen, ToU64};
 use crate::web::extract::AppQuery;
 use crate::{forward, nps};

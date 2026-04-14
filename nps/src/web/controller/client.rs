@@ -1,8 +1,7 @@
 use crate::dao::client_dao;
 use crate::dao::client_dao::Client;
 use crate::extension::ResponseEmptyExt;
-use crate::extension::number::ToDataSize;
-use crate::extension::number::ToDateFormat;
+use crate::extension::number::NumberExtension;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use crate::web::extract::{AppForm, AppQuery};
 use crate::web::router::IdQuery;
@@ -45,7 +44,7 @@ pub async fn list() -> Response {
 }
 
 /// 获取客户端详情API
-pub async fn detail(Query(id): Query<IdQuery>) -> Response {
+pub async fn detail(AppQuery(id): AppQuery<IdQuery>) -> Response {
     let detail = if id.id > 0 {
         let Ok(client) = client_dao::select_one(&db::get(), id.id).await else {
             return biz_error!("未找到客户端信息");

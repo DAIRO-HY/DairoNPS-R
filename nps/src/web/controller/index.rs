@@ -1,6 +1,6 @@
 use crate::dao::system_config_dao;
 use crate::extension::ResponseEmptyExt;
-use crate::extension::number::ToDataSize;
+use crate::extension::number::NumberExtension;
 use crate::model::data_io_len::DataIOLen;
 use crate::{forward, nps};
 use axum::response::sse::{Event, Sse};
