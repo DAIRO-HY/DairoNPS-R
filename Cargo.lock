@@ -1512,7 +1512,6 @@ dependencies = [
 name = "np_common"
 version = "0.1.0"
 dependencies = [
- "sqlx",
  "thiserror",
 ]
 
@@ -1526,6 +1525,7 @@ dependencies = [
  "futures",
  "itertools",
  "maplit",
+ "np_common",
  "rand 0.10.0",
  "rust-embed",
  "serde",
