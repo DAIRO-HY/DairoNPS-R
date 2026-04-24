@@ -1,0 +1,10 @@
+[package]
+name = "np_common"
+version = "0.1.0"
+edition = "2024"
+
+[dev-dependencies]
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros"] }
+
+[dependencies]
+thiserror = "2"

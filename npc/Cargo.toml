@@ -1,0 +1,21 @@
+[package]
+name = "npc"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+thiserror = "2"
+tokio = { version = "1", features = ["full", "rt-multi-thread"] }
+
+bytes = "1"
+
+#用来解析启动参数
+clap = { version = "4", features = ["derive"] }
+chrono = "0.4" # 日期时间处理
+serde = { version = "1", features = ["derive","rc"] }
+rand = { version = "0.10", features = ["std"] }
+rust-embed = "8" #嵌入文件
+futures = "0.3"
+maplit = "1.0"
+itertools = "0.14"
+tokio-stream = "0.1"

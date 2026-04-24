@@ -98,7 +98,7 @@ async fn accept(
                         ip:addr.ip().to_string(),
                         forward_id:forward.id,
                         is_stats_traffic:forward.is_stats_traffic,
-                        target_port: forward.target_port.clone(),
+                        target_addr: forward.target_port.clone(),
                         proxy_tcp,
                         data_len:data_len.clone(),
                         closer:closer.clone(),

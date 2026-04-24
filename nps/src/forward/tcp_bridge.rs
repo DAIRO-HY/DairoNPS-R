@@ -15,7 +15,7 @@ pub struct TcpBridgeParam {
     pub ip: String, // 代理客户端ip地址
     pub forward_id: i64,
     pub is_stats_traffic: bool,
-    pub target_port: String,
+    pub target_addr: String,
     pub proxy_tcp: TcpStream,
     pub data_len: AtomicDataIOLen,
     pub closer: Arc<Notify>,
@@ -45,7 +45,7 @@ async fn start(mut param: TcpBridgeParam) -> Result<(), NpsError> {
     param.bridge_count.fetch_add(1, Ordering::Relaxed);
 
     // 建立连接
-    let target_tcp = match TcpStream::connect(param.target_port).await {
+    let target_tcp = match TcpStream::connect(param.target_addr).await {
         Ok(v) => v,
         Err(e) => {
             //与目标服务器连接失败时，直接关闭
