@@ -4,19 +4,19 @@ use crate::nps;
 use crate::nps::ClientLive;
 use crate::nps::nps_client::header_util;
 use crate::nps::nps_proxy::tcp_proxy;
-use bytes::Bytes;
+use crate::nps_error::NpsError;
+use crate::util::time_util;
+use bytes::{BufMut, Bytes, BytesMut};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use tokio::io;
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::time::Duration;
-use crate::nps_error::NpsError;
-use crate::util::time_util;
 //往客户端发送指令的专用连接
 
 // 保持客户端连接
-pub async fn hold_on_client(client: Client, tcp: TcpStream) -> Result<(),NpsError> {
+pub async fn hold_on_client(client: Client, tcp: TcpStream) -> Result<(), NpsError> {
     let client_id = client.id;
 
     // 先尝试关闭之前的连接
@@ -40,7 +40,7 @@ pub async fn hold_on_client(client: Client, tcp: TcpStream) -> Result<(),NpsErro
         tcp,
         heart_time,
     };
-    
+
     // //开启该客户端下所有隧道监听
     tcp_proxy::ready_client(client_id).await?;
     let rs = session.start(rx).await;
@@ -56,21 +56,6 @@ pub async fn hold_on_client(client: Client, tcp: TcpStream) -> Result<(),NpsErro
  * @param count 申请数量
  */
 pub async fn send_tcp_pool_request(client_id: i64, count: u8) {
-    send(
-        client_id,
-        header_util::REQUEST_TCP_POOL,
-        count.to_string().as_str(),
-    )
-    .await;
-}
-
-/**
- * 往客户端发送数据
- * @param clientID 客户端ID
- * @param flag 头部标记
- * @param message 头部消息
- */
-async fn send(client_id: i64, flag: u8, message: &str) {
     let tx = {
         if let Some(client_live) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
             client_live.sender.clone()
@@ -78,15 +63,33 @@ async fn send(client_id: i64, flag: u8, message: &str) {
             return;
         }
     };
-    let header_data = header_util::make_header_data(flag, message);
-    tx.send(header_data)
+    tx.send(Bytes::from(vec![header_util::REQUEST_TCP_POOL, count]))
         .await
         .unwrap_or_else(|it| println!("-->往客户端发送数据失败:{:?}", it));
 }
 
+// /**
+//  * 往客户端发送数据
+//  * @param clientID 客户端ID
+//  * @param flag 头部标记
+//  * @param message 头部消息
+//  */
+// async fn send(client_id: i64, flag: u8, message: &str) {
+//     let tx = {
+//         if let Some(client_live) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
+//             client_live.sender.clone()
+//         } else {
+//             return;
+//         }
+//     };
+//     let header_data = header_util::make_header_data(flag, message);
+//     tx.send(header_data)
+//         .await
+//         .unwrap_or_else(|it| println!("-->往客户端发送数据失败:{:?}", it));
+// }
+
 // 关闭客户端
 pub async fn remove_session(client_id: i64) {
-
     //移除连接
     nps::CLIENT_LIVE_MAP.lock().await.remove(&client_id);
 

@@ -10,6 +10,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::{io, select, try_join};
+use crate::nps::nps_client::header_util;
 
 /// 桥接参数
 pub struct TcpBridgeParam {
@@ -43,6 +44,9 @@ async fn start(param: TcpBridgeParam) -> Result<(), NpsError> {
 
     let (proxy_reader, proxy_writer) = tokio::io::split(param.proxy_tcp);
     let (client_reader, mut client_writer) = tokio::io::split(param.client_tcp);
+
+    //发送连接目标服务器标记
+    client_writer.write_u8(header_util::CONNECT_TO_TARGET_SERVER).await?;
 
     //将加密类型及目标端口 格式:加密状态|端口  1|80   1|127.0.0.1:80
     //1:加密  0:不加密
@@ -181,6 +185,9 @@ async fn proxy_to_client(
     last_rw_time:Arc<AtomicU64>
 ) -> io::Result<()> {
     let mut buf = [0u8; 1024 * 8];
+
+    //使用&*,避免发生值复制
+    let security_keys = &*SERVER_SECURITY_KEY;
     loop {
         select! {
             _ = closer.notified() => {
@@ -201,7 +208,7 @@ async fn proxy_to_client(
                 channel_data_len.add_in(n);
                 if need_encryption{//需要加密处理
                     for b in &mut buf[..n] {
-                        *b = SERVER_SECURITY_KEY[*b as usize];
+                        *b = security_keys[*b as usize];
                     }
                 }
                 client_writer.write_all(&buf[..n]).await?;
@@ -226,6 +233,9 @@ async fn client_to_proxy(
     last_rw_time:Arc<AtomicU64>,
 ) -> io::Result<()> {
     let mut buf = [0u8; 1024 * 8];
+
+    //使用&*,避免发生值复制
+    let security_keys = &*SERVER_SECURITY_KEY;
     loop {
         select! {
             _ = closer.notified() => {
@@ -247,7 +257,7 @@ async fn client_to_proxy(
                 if need_encryption {
                     //需要解密处理
                     for b in &mut buf[..n] {
-                        *b = SERVER_SECURITY_KEY[*b as usize];
+                        *b = security_keys[*b as usize];
                     }
                 }
                 proxy_writer.write_all(&buf[..n]).await?;

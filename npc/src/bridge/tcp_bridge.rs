@@ -1,10 +1,11 @@
+use crate::application;
 use crate::npc_error::NpcError;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
-use tokio::{io, select, try_join};
+use tokio::{io, select};
 
 pub struct TCPBridgeParam {
     //数据是否加密
@@ -15,8 +16,7 @@ pub struct TCPBridgeParam {
 
     //目标服务器的地址
     pub target_addr: String,
-    pub closer: Arc<Notify>,
-	pub bridge_count: Arc<AtomicUsize>,
+    // pub closer: Arc<Notify>,
 }
 
 /**
@@ -40,7 +40,7 @@ pub fn ready(param: TCPBridgeParam) {
 // TCP桥接通信开始
 pub async fn start(mut param: TCPBridgeParam) -> Result<(), NpcError> {
 	//桥接数+1
-	param.bridge_count.fetch_add(1, Ordering::Relaxed);
+    application::BRIDGE_COUNT.fetch_add(1, Ordering::Relaxed);
 
     // 连接到服务器
     // //与目标端口建立连接
@@ -63,38 +63,43 @@ pub async fn start(mut param: TCPBridgeParam) -> Result<(), NpcError> {
 			let _ = param.nps_tcp.shutdown().await;
 
 			//桥接数-1
-			param.bridge_count.fetch_sub(1, Ordering::Relaxed);
+            application::BRIDGE_COUNT.fetch_sub(1, Ordering::Relaxed);
 			return Err(NpcError::IoError(e));
 		}
 	};
-    let result = copy(param.nps_tcp, target_tcp, param.closer).await;
+    let result = copy(param.nps_tcp, target_tcp).await;
 
 	//桥接数-1
-	param.bridge_count.fetch_sub(1, Ordering::Relaxed);
+    application::BRIDGE_COUNT.fetch_sub(1, Ordering::Relaxed);
 	result
 }
 
 async fn copy(
 	mut nps_tcp: TcpStream,
 	mut target_tcp: TcpStream,
-	closer: Arc<Notify>,) -> Result<(), NpcError> {
-    select! {
-        _ = closer.notified() => {
-            nps_tcp.shutdown().await?;
-            target_tcp.shutdown().await?;
-            return Ok(());
-        }
-        rs = io::copy_bidirectional(&mut target_tcp, &mut nps_tcp) =>{
-            return match rs{
-                Ok(_)=>{
-                    Ok(())
-                },
-                Err(e) =>{
-                    Err(NpcError::IoError(e))
-                }
-            }
-        }
+	// closer: Arc<Notify>,
+) -> Result<(), NpcError> {
+    // select! {
+    //     _ = closer.notified() => {
+    //         nps_tcp.shutdown().await?;
+    //         target_tcp.shutdown().await?;
+    //         return Ok(());
+    //     }
+    //     rs = io::copy_bidirectional(&mut target_tcp, &mut nps_tcp) =>{
+    //         return match rs{
+    //             Ok(_)=>{
+    //                 Ok(())
+    //             },
+    //             Err(e) =>{
+    //                 Err(NpcError::IoError(e))
+    //             }
+    //         }
+    //     }
+    // }
+    if let Err(e) = io::copy_bidirectional(&mut target_tcp, &mut nps_tcp).await{
+        return Err(NpcError::IoError(e));
     }
+    Ok(())
 }
 
 //

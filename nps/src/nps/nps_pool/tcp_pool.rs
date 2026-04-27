@@ -4,7 +4,7 @@ use crate::nps::nps_client::header_util;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use crate::nps_error::NpsError;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
 // TCP连接池
@@ -26,15 +26,7 @@ pub async fn get_pool_count(client_id: &i64) -> usize {
 
 // 添加TCP连接池
 pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
-    //从头部信息中得到客户端id
-    let client_id_str = header_util::get_header(&mut tcp).await?;
-    let Ok(client_id) = client_id_str.parse() else {
-        return Err(NpsError::OtherError(format!(
-            "从头部信息中得到客户端id:{}无效",
-            client_id_str
-        )));
-    };
-
+    let client_id = tcp.read_i64().await?;
     let mut client_live_map = nps::CLIENT_LIVE_MAP.lock().await;
 
     //得到客户端连接池列表
@@ -45,6 +37,9 @@ pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
         // println!("-->客户端: {}连接池已满,拒绝新连接。count: {}", client_id, pools.len());
         //已经达到最大连接数,拒绝新连接
         drop(client_live_map); // 释放锁
+        
+        //发送连接池已满的标记
+        tcp.write_u8(header_util::POOL_IS_FULL).await?;
 
         //已经达到最大连接数,拒绝新连接
         tcp.shutdown().await?;

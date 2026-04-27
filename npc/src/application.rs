@@ -1,18 +1,39 @@
+use arc_swap::ArcSwap;
 use clap::Parser;
-use std::env;
+use np_common::time_util;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use tokio::sync::Notify;
 use std::sync::LazyLock;
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use tokio::sync::{Mutex, Notify, RwLock};
+
+/// 程序版本
+pub const VERSION: &str = "1.0.0";
+
+/// 标记是否已经关闭
+// pub static IS_CLOSED: AtomicBool = AtomicBool::new(false);
+
+/// 用来接收关闭通知的全局异步通知器
+pub static APP_CLOSER: LazyLock<ArcSwap<Notify>> =
+    LazyLock::new(|| ArcSwap::new(Arc::new(Notify::new())));
+
+/// 标记是否正在运行,防止重复启动
+pub static IS_RUNNING: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
+
+/// 标记NPC监听是否正在运行
+pub static IS_NPC_RUNNING: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
+
+pub static NPC_CLOSER: LazyLock<ArcSwap<Notify>> =
+    LazyLock::new(|| ArcSwap::new(Arc::new(Notify::new())));
 
 /// 最后一次收到心跳反馈时间
-pub static LAST_HEART_TIME: AtomicU64 = AtomicU64::new(np_common::time_util::current_millis());
+pub static LAST_HEART_TIME: LazyLock<AtomicU64> =
+    LazyLock::new(|| AtomicU64::new(time_util::current_millis() - CHECK_HEART_TIME - 1));
 
 /// 用来生成当前桥接唯一标识
 pub static BRIDGE_NEXT_TAG: AtomicU64 = AtomicU64::new(0);
 
 /// 用来接收关闭通知的全局异步通知器
-pub static SHUTDOWN_NOTIFY: LazyLock<Arc<Notify>> = LazyLock::new(|| Arc::new(Notify::const_new()));
+// pub static SHUTDOWN_NOTIFY: LazyLock<Arc<Notify>> = LazyLock::new(|| Arc::new(Notify::const_new()));
 
 /// 标记是否需要重启
 pub static IS_NEED_RESTART: AtomicBool = AtomicBool::new(false);
@@ -29,15 +50,24 @@ pub static IS_NPS_SERVER_DROP: AtomicBool = AtomicBool::new(false);
 /// 心跳间隔时间
 pub const HEART_TIME: u64 = 3000;
 
+/// 每隔一段时间检测心跳存活状态
+pub const CHECK_HEART_TIME: u64 = HEART_TIME * 3;
+
 /// 数据流量收集统计间隔，单位毫秒
 pub const DATA_COLLECT_INTERVAL: u64 = 1000;
 
 /// 数据流量收集插入数据库间隔，单位毫秒
 pub const DATA_COLLECT_INSERT_INTERVAL: u64 = 6000;
 
-
 /// 用来接收关闭通知的全局异步通知器
 pub static ARGS: LazyLock<Argument> = LazyLock::new(|| Argument::try_parse().unwrap());
+
+/// 桥接数量
+pub static BRIDGE_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+/// 客户端端加密秘钥
+pub static SECURITY_KEY: LazyLock<ArcSwap<[u8; 256]>> =
+    LazyLock::new(|| ArcSwap::new(Arc::new([0u8; 256])));
 
 // /// 重启函数，设置标记并退出程序
 // pub async fn restart() {
@@ -90,14 +120,11 @@ pub static ARGS: LazyLock<Argument> = LazyLock::new(|| Argument::try_parse().unw
 //     pub is_restart_mode: bool,
 // }
 
-
 /// 程序启动参数
 ///
 #[derive(Parser, Debug)]
-#[command(name = "myapp", version, about = "示例程序")]
-pub struct Argument{
-
-
+#[command(name = "npc", version, about = "示例程序")]
+pub struct Argument {
     // // 服务器
     // var Host string
     //
@@ -112,8 +139,7 @@ pub struct Argument{
     //
     // // 客户端id,该值有服务器端返回
     // var ClientId int
-
-    #[arg(short, long, default_value = "127.0.0.1")]
+    #[arg(long, default_value = "127.0.0.1")]
     pub host: String,
 
     #[arg(short, long, default_value = "1781")]

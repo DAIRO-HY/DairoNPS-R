@@ -45,6 +45,16 @@ const SYNC_ACTIVE_BRIDGE_UDP_PORT: u8 = 6;
  */
 pub const SECURITY_CLIENT_KEY: u8 = 7;
 
+/**
+ * 准备连接到目标服务器
+ */
+pub const CONNECT_TO_TARGET_SERVER: u8 = 8;
+
+/**
+ * 连接池已满标记
+ */
+pub const POOL_IS_FULL: u8 = 9;
+
 //关闭标记指令
 pub const CLOSE_CMD: &[u8; 13] = b"@->[CLOSE]<-@";
 

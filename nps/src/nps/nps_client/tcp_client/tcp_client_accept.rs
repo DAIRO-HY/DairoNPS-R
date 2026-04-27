@@ -58,9 +58,7 @@ async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<()
     // tcp.SetReadDeadline(time.Now().Add(3 * time.Second))
 
     //读取第一个标记字节,通过该自己判断该连接类型
-    let mut flag_data = [0u8; 1];
-    tcp_stream.read_exact(&mut flag_data).await?;
-    let flag = flag_data[0];
+    let flag = tcp_stream.read_u8().await?;
     // println!("接收到客户端连接请求,标记:{}", flag);
     match flag {
         //标记该连接为:服务器端往客户端发送指令的连接
@@ -69,7 +67,9 @@ async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<()
         //创建客户端Socket连接池
         header_util::REQUEST_TCP_POOL => tcp_pool::add(tcp_stream).await?,
 
-        _ => {}
+        _ => {
+            println!("未知标记:{}", flag);
+        }
     }
     Ok(())
 }

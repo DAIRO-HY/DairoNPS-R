@@ -12,7 +12,7 @@ pub enum NpsError {
     SqlxError(sqlx::Error),
 
     #[error("未知的Flag")]
-    UnknowFlagError,
+    UnknowFlagError(u8),
 
     #[error("发送数据失败")]
     SendDataError,

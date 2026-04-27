@@ -31,11 +31,12 @@ impl ClientSession {
         let tcp_stream = &mut self.tcp;
 
         //将客户端id发送给NPC客户端
-        let header_data = header_util::make_header_data(
-            header_util::SERVER_TO_CLIENT_ID,
-            &self.client.id.to_string(),
-        );
-        tcp_stream.write_all(header_data.as_ref()).await?;
+        // let header_data = header_util::make_header_data(
+        //     header_util::SERVER_TO_CLIENT_ID,
+        //     &self.client.id.to_string(),
+        // );
+        // tcp_stream.write_all(header_data.as_ref()).await?;
+        tcp_stream.write_i64(self.client.id).await?;
 
         // 将加密秘钥发送到客户端
         tcp_stream
@@ -112,7 +113,7 @@ impl ClientSession {
                 Ok(())
             }
             //这里抛出Error
-            _ => Err(NpsError::UnknowFlagError),
+            _ => Err(NpsError::UnknowFlagError(flag)),
         }
     }
 }

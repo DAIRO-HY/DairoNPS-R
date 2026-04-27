@@ -20,3 +20,6 @@ futures = "0.3"
 maplit = "1.0"
 itertools = "0.14"
 tokio-stream = "0.1"
+
+#适合读非常多,写非常少的场景,比如配置文件,全局状态等
+arc-swap = "1"
