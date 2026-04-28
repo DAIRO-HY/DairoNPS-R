@@ -1,15 +1,12 @@
+use crate::application;
 use crate::bridge::tcp_bridge;
 use crate::npc_error::NpcError;
-use crate::application;
+use np_common::head_flag;
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, LazyLock};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::sync::Notify;
-use np_common::head_flag;
-// // TCPPool 等待分配工作的Socket
-// type TCPPool struct {
-// 	npsTCP net.Conn
-// }
+use tokio::select;
 
 /// NPS服务端地址
 static SERVER_ADDR: LazyLock<String> =
@@ -18,61 +15,55 @@ static SERVER_ADDR: LazyLock<String> =
 // Create 创建TCP连接池
 pub fn create(count: u8) {
     for _ in 0..count {
-        tokio::spawn(async move {
-            
-            //与目标端口建立连接
-            let Ok(nps_tcp) = TcpStream::connect(SERVER_ADDR.as_str()).await else {
-                return;
-            };
-            let client_id = 1;
-            match start(client_id, nps_tcp).await{
+        tokio::spawn(async {
+            //桥接数+1
+            application::POOL_COUNT.fetch_add(1, Ordering::Relaxed);
+
+            spawn_start().await;
+
+            //桥接数-1
+            application::POOL_COUNT.fetch_sub(1, Ordering::Relaxed);
+        });
+    }
+}
+
+async fn spawn_start() {
+    //npc服务端关闭通知
+    let closer = application::NPC_CLOSER.load();
+    select! {
+        _ = closer.notified() => {
+            println!("收到关闭通知，准备关闭连接池...");
+            return;
+        }
+        result = start() => {
+            match result {
                 Err(NpcError::UnknowFlagError(flag)) => {
-                    println!("-->未知的标记:{}",flag);
+                    println!("-->未知的标记:{}", flag);
                 }
                 Err(NpcError::PoolIsFull) => {
                     println!("-->服务端连接池已满");
                 }
-                Err(e) =>{
+                Err(e) => {
                     println!("连接池发生了错误:{:?}", e);
                 }
-                _=>{}
+                _ => {}
             }
-        });
+        }
     }
-
-    //与目标端口建立连接
-    // tcp, err := net.Dial("tcp", constant.Host+":"+constant.TcpPort)
-    // if err != nil {
-    // return
-    // }
-    // pool := &TCPPool{
-    // npsTCP: tcp,
-    // }
-    // lock.Lock()
-    // mTcpPoolList[pool] = true
-    // lock.Unlock()
-    // go pool.start()
-    // }
 }
 
-// /**
-//  * 开始等待分配工作
-//  */
-//  fn ready(client_id:i64, nps_tcp: TcpStream) {
-// 	tokio::spawn(async move {
-// 		if let Err(e) = start(client_id, nps_tcp).await {
-// 			println!("连接池发生了错误:{:?}", e);
-// 		}
-// 	});
-// }
-
-async fn start(client_id: i64, mut nps_tcp: TcpStream) -> Result<(), NpcError> {
+async fn start() -> Result<(), NpcError> {
+    
+    //与目标端口建立连接
+    let mut nps_tcp = TcpStream::connect(SERVER_ADDR.as_str()).await?;
 
     //发送头部标记
     nps_tcp.write_u8(head_flag::REQUEST_TCP_POOL).await?;
 
     //发送客户端id
-    nps_tcp.write_i64(client_id).await?;
+    nps_tcp
+        .write_i64(application::CLIENT_ID.load(Ordering::Relaxed))
+        .await?;
 
     //等待分配工作
     wait_work(nps_tcp).await
@@ -100,11 +91,12 @@ async fn start(client_id: i64, mut nps_tcp: TcpStream) -> Result<(), NpcError> {
  */
 async fn wait_work(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
     let flag = nps_tcp.read_u8().await?;
-    if flag == head_flag::POOL_IS_FULL{//服务端连接池已满
+    if flag == head_flag::POOL_IS_FULL {
+        //服务端连接池已满
         return Err(NpcError::PoolIsFull);
     }
-    if flag != head_flag::CONNECT_TO_TARGET_SERVER{
-        return Err(NpcError::UnknowFlagError(flag))
+    if flag != head_flag::CONNECT_TO_TARGET_SERVER {
+        return Err(NpcError::UnknowFlagError(flag));
     }
 
     //加密类型及目标端口 格式:加密状态|端口  1|80   1|127.0.0.1:80

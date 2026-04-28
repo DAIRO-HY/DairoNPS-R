@@ -102,26 +102,46 @@ async fn create_connection() {
     println!("-->与主机连接成功");
     tokio::spawn(async move {
         *application::IS_NPC_RUNNING.lock().await = true;
-        let result = start(nps_tcp).await;
+        spawn_start(nps_tcp).await;
         *application::IS_NPC_RUNNING.lock().await = false;
-        if let Err(e) = result {
-            println!("-->与主机通信发生了错误:{:?}", e);
-        }
     });
+}
+
+async fn spawn_start(nps_tcp: TcpStream) {
+    let closer = Arc::new(Notify::new());
+
+    // 将关闭通知器存储到全局变量中，以便其他部分可以发送关闭通知
+    application::NPC_CLOSER.store(closer.clone());
+    select! {
+        _ = closer.notified() => {
+            println!("收到关闭通知，准备关闭连接...");
+            return;
+        }
+        result = start(nps_tcp) =>{
+            if let Err(e) = result {
+                println!("-->与主机通信发生了错误:{:?}", e);
+            }
+        }
+    }
 }
 
 /**
  * 开始
  */
 async fn start(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
-
     //向服务器端发送客户端信息
     let header = format!("{}|{}", application::ARGS.key, application::VERSION);
-    nps_tcp.write_all(&[head_flag::CLIENT_TO_SERVER_MAIN_CONNECTION, header.len() as u8]).await?;
+    nps_tcp
+        .write_all(&[
+            head_flag::CLIENT_TO_SERVER_MAIN_CONNECTION,
+            header.len() as u8,
+        ])
+        .await?;
     nps_tcp.write_all(header.as_bytes()).await?;
 
     //获取客户端ID
     let client_id = nps_tcp.read_i64().await?;
+    application::CLIENT_ID.store(client_id, Ordering::Relaxed);
 
     //客户端加解密秘钥
     let mut buf = [0u8; 256];
@@ -129,53 +149,13 @@ async fn start(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
     application::SECURITY_KEY.store(Arc::from(buf));
 
     let (reader, mut writer) = io::split(nps_tcp);
-    let closer = Arc::new(Notify::new());
-    application::NPC_CLOSER.store(closer.clone());
-    select! {
-        _ = closer.notified() => {
-            println!("收到关闭通知，准备关闭连接...");
-            // 这里可以执行一些清理操作，例如关闭连接、释放资源等
-            return Ok(());
-        }
-        result = async {try_join!(heart(&mut writer), receive(reader))} => {
-            if let Err(e) =result{
-                return Err(e);
-            }
-            return Ok(());
-        }
-    }
-}
 
-// /**
-//  * 获取客户端ID
-//  */
-// async fn read_client_id(nps_tcp: &mut TcpStream) -> Result<(), NpcError> {
-//
-// 	//第一个字节为标记
-// 	flagData := make([]byte, 1)
-// 	if _, err := io.ReadFull(mine.npsTCP, flagData); err != nil {
-// 		return err
-// 	}
-// 	if flagData[0] != HeaderUtil.SERVER_TO_CLIENT_ID {
-// 		mine.npsTCP.Close()
-// 		return &extension.BusinessException{
-// 			Message: "非法标记:$flag",
-// 		}
-// 	}
-//
-// 	//得到头部数据
-// 	header, err := HeaderUtil.GetHeader(mine.npsTCP)
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	//得到客户端ID
-// 	clientId, _ := strconv.ParseInt(header, 10, 64)
-//
-// 	//得到客户端ID
-// 	constant.ClientId = int(clientId)
-// 	return nil
-// }
+    let result = try_join!(heart(&mut writer), receive(reader));
+    if let Err(e) = result {
+        return Err(e);
+    }
+    Ok(())
+}
 
 // 客户端加解密秘钥
 async fn read_client_security_key(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
@@ -183,15 +163,6 @@ async fn read_client_security_key(mut nps_tcp: TcpStream) -> Result<(), NpcError
     nps_tcp.read_exact(&mut buf).await?;
     application::SECURITY_KEY.store(Arc::from(buf));
     Ok(())
-
-    // clientSecurityKey := make([]byte, 256)
-    // if _, err := io.ReadFull(mine.npsTCP, clientSecurityKey); err != nil {
-    // 	return err
-    // }
-    //
-    // //将数据复制到数组中
-    // copy(SecurityUtil.ClientSecurityKey[:], clientSecurityKey)
-    // return nil
 }
 
 /**

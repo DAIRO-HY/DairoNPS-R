@@ -2,7 +2,6 @@ use crate::dao::client_dao;
 use crate::dao::client_dao::Client;
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::NumberExtension;
-use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use crate::web::extract::{AppForm, AppQuery};
 use crate::web::router::IdQuery;
 use crate::{biz_error, nps};
@@ -14,6 +13,7 @@ use axum::{
 use rand::distr::{Alphanumeric, SampleString};
 use std::collections::HashSet;
 use validator::Validate;
+use crate::nps::nps_client::nps_session;
 
 /// 客户端列表
 pub async fn list() -> Response {
@@ -128,7 +128,7 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
     }
 
     //通知关闭该客户端会话
-    tcp_client_session_manager::shutdown(form.id).await.unwrap();
+    nps_session::shutdown(form.id).await.unwrap();
     // application::IS_NEED_RESTART.store(true, std::sync::atomic::Ordering::Release);//标记需要重启
     Response::empty()
 }
@@ -138,7 +138,7 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
     client_dao::delete(&db::get(), query.id)
         .await
         .unwrap();
-    tcp_client_session_manager::shutdown(query.id)
+    nps_session::shutdown(query.id)
         .await
         .unwrap();
     // application::IS_NEED_RESTART.store(true, std::sync::atomic::Ordering::Release);//标记需要重启
@@ -150,7 +150,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     let client = client_dao::select_one(&conn, query.id).await.unwrap();
     let to = if client.is_enabled {
         //关闭客户端
-        tcp_client_session_manager::shutdown(query.id)
+        nps_session::shutdown(query.id)
             .await
             .unwrap();
         false

@@ -5,8 +5,8 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 //忽略所有警告
-mod npc_error;
 mod bridge;
+mod npc_error;
 mod pool;
 mod session;
 // mod header_util;
@@ -16,10 +16,14 @@ mod security_util;
 #[tokio::main]
 async fn main() -> tokio::io::Result<()> {
     println!("hello npc");
-    tokio::spawn(async{
-        loop{
+    tokio::spawn(async {
+        loop {
             sleep(Duration::from_millis(1000)).await;
-            println!("当前桥接数:{}",application::BRIDGE_COUNT.load(Ordering::Relaxed));
+            println!(
+                "当前连接池数:{} 桥接数:{} ",
+                application::POOL_COUNT.load(Ordering::Relaxed),
+                application::BRIDGE_COUNT.load(Ordering::Relaxed),
+            );
         }
     });
     // tokio::spawn(async{

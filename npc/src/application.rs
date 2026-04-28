@@ -1,10 +1,10 @@
 use arc_swap::ArcSwap;
 use clap::Parser;
 use np_common::time_util;
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize};
 use std::sync::Arc;
 use std::sync::LazyLock;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use tokio::sync::{Mutex, Notify, RwLock};
+use tokio::sync::{Mutex, Notify};
 
 /// 程序版本
 pub const VERSION: &str = "1.0.0";
@@ -29,21 +29,6 @@ pub static NPC_CLOSER: LazyLock<ArcSwap<Notify>> =
 pub static LAST_HEART_TIME: LazyLock<AtomicU64> =
     LazyLock::new(|| AtomicU64::new(time_util::current_millis() - CHECK_HEART_TIME - 1));
 
-/// 用来生成当前桥接唯一标识
-pub static BRIDGE_NEXT_TAG: AtomicU64 = AtomicU64::new(0);
-
-/// 用来接收关闭通知的全局异步通知器
-// pub static SHUTDOWN_NOTIFY: LazyLock<Arc<Notify>> = LazyLock::new(|| Arc::new(Notify::const_new()));
-
-/// 标记是否需要重启
-pub static IS_NEED_RESTART: AtomicBool = AtomicBool::new(false);
-
-/// 标记是否正在重启
-pub static IS_RESTARTING: AtomicBool = AtomicBool::new(false);
-
-/// 标记是否是axum触发的退出
-pub static IS_AXUM_DROP: AtomicBool = AtomicBool::new(false);
-
 /// 标记是否退出了NPS服务端监听
 pub static IS_NPS_SERVER_DROP: AtomicBool = AtomicBool::new(false);
 
@@ -53,17 +38,17 @@ pub const HEART_TIME: u64 = 3000;
 /// 每隔一段时间检测心跳存活状态
 pub const CHECK_HEART_TIME: u64 = HEART_TIME * 3;
 
-/// 数据流量收集统计间隔，单位毫秒
-pub const DATA_COLLECT_INTERVAL: u64 = 1000;
-
-/// 数据流量收集插入数据库间隔，单位毫秒
-pub const DATA_COLLECT_INSERT_INTERVAL: u64 = 6000;
-
 /// 用来接收关闭通知的全局异步通知器
 pub static ARGS: LazyLock<Argument> = LazyLock::new(|| Argument::try_parse().unwrap());
 
 /// 桥接数量
 pub static BRIDGE_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+/// 连接池数量
+pub static POOL_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+/// 客户端ID
+pub static CLIENT_ID: AtomicI64 = AtomicI64::new(0);
 
 /// 客户端端加密秘钥
 pub static SECURITY_KEY: LazyLock<ArcSwap<[u8; 256]>> =

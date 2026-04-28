@@ -2,7 +2,6 @@ use crate::constant::nps_constant;
 use crate::dao::traffic_stats_dao::TrafficStats;
 use crate::dao::{channel_dao, traffic_stats_dao, client_dao, system_config_dao};
 use crate::model::data_io_len::DataIOLen;
-use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use crate::nps::{CHANNEL_LIVE_MAP, CLIENT_LIVE_MAP};
 use crate::{application, nps};
 use itertools::Itertools;
@@ -14,6 +13,7 @@ use tokio::sync::Mutex;
 /// 一些定时任务
 use tokio::time::sleep;
 use np_common::time_util;
+use crate::nps::nps_client::nps_session;
 
 //准备用来存入数据库的数据缓存，避免频繁操作数据库
 pub static INSERT_CACHE_LIST: LazyLock<Mutex<Vec<TrafficStats>>> = LazyLock::new(|| Mutex::new(Vec::new()));
@@ -166,7 +166,7 @@ async fn close_not_heart_client() {
             })
             .collect();
         for it in not_heart_client_id {
-            let _ = tcp_client_session_manager::shutdown(it).await;
+            let _ = nps_session::shutdown(it).await;
         }
     }
 }
@@ -202,7 +202,7 @@ async fn tcp_pool_timeout_check() {
 
         //请求添加连接池
         for client_id in empty_pool_clients {
-            tcp_client_session_manager::send_tcp_pool_request(
+            nps_session::send_tcp_pool_request(
                 client_id,
                 nps_constant::ADD_POOL_COUNT,
             )

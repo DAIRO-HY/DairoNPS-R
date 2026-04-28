@@ -115,9 +115,9 @@ async fn accept(
                         proxy_tcp,
                         client_tcp,
                         data_len: data_len.clone(),
-                        closer: closer.clone(),
-                        bridge_count: bridge_count.clone(),
-                    }
+                    },
+                    bridge_count.clone(),
+                    closer.clone(),
                 ).await;
             }
         }

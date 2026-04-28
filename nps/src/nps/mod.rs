@@ -52,7 +52,7 @@ pub struct ClientLive {
     pub tcp_pool: Vec<TCPPool>,
 
     /// 与客户端通信的消息发送器
-    pub sender: Sender<Bytes>,
+    pub sender: Sender<Vec<u8>>,
 
     /// 最后一次收到客户端心跳时间
     pub heart_time: Arc<AtomicU64>,
@@ -88,7 +88,7 @@ pub fn ready() {
     // 启动定时任务
     nps_timer::init();
     tokio::spawn(async {
-        if let Err(e) = nps_client::tcp_client::tcp_client_accept::accept().await {
+        if let Err(e) = nps_client::accept().await {
             eprintln!("监听客户端发生了错误:{:?}", e);
         }
     });

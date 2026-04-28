@@ -1,11 +1,11 @@
 use crate::constant::nps_constant;
 use crate::nps;
-use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use crate::nps_error::NpsError;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use np_common::head_flag;
+use crate::nps::nps_client::nps_session;
 
 // TCP连接池
 pub struct TCPPool {
@@ -89,7 +89,7 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
         }
 
         //连接池里没有数据，申请创建连接池
-        tcp_client_session_manager::send_tcp_pool_request(client_id, nps_constant::ADD_POOL_COUNT)
+        nps_session::send_tcp_pool_request(client_id, nps_constant::ADD_POOL_COUNT)
             .await;
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
@@ -98,13 +98,13 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
     };
 
     //申请创建连接池
-    tokio::spawn(tcp_client_session_manager::send_tcp_pool_request(
+    nps_session::send_tcp_pool_request(
         client_id,
         if (nps_constant::MAX_POOL_COUNT == count) {
             1
         } else {
             2
         },
-    ));
+    ).await;
     Some(tcp)
 }
