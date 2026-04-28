@@ -1,6 +1,6 @@
-use crate::{application, header_util};
+use crate::application;
 use bytes::Bytes;
-use np_common::time_util;
+use np_common::{head_flag, time_util};
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, RwLock};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
@@ -114,14 +114,11 @@ async fn create_connection() {
  * 开始
  */
 async fn start(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
-    let header = format!("{}|{}", application::ARGS.key, application::VERSION);
 
-    // 拼接客户端信息
-    let client_info_bytes = header_util::make_header_data(
-        header_util::CLIENT_TO_SERVER_MAIN_CONNECTION,
-        header.as_str(),
-    );
-    nps_tcp.write_all(client_info_bytes.as_ref()).await?;
+    //向服务器端发送客户端信息
+    let header = format!("{}|{}", application::ARGS.key, application::VERSION);
+    nps_tcp.write_all(&[head_flag::CLIENT_TO_SERVER_MAIN_CONNECTION, header.len() as u8]).await?;
+    nps_tcp.write_all(header.as_bytes()).await?;
 
     //获取客户端ID
     let client_id = nps_tcp.read_i64().await?;
@@ -206,7 +203,7 @@ async fn receive(mut reader: ReadHalf<TcpStream>) -> Result<(), NpcError> {
         //fmt.Printf("-->收到标记：%d : %c\n", flag, rune(flag))
         match flag {
             //服务器向客户端申请TCP连接池请求
-            header_util::REQUEST_TCP_POOL => {
+            head_flag::REQUEST_TCP_POOL => {
                 let count = reader.read_u8().await?;
                 tcp_pool::create(count)
             }
@@ -225,7 +222,7 @@ async fn receive(mut reader: ReadHalf<TcpStream>) -> Result<(), NpcError> {
             // 	udp_pool.Create(int(count))
             //
             //服务器端回复了心跳
-            header_util::MAIN_HEART_BEAT => {
+            head_flag::MAIN_HEART_BEAT => {
                 //println("-->收到服务器心跳数据:${System.currentTimeMillis()}")
                 //fmt.Printf("当前UDP连接池:%d UDP桥接数:%d \n", udp_pool.Count(), udp_bridge.Count())
                 // lastHeartTime = time.Now().UnixMilli()
@@ -262,7 +259,7 @@ async fn heart(writer: &mut WriteHalf<TcpStream>) -> Result<(), NpcError> {
         //每个一段时间发送一次心跳包
 
         sleep(Duration::from_millis(application::HEART_TIME)).await;
-        writer.write_u8(header_util::MAIN_HEART_BEAT).await?
+        writer.write_u8(head_flag::MAIN_HEART_BEAT).await?
     }
     Ok(())
 }

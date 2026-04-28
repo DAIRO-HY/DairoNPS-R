@@ -1,22 +1,21 @@
-use super::tcp_client_session::ClientSession;
 use crate::dao::client_dao::Client;
 use crate::nps;
 use crate::nps::ClientLive;
-use crate::nps::nps_client::header_util;
 use crate::nps::nps_proxy::tcp_proxy;
 use crate::nps_error::NpsError;
-use crate::util::time_util;
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::Bytes;
+use np_common::{head_flag, time_util};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use tokio::io;
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::time::Duration;
+use crate::nps::nps_client::tcp_client::tcp_client_session;
 //往客户端发送指令的专用连接
 
 // 保持客户端连接
-pub async fn hold_on_client(client: Client, tcp: TcpStream) -> Result<(), NpsError> {
+pub async fn hold_on_client(client: Client, npc_tcp: TcpStream) -> Result<(), NpsError> {
     let client_id = client.id;
 
     // 先尝试关闭之前的连接
@@ -24,26 +23,21 @@ pub async fn hold_on_client(client: Client, tcp: TcpStream) -> Result<(), NpsErr
 
     //用来记录最后一次心跳时间
     let heart_time = Arc::new(AtomicU64::new(time_util::current_millis()));
-    let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(1024);
+    let (sender, rv) = tokio::sync::mpsc::channel::<Bytes>(1024);
+    let closer = Arc::new(Notify::new());
     nps::CLIENT_LIVE_MAP.lock().await.insert(
         client_id,
         ClientLive {
             tcp_pool: Vec::new(),
-            sender: tx,
+            sender,
             heart_time: heart_time.clone(),
+            closer:closer.clone(),
         },
     );
 
-    // //新的回话
-    let mut session = ClientSession {
-        client,
-        tcp,
-        heart_time,
-    };
-
     // //开启该客户端下所有隧道监听
     tcp_proxy::ready_client(client_id).await?;
-    let rs = session.start(rx).await;
+    let rs = tcp_client_session::start(client_id, npc_tcp,closer,heart_time,rv).await;
 
     //会话结束后,移除会话
     remove_session(client_id).await;
@@ -63,7 +57,7 @@ pub async fn send_tcp_pool_request(client_id: i64, count: u8) {
             return;
         }
     };
-    tx.send(Bytes::from(vec![header_util::REQUEST_TCP_POOL, count]))
+    tx.send(Bytes::from(vec![head_flag::REQUEST_TCP_POOL, count]))
         .await
         .unwrap_or_else(|it| println!("-->往客户端发送数据失败:{:?}", it));
 }
@@ -90,9 +84,10 @@ pub async fn send_tcp_pool_request(client_id: i64, count: u8) {
 
 // 关闭客户端
 pub async fn remove_session(client_id: i64) {
+
     //移除连接
     nps::CLIENT_LIVE_MAP.lock().await.remove(&client_id);
-
+    
     //获取当前客户端下的所有隧道关闭监听器
     let channel_ids: Vec<Arc<Notify>> = nps::CHANNEL_LIVE_MAP
         .lock()
@@ -108,27 +103,41 @@ pub async fn remove_session(client_id: i64) {
 
 // 关闭一个客户端
 pub async fn shutdown(client_id: i64) -> io::Result<()> {
-    let tx = {
-        if let Some(client_live) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
-            client_live.sender.clone()
-        } else {
-            return Ok(());
+    // let tx = {
+    //     if let Some(client_live) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
+    //         client_live.sender.clone()
+    //     } else {
+    //         return Ok(());
+    //     }
+    // };
+    //
+    // // 发送关闭指令
+    // if let Err(e) = tx.send(Bytes::from_static(head_flag::CLOSE_CMD)).await {
+    //     return Err(io::Error::new(
+    //         io::ErrorKind::Other,
+    //         format!("发送关闭指令失败:{}", e),
+    //     ));
+    // }
+    //
+    // // 等待一段时间让旧连接关闭
+    // while nps::CLIENT_LIVE_MAP.lock().await.contains_key(&client_id) {
+    //     //这里很快就会被关闭，所以不需要设置过长的等待时间
+    //     // println!("-->等待旧连接关闭...");
+    //     tokio::time::sleep(Duration::from_millis(10)).await;
+    // }
+    loop {
+        let client_map = nps::CLIENT_LIVE_MAP.lock().await;
+        if let Some(client_live) = client_map.get(&client_id) {
+            client_live.closer.notify_waiters();
+            drop(client_map);
+
+            //这里很快就会被关闭，所以不需要设置过长的等待时间
+            println!("-->等待旧连接关闭...");
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            continue;
         }
-    };
-
-    // 发送关闭指令
-    if let Err(e) = tx.send(Bytes::from_static(header_util::CLOSE_CMD)).await {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!("发送关闭指令失败:{}", e),
-        ));
+        break;
     }
 
-    // 等待一段时间让旧连接关闭
-    while nps::CLIENT_LIVE_MAP.lock().await.contains_key(&client_id) {
-        //这里很快就会被关闭，所以不需要设置过长的等待时间
-        // println!("-->等待旧连接关闭...");
-        tokio::time::sleep(Duration::from_millis(10)).await;
-    }
     Ok(())
 }

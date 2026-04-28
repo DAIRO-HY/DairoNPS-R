@@ -3,14 +3,13 @@ use crate::{application, nps};
 use crate::nps::security_util::SERVER_SECURITY_KEY;
 use crate::nps::TCPBridging;
 use crate::nps_error::NpsError;
-use crate::util::time_util;
+use np_common::{head_flag, time_util};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::{io, select, try_join};
-use crate::nps::nps_client::header_util;
 
 /// 桥接参数
 pub struct TcpBridgeParam {
@@ -46,7 +45,7 @@ async fn start(param: TcpBridgeParam) -> Result<(), NpsError> {
     let (client_reader, mut client_writer) = tokio::io::split(param.client_tcp);
 
     //发送连接目标服务器标记
-    client_writer.write_u8(header_util::CONNECT_TO_TARGET_SERVER).await?;
+    client_writer.write_u8(head_flag::CONNECT_TO_TARGET_SERVER).await?;
 
     //将加密类型及目标端口 格式:加密状态|端口  1|80   1|127.0.0.1:80
     //1:加密  0:不加密
@@ -188,12 +187,18 @@ async fn proxy_to_client(
 
     //使用&*,避免发生值复制
     let security_keys = &*SERVER_SECURITY_KEY;
+    
+    let notified = closer.notified();
+    tokio::pin!(notified);
+    
+    let bridge_notified = bridge_closer.notified();
+    tokio::pin!(bridge_notified);
     loop {
         select! {
-            _ = closer.notified() => {
+            _ = &mut notified => {
                 break;
             }
-            _ = bridge_closer.notified() => {
+            _ = &mut bridge_notified => {
                 break;
             }
             read_data = proxy_reader.read(&mut buf) => {

@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::LazyLock;
 use tokio::sync::RwLock;
 use validator::Validate;
-use crate::util::time_util;
+use np_common::time_util;
 
 pub static LOGGED_INFO: LazyLock<RwLock<LoggedInfo>> = LazyLock::new(|| {
     RwLock::new(LoggedInfo {

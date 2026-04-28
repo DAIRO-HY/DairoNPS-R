@@ -5,12 +5,14 @@ edition = "2024"
 
 # build.rs 专用的依赖
 [build-dependencies]
-pollster = "0.3"
 db = { path = "../db" }
 source_gen = { path = "../source_gen" }
+pollster = "0.3"
 
 [dependencies]
 db = { path = "../db" }
+source_gen = { path = "../source_gen" }
+np_common = { path = "../np_common" }
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros"] }
@@ -20,7 +22,6 @@ clap = { version = "4", features = ["derive"] }
 chrono = "0.4" # 日期时间处理
 serde = { version = "1", features = ["derive","rc"] }
 serde_json = "1.0"
-source_gen = { path = "../source_gen" }
 regex = "1"
 mime_guess = "2"
 rand = { version = "0.10", features = ["std"] }

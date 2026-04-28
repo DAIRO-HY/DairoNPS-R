@@ -8,7 +8,7 @@ use std::sync::LazyLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
-use crate::util::time_util;
+use np_common::time_util;
 
 /// 准备用来存入数据库的数据缓存，避免频繁操作数据库
 pub static INSERT_CACHE_LIST: LazyLock<Mutex<Vec<TrafficStats>>> =

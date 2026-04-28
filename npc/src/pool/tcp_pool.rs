@@ -1,10 +1,11 @@
 use crate::bridge::tcp_bridge;
 use crate::npc_error::NpcError;
-use crate::{application, header_util};
+use crate::application;
 use std::sync::{Arc, LazyLock};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
+use np_common::head_flag;
 // // TCPPool 等待分配工作的Socket
 // type TCPPool struct {
 // 	npsTCP net.Conn
@@ -68,7 +69,7 @@ pub fn create(count: u8) {
 async fn start(client_id: i64, mut nps_tcp: TcpStream) -> Result<(), NpcError> {
 
     //发送头部标记
-    nps_tcp.write_u8(header_util::REQUEST_TCP_POOL).await?;
+    nps_tcp.write_u8(head_flag::REQUEST_TCP_POOL).await?;
 
     //发送客户端id
     nps_tcp.write_i64(client_id).await?;
@@ -99,16 +100,19 @@ async fn start(client_id: i64, mut nps_tcp: TcpStream) -> Result<(), NpcError> {
  */
 async fn wait_work(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
     let flag = nps_tcp.read_u8().await?;
-    if flag == header_util::POOL_IS_FULL{//服务端连接池已满
+    if flag == head_flag::POOL_IS_FULL{//服务端连接池已满
         return Err(NpcError::PoolIsFull);
     }
-    if flag != header_util::CONNECT_TO_TARGET_SERVER{
+    if flag != head_flag::CONNECT_TO_TARGET_SERVER{
         return Err(NpcError::UnknowFlagError(flag))
     }
 
     //加密类型及目标端口 格式:加密状态|端口  1|80   1|127.0.0.1:80
     //1:加密  0:不加密
-    let header = header_util::get_header(&mut nps_tcp).await?;
+    let info_len = nps_tcp.read_u8().await?;
+    let mut header_data = vec![0u8; info_len as usize];
+    nps_tcp.read_exact(&mut header_data).await?;
+    let header = String::from_utf8_lossy(&header_data).into_owned();
     let headers: Vec<&str> = header.split("|").collect();
     if headers.len() != 2 {
         return Err(NpcError::InvalidHeader(header));

@@ -1,11 +1,11 @@
 use crate::constant::nps_constant;
 use crate::nps;
-use crate::nps::nps_client::header_util;
 use crate::nps::nps_client::tcp_client::tcp_client_session_manager;
 use crate::nps_error::NpsError;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
+use np_common::head_flag;
 
 // TCP连接池
 pub struct TCPPool {
@@ -39,7 +39,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
         drop(client_live_map); // 释放锁
         
         //发送连接池已满的标记
-        tcp.write_u8(header_util::POOL_IS_FULL).await?;
+        tcp.write_u8(head_flag::POOL_IS_FULL).await?;
 
         //已经达到最大连接数,拒绝新连接
         tcp.shutdown().await?;

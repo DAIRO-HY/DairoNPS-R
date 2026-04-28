@@ -2,7 +2,7 @@ use crate::dao::{channel_dao, client_dao, forward_dao};
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::NumberExtension;
 use crate::nps::TCPBridging;
-use crate::util::time_util;
+use np_common::time_util;
 use crate::web::controller::bridge::model::BridgeList;
 use crate::web::extract::AppQuery;
 use crate::web::router::SingleQuery;

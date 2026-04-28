@@ -13,7 +13,7 @@ mod web;
 
 use std::sync::{Arc, LazyLock};
 use crate::extension::number::NumberExtension;
-use crate::util::time_util;
+use np_common::time_util;
 use itertools::Itertools;
 use sqlx::{Column, Executor, Statement, TypeInfo};
 use std::sync::atomic::{AtomicU64, Ordering};

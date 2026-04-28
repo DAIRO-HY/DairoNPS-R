@@ -1,9 +1,8 @@
-use super::super::header_util;
 use super::tcp_client_session_manager;
 use crate::application;
 use crate::dao::client_dao;
 use crate::nps::nps_pool::tcp_pool;
-use crate::util::time_util;
+use np_common::{head_flag, time_util};
 use sqlx::Error;
 use std::net::SocketAddr;
 use std::sync::atomic::Ordering;
@@ -62,10 +61,10 @@ async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<()
     // println!("接收到客户端连接请求,标记:{}", flag);
     match flag {
         //标记该连接为:服务器端往客户端发送指令的连接
-        header_util::CLIENT_TO_SERVER_MAIN_CONNECTION => validate_session(tcp_stream, addr).await?,
+        head_flag::CLIENT_TO_SERVER_MAIN_CONNECTION => validate_session(tcp_stream, addr).await?,
 
         //创建客户端Socket连接池
-        header_util::REQUEST_TCP_POOL => tcp_pool::add(tcp_stream).await?,
+        head_flag::REQUEST_TCP_POOL => tcp_pool::add(tcp_stream).await?,
 
         _ => {
             println!("未知标记:{}", flag);
@@ -76,9 +75,17 @@ async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<()
 
 // 验证客户端回话
 async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<(), NpsError> {
-    //得到头部数据
-    let header = header_util::get_header(&mut tcp_stream).await?;
+    //得到头部部分数据长度
+    let info_len = tcp_stream.read_u8().await?;
+    let mut header_data = vec![0u8; info_len as usize];
+    tcp_stream.read_exact(&mut header_data).await?;
+    let header = String::from_utf8_lossy(&header_data).into_owned();
+
+    //客户端key|版本号
     let headers: Vec<&str> = header.split("|").collect();
+    if headers.len() != 2 {
+        return Err(NpsError::InvalidHeader(header));
+    }
 
     //得到客户端key
     let key = headers[0];

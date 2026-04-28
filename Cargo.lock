@@ -92,6 +92,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "arc-swap"
+version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a3a1fd6f75306b68087b831f025c712524bcb19aad54e557b1129cfa0a2b207"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "async-channel"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1519,6 +1528,7 @@ dependencies = [
 name = "npc"
 version = "0.1.0"
 dependencies = [
+ "arc-swap",
  "bytes",
  "chrono",
  "clap",
@@ -1548,6 +1558,7 @@ dependencies = [
  "itertools",
  "maplit",
  "mime_guess",
+ "np_common",
  "pollster",
  "rand 0.10.0",
  "regex",

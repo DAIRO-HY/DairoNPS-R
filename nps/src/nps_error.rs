@@ -17,8 +17,11 @@ pub enum NpsError {
     #[error("发送数据失败")]
     SendDataError,
 
+    #[error("无效的Header")]
+    InvalidHeader(String),
+
     #[error("其他错误")]
-    OtherError(String),
+    OtherError(&'static str),
 }
 
 // impl std::error::Error for NpsError {}

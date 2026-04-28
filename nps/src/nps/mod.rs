@@ -56,6 +56,9 @@ pub struct ClientLive {
 
     /// 最后一次收到客户端心跳时间
     pub heart_time: Arc<AtomicU64>,
+
+    /// 关闭通知
+    pub closer: Arc<Notify>,
 }
 
 /// TCP桥接通信信息

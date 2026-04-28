@@ -1,7 +1,3 @@
-use tokio::io;
-use tokio::io::AsyncReadExt;
-use tokio::net::TcpStream;
-use bytes::{BufMut, Bytes, BytesMut};
 
 /**
  * 客户端与服务器端通信连接标记
@@ -52,28 +48,3 @@ pub const CONNECT_TO_TARGET_SERVER: u8 = 8;
  * 连接池已满标记
  */
 pub const POOL_IS_FULL: u8 = 9;
-
-//关闭标记指令
-pub const CLOSE_CMD: &[u8; 13] = b"@->[CLOSE]<-@";
-
-/**
- * 获取客户端Socket头部信息
- */
-pub async fn get_header(tcp_stream: &mut TcpStream) -> io::Result<String> {
-
-    //得到头部部分数据长度
-    let header_len = tcp_stream.read_u8().await?;
-    let mut header_data = vec![0u8; header_len as usize];
-    tcp_stream.read_exact(&mut header_data).await?;
-    let header = String::from_utf8_lossy(&header_data).into_owned();
-    Ok(header)
-}
-
-/// 构建发送给客户端的头部数据
-pub fn make_header_data(flag: u8, message: &str) -> Bytes {
-    let mut bm = BytesMut::with_capacity(message.as_bytes().len() + 2);
-    bm.put_u8(flag);
-    bm.put_u8(message.len() as u8);
-    bm.put_slice(message.as_bytes());
-    bm.freeze()
-}
