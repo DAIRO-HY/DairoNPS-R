@@ -1,0 +1,8 @@
+version: '3.1'
+services:
+  rust-build:
+    build: build
+    container_name: rust-build
+    volumes:
+      - /Users/zhoulq/dev/rust/DairoNPS-R:/home/rust/src
+      - $HOME/.cargo:/root/.cargo

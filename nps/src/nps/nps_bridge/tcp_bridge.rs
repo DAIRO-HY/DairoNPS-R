@@ -25,28 +25,14 @@ pub struct TcpBridgeParam {
                                 // pub bridge_count: Arc<AtomicUsize>,               //统计桥接数
 }
 
-struct BridgeHalfParam {
-    proxy_reader: ReadHalf<TcpStream>,
-    proxy_writer: WriteHalf<TcpStream>,
-    client_writer: WriteHalf<TcpStream>,
-    client_reader: ReadHalf<TcpStream>,
-
-    ip: String,             // 代理客户端ip地址
-    channel_id: i64,        // 隧道ID
-    is_stats_traffic: bool, //是否实时统计流量
-    target_port: String,    //目标端口
-    security_state: i64,    //是否加密传输
-    data_len: AtomicDataIOLen, //流量统计
-}
-
 /// 准备开始桥接
-pub async fn ready(param: TcpBridgeParam, bridge_count: Arc<AtomicUsize>, closer: Arc<Notify>) {
+pub async fn ready(param: TcpBridgeParam, bridge_count: Arc<AtomicUsize>, channel_closer: Arc<Notify>) {
     tokio::spawn(async move {
         let bridge_tag = application::BRIDGE_NEXT_TAG.fetch_add(1, Ordering::Relaxed);
 
         //桥接数+1
         bridge_count.fetch_add(1, Ordering::Relaxed);
-        spawn_start(param, closer, bridge_tag).await;
+        spawn_start(param, channel_closer, bridge_tag).await;
 
         //桥接数-1
         bridge_count.fetch_sub(1, Ordering::Relaxed);
@@ -56,30 +42,17 @@ pub async fn ready(param: TcpBridgeParam, bridge_count: Arc<AtomicUsize>, closer
     });
 }
 
-async fn spawn_start(param: TcpBridgeParam, closer: Arc<Notify>, bridge_tag: u64) {
-    let (proxy_reader, mut proxy_writer) = tokio::io::split(param.proxy_tcp);
-    let (client_reader, mut client_writer) = tokio::io::split(param.client_tcp);
-    let mut bridge_half = BridgeHalfParam {
-        proxy_reader,
-        proxy_writer,
-        client_writer,
-        client_reader,
-
-        ip: param.ip,
-        channel_id: param.channel_id,
-        is_stats_traffic: param.is_stats_traffic,
-        target_port: param.target_port,
-        security_state: param.security_state,
-        data_len: param.data_len,
-    };
+async fn spawn_start(param: TcpBridgeParam, channel_closer: Arc<Notify>, bridge_tag: u64) {
     select! {
-        _ = closer.notified() => {
+        _ = channel_closer.notified() => {
+
+            //这里无需显示关闭,生命周期结束之后会自动关闭并通知对方我方已经关闭
+            // let _ = bridge_half.proxy_writer.shutdown().await;
+            // let _ = bridge_half.client_writer.shutdown().await;
             println!("收到关闭通知，准备关闭桥接通信...");
-            let _ = bridge_half.proxy_writer.shutdown().await;
-            let _ = bridge_half.client_writer.shutdown().await;
             return;
         }
-        result = start(&mut bridge_half, bridge_tag) => {
+        result = start(param, bridge_tag) => {
             if let Err(e) = result {
                 println!("桥接通信接发生了错误:{:?}", e);
             }
@@ -90,24 +63,22 @@ async fn spawn_start(param: TcpBridgeParam, closer: Arc<Notify>, bridge_tag: u64
 /**
  * 开始桥接传输数据
  */
-async fn start(param: &mut BridgeHalfParam, bridge_tag: u64) -> Result<(), NpsError> {
+async fn start(mut param: TcpBridgeParam, bridge_tag: u64) -> Result<(), NpsError> {
 
     //发送连接目标服务器标记
-    param.client_writer
+    param.client_tcp
         .write_u8(head_flag::CONNECT_TO_TARGET_SERVER)
         .await?;
 
     //将加密类型及目标端口 格式:加密状态|端口  1|80   1|127.0.0.1:80
     //1:加密  0:不加密
-    let mut header = String::new();
-    header.push_str(&(param.security_state.to_string()));
-    header.push('|');
-    header.push_str(param.target_port.as_str());
+    let mut target_info = String::new();
+    target_info.push_str(&(param.security_state.to_string()));
+    target_info.push('|');
+    target_info.push_str(param.target_port.as_str());
+    param.client_tcp.write_u8(target_info.len() as u8).await?;
+    param.client_tcp.write_all(target_info.as_bytes()).await?;
 
-    //发送目标端口信息
-    if let Err(e) = send_header_to_client(header, &mut param.client_writer).await {
-        return Err(e);
-    }
     if !param.is_stats_traffic {
         // 不需要实时统计流量
         let result = copy(param)
@@ -132,29 +103,32 @@ async fn start(param: &mut BridgeHalfParam, bridge_tag: u64) -> Result<(), NpsEr
             closer: bridge_closer.clone(),
         },
     );
+    let (proxy_reader, proxy_writer) = tokio::io::split(param.proxy_tcp);
+    let (client_reader, client_writer) = tokio::io::split(param.client_tcp);
 
     let p2c = proxy_to_client(
         param.security_state == 1,
         data_len.clone(),
         param.data_len.clone(),
-        &mut param.proxy_reader,
-        &mut param.client_writer,
+        proxy_reader,
+        client_writer,
         last_rw_time.clone(),
     );
     let c2p = client_to_proxy(
         param.security_state == 1,
         data_len,
         param.data_len.clone(),
-        &mut param.client_reader,
-        &mut param.proxy_writer,
+        client_reader,
+        proxy_writer,
         last_rw_time,
     );
 
     select! {
         _ = bridge_closer.notified() => {
+            //这里无需显示关闭,生命周期结束之后会自动关闭并通知对方我方已经关闭
+            // let _ = param.proxy_writer.shutdown().await;
+            // let _ = param.client_writer.shutdown().await;
             // println!("收到关闭桥接通知，准备关闭桥接通信...");
-            let _ = param.proxy_writer.shutdown().await;
-            let _ = param.client_writer.shutdown().await;
             Ok(())
         }
         result = async{try_join!(p2c, c2p)} => {
@@ -166,41 +140,22 @@ async fn start(param: &mut BridgeHalfParam, bridge_tag: u64) -> Result<(), NpsEr
 
 /// 不需要实时统计流量，高性能模式
 async fn copy(
-    param: &mut BridgeHalfParam
+    mut param: TcpBridgeParam
 ) -> Result<(), NpsError> {
-    let result = try_join!(
-        async {
-            let len = io::copy(&mut param.proxy_reader, &mut param.client_writer).await;
-            param.client_writer.shutdown().await?;
-            len
-        },
-        async {
-            let len = io::copy(&mut param.client_reader, &mut param.proxy_writer).await;
-            param.proxy_writer.shutdown().await?;
-            len
-        }
-    );
-    match result {
-        Ok((in_len, out_len)) => {
+    let (in_len, out_len) = io::copy_bidirectional(&mut param.client_tcp, &mut param.proxy_tcp).await?;
             param.data_len.add_in(in_len);
             param.data_len.add_out(out_len);
-            println!("-->in_len:{}", in_len);
-            println!("-->out_len:{}", out_len);
+            // println!("-->in_len:{}", in_len);
+            // println!("-->out_len:{}", out_len);
             Ok(())
-        }
-        Err(e) => {
-            println!("-->e:{:?}", e);
-            Err(NpsError::IoError(e))
-        }
-    }
 }
 
 async fn proxy_to_client(
     need_encryption: bool,
     bridge_data_len: AtomicDataIOLen,
     channel_data_len: AtomicDataIOLen,
-    proxy_reader: &mut ReadHalf<TcpStream>,
-    client_writer: &mut WriteHalf<TcpStream>,
+    mut proxy_reader: ReadHalf<TcpStream>,
+    mut client_writer: WriteHalf<TcpStream>,
     last_rw_time: Arc<AtomicU64>,
 ) -> io::Result<()> {
     let mut buf = [0u8; 1024 * 8];
@@ -237,8 +192,8 @@ async fn client_to_proxy(
     need_encryption: bool,
     bridge_data_len: AtomicDataIOLen,
     channel_data_len: AtomicDataIOLen,
-    client_reader: &mut ReadHalf<TcpStream>,
-    proxy_writer: &mut WriteHalf<TcpStream>,
+    mut client_reader: ReadHalf<TcpStream>,
+    mut proxy_writer: WriteHalf<TcpStream>,
     last_rw_time: Arc<AtomicU64>,
 ) -> io::Result<()> {
     let mut buf = [0u8; 1024 * 8];
@@ -266,20 +221,5 @@ async fn client_to_proxy(
     //这里必须关闭客户端的输出流，否则对方无法感知到已经关闭连接了（写失败或者读失败没有必要调用shutdown()，即使调用大概率也是失败的，所以没有意义）
     proxy_writer.shutdown().await?;
     // println!("-->代理连接已关闭");
-    Ok(())
-}
-
-/**
- * 发送目标端口信息
- */
-async fn send_header_to_client(
-    header: String,
-    client_writer: &mut WriteHalf<TcpStream>,
-) -> Result<(), NpsError> {
-    let mut data = Vec::with_capacity(header.len() + 1);
-    data.push(header.len() as u8); //写入数据长度标识
-    data.extend_from_slice(header.as_bytes()); //写入数据
-
-    client_writer.write_all(&data).await?;
     Ok(())
 }

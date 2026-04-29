@@ -2542,6 +2542,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "test"
+version = "0.1.0"
+dependencies = [
+ "arc-swap",
+ "bytes",
+ "chrono",
+ "clap",
+ "futures",
+ "itertools",
+ "maplit",
+ "np_common",
+ "rand 0.10.0",
+ "rust-embed",
+ "serde",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "thiserror"
 version = "2.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
