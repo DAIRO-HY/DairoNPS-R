@@ -1,5 +1,5 @@
 use crate::application;
-use crate::bridge::tcp_bridge;
+use crate::tcp_bridge;
 use crate::npc_error::NpcError;
 use np_common::head_flag;
 use std::sync::atomic::Ordering;

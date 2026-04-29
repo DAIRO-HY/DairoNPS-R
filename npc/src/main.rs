@@ -5,11 +5,10 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 //忽略所有警告
-mod bridge;
+mod tcp_bridge;
 mod npc_error;
-mod pool;
+mod tcp_pool;
 mod session;
-// mod header_util;
 mod application;
 mod security_util;
 
@@ -36,7 +35,7 @@ async fn main() -> tokio::io::Result<()> {
     //     println!("restart");
     //     session::npc_session::open().await;
     // });
-    session::npc_session::open().await;
+    session::open().await;
     println!("--->FINISH");
     sleep(Duration::from_millis(100000000)).await;
     Ok(())
