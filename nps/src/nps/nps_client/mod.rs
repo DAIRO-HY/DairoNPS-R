@@ -106,7 +106,8 @@ async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result
     let client = match client_dao::select_by_key(&db::get(), key).await {
         Ok(v) => v,
         Err(Error::RowNotFound) => {
-            println!("客户端：{}获取失败", key);
+            // println!("客户端：{}获取失败", key);
+            tcp_stream.write_u8(head_flag::UNKNOW_KEY).await?;
             tcp_stream.shutdown().await?;
             return Ok(());
         }
@@ -118,9 +119,11 @@ async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result
     };
     if !client.is_enabled {
         // println!("客户端：{}已被停止服务,IP:%s", key);
+        tcp_stream.write_u8(head_flag::DISABLED_KEY).await?;
         tcp_stream.shutdown().await?;
         return Ok(());
     }
+
     let client_id = client.id;
 
     //得到客户端版本号

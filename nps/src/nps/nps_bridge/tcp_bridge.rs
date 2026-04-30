@@ -49,7 +49,7 @@ async fn spawn_start(param: TcpBridgeParam, channel_closer: Arc<Notify>, bridge_
             //这里无需显示关闭,生命周期结束之后会自动关闭并通知对方我方已经关闭
             // let _ = bridge_half.proxy_writer.shutdown().await;
             // let _ = bridge_half.client_writer.shutdown().await;
-            println!("收到关闭通知，准备关闭桥接通信...");
+            // println!("收到关闭通知，准备关闭桥接通信...");
             return;
         }
         result = start(param, bridge_tag) => {

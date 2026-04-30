@@ -52,6 +52,10 @@ async fn start(
     heart_time: Arc<AtomicU64>,
     mut receiver: Receiver<Vec<u8>>,
 ) -> Result<(), NpsError> {
+
+    //发送连接成功标记
+    npc_tcp.write_u8(head_flag::CONNECT_SUCCESS).await?;
+
     //将客户端id发送给NPC客户端
     npc_tcp.write_i64(client_id).await?;
 
@@ -64,7 +68,7 @@ async fn start(
     loop {
         select! {
             _ = &mut notified => {
-                println!("-->收到关闭客户端通知");
+                // println!("-->收到关闭客户端通知");
                 break;
             }
             recv_result = receiver.recv() => {
@@ -108,26 +112,6 @@ pub async fn send_tcp_pool_request(client_id: i64, count: u8) {
         .unwrap_or_else(|it| println!("-->往客户端发送数据失败:{:?}", it));
 }
 
-// /**
-//  * 往客户端发送数据
-//  * @param clientID 客户端ID
-//  * @param flag 头部标记
-//  * @param message 头部消息
-//  */
-// async fn send(client_id: i64, flag: u8, message: &str) {
-//     let tx = {
-//         if let Some(client_live) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
-//             client_live.sender.clone()
-//         } else {
-//             return;
-//         }
-//     };
-//     let header_data = header_util::make_header_data(flag, message);
-//     tx.send(header_data)
-//         .await
-//         .unwrap_or_else(|it| println!("-->往客户端发送数据失败:{:?}", it));
-// }
-
 // 关闭客户端
 async fn remove_session(client_id: i64) {
     //移除连接
@@ -148,28 +132,6 @@ async fn remove_session(client_id: i64) {
 
 // 关闭一个客户端
 pub async fn shutdown(client_id: i64) -> io::Result<()> {
-    // let tx = {
-    //     if let Some(client_live) = nps::CLIENT_LIVE_MAP.lock().await.get(&client_id) {
-    //         client_live.sender.clone()
-    //     } else {
-    //         return Ok(());
-    //     }
-    // };
-    //
-    // // 发送关闭指令
-    // if let Err(e) = tx.send(Bytes::from_static(head_flag::CLOSE_CMD)).await {
-    //     return Err(io::Error::new(
-    //         io::ErrorKind::Other,
-    //         format!("发送关闭指令失败:{}", e),
-    //     ));
-    // }
-    //
-    // // 等待一段时间让旧连接关闭
-    // while nps::CLIENT_LIVE_MAP.lock().await.contains_key(&client_id) {
-    //     //这里很快就会被关闭，所以不需要设置过长的等待时间
-    //     // println!("-->等待旧连接关闭...");
-    //     tokio::time::sleep(Duration::from_millis(10)).await;
-    // }
     loop {
         let client_map = nps::CLIENT_LIVE_MAP.lock().await;
         if let Some(client_live) = client_map.get(&client_id) {

@@ -1,19 +1,14 @@
+use std::io::ErrorKind;
 use crate::{application, tcp_pool};
 use np_common::{head_flag, time_util};
 use std::sync::atomic::Ordering;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
-use tokio::time::sleep;
 use tokio::time::Duration;
+use tokio::time::sleep;
 use tokio::{io, select, try_join};
 
 use crate::npc_error::NpcError;
-
-// // 与服务端通信连接
-// type NPCSession struct {
-// 	npsTCP net.Conn
-// }
-//
 
 // 开启客户端
 pub async fn open() {
@@ -22,7 +17,7 @@ pub async fn open() {
         return;
     }
     *application::IS_RUNNING.lock().await = true;
-    println!("NPC服务开启成功");
+    println!("-->NPC服务开启成功");
     check_heart().await;
     *application::IS_RUNNING.lock().await = false;
 }
@@ -36,11 +31,10 @@ pub async fn close() {
     //关闭npc服务
     shutdown_npc().await;
     while *application::IS_RUNNING.lock().await {
-        println!("正在关闭服务...");
+        println!("-->正在停止服务...");
         application::APP_CLOSER.notify_waiters();
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
-    println!("正在关闭NPC服务...");
 }
 
 // 检测心跳
@@ -49,7 +43,7 @@ async fn check_heart() {
     loop {
         select! {
             _ = app_closer.notified() => {
-                println!("收到关闭通知，准备关闭应用...");
+                // println!("收到关闭通知，准备关闭应用...");
                 // 这里可以执行一些清理操作，例如关闭连接、释放资源等
                 break;
             }
@@ -93,24 +87,32 @@ async fn create_connection() {
             return;
         }
     };
-    println!("-->与主机连接成功");
     tokio::spawn(async move {
         *application::IS_NPC_RUNNING.lock().await = true;
         spawn_start(nps_tcp).await;
         *application::IS_NPC_RUNNING.lock().await = false;
+        println!("-->与服务端连接已经断开");
     });
 }
 
 async fn spawn_start(nps_tcp: TcpStream) {
-    let closer =  &application::NPC_CLOSER;
+    let closer = &application::NPC_CLOSER;
     select! {
         _ = closer.notified() => {
-            println!("收到关闭通知，准备关闭连接...");
+            // println!("收到关闭通知，准备关闭连接...");
             return;
         }
         result = start(nps_tcp) =>{
-            if let Err(e) = result {
-                println!("-->与主机通信发生了错误:{:?}", e);
+            match result {
+                Err(NpcError::IoError(e)) if e.kind() == ErrorKind::UnexpectedEof =>{
+
+                    //正常关闭
+                    // println!("-->与服务端连接已经断开");
+                }
+                Err(e) =>{
+                    println!("-->与主机通信发生了错误:{:?}", e);
+                }
+                _=>{}
             }
         }
     }
@@ -130,6 +132,28 @@ async fn start(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
         .await?;
     nps_tcp.write_all(header.as_bytes()).await?;
 
+    let flag = nps_tcp.read_u8().await?;
+    match flag{
+        head_flag::UNKNOW_KEY => {
+
+            //未知的秘钥,直接返回,不再进行后续操作
+            println!("-->未知的秘钥:{}",application::ARGS.key);
+            return Ok(());
+        }
+        head_flag::DISABLED_KEY => {
+
+            //未知的秘钥,直接返回,不再进行后续操作
+            println!("-->该秘钥被禁用:{}",application::ARGS.key);
+            return Ok(());
+        }
+        head_flag::CONNECT_SUCCESS => {
+            //连接成功
+        }
+        _ => {
+            return Err(NpcError::UnknowFlagError(flag));
+        }
+    }
+
     //获取客户端ID
     let client_id = nps_tcp.read_i64().await?;
     application::CLIENT_ID.store(client_id, Ordering::Relaxed);
@@ -137,14 +161,16 @@ async fn start(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
     //客户端加解密秘钥
     let mut buf = [0u8; 256];
     nps_tcp.read_exact(&mut buf).await?;
-    
+
     //更新秘钥
     *application::SECURITY_KEY.write().await = buf;
 
+    println!("-->与服务端连接成功");
     let (reader, mut writer) = io::split(nps_tcp);
     let result = try_join!(heart(&mut writer), receive(reader));
+
     if let Err(e) = result {
-        return Err(e);
+            return Err(e);
     }
     Ok(())
 }
@@ -223,7 +249,7 @@ async fn heart(writer: &mut WriteHalf<TcpStream>) -> Result<(), NpcError> {
  */
 async fn shutdown_npc() {
     while *application::IS_NPC_RUNNING.lock().await {
-        println!("正在关闭NPC服务...");
+        println!("-->正在关闭NPC服务...");
         application::NPC_CLOSER.notify_waiters();
         tokio::time::sleep(Duration::from_millis(10)).await;
     }

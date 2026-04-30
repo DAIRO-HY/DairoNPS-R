@@ -48,3 +48,18 @@ pub const CONNECT_TO_TARGET_SERVER: u8 = 8;
  * 连接池已满标记
  */
 pub const POOL_IS_FULL: u8 = 9;
+
+/**
+ * 连接成功标记
+ */
+pub const CONNECT_SUCCESS: u8 = 10;
+
+/**
+ * 未知的key
+ */
+pub const UNKNOW_KEY: u8 = 11;
+
+/**
+ * 该key被禁用
+ */
+pub const DISABLED_KEY: u8 = 12;

@@ -9,10 +9,11 @@ use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::LazyLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 /// 一些定时任务
 use tokio::time::sleep;
-use np_common::time_util;
+use np_common::{head_flag, time_util};
 use crate::nps::nps_client::nps_session;
 
 //准备用来存入数据库的数据缓存，避免频繁操作数据库
@@ -184,11 +185,10 @@ async fn tcp_pool_timeout_check() {
         //用来记录连接池被清空的客户端ID,用于请求创建新的连接池
         let mut empty_pool_clients = Vec::new();
         for (client_id, client_live) in client_map.iter_mut() {
-            client_live.tcp_pool.retain(|it| {
+            client_live.tcp_pool.retain_mut(|it| {
                 //连接池超过指定时间,关闭连接
                 if now - it.create_time > nps_constant::RECYLE_POOL_TIME_OUT {
                     //连接池超过指定时间,关闭连接
-                    // let _ = it.tcp.shutdown();
                     return false;
                 }
                 return true;

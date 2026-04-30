@@ -27,7 +27,7 @@ async fn main() -> tokio::io::Result<()> {
     // });
     // tokio::spawn(async{
     //     sleep(Duration::from_millis(10000)).await;
-    //     session::npc_session::close().await;
+    //     session::close().await;
     //     println!("closed");
     // });
     // tokio::spawn(async{

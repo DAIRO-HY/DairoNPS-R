@@ -1,13 +1,9 @@
 use crate::application;
 use crate::npc_error::NpcError;
-use arc_swap::access::DynAccess;
-use np_common::time_util;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::Ordering;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::{io, select, try_join};
-use tokio::sync::Notify;
 
 pub struct TCPBridgeParam {
     //数据是否加密
@@ -46,12 +42,12 @@ async fn spawn_start(param: TCPBridgeParam) {
     let closer = &application::NPC_CLOSER;
     select! {
         _ = closer.notified() => {
-            println!("收到关闭通知，准备关闭桥接通信...");
+            // println!("收到关闭通知，准备关闭桥接通信...");
             return;
         }
         result = start(param) => {
             if let Err(e) = result {
-                println!("桥接通信接发生了错误:{:?}", e);
+                println!("-->桥接通信接发生了错误:{:?}", e);
             }
         }
     }
