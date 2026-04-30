@@ -11,13 +11,12 @@ mod nps_error;
 mod util;
 mod web;
 
-use std::sync::{Arc, LazyLock};
 use crate::extension::number::NumberExtension;
-use np_common::time_util;
+use crate::nps::nps_client;
 use itertools::Itertools;
 use sqlx::{Column, Executor, Statement, TypeInfo};
-use std::sync::atomic::{AtomicU64, Ordering};
-
+use std::sync::atomic::AtomicU64;
+use std::sync::LazyLock;
 
 static last_rw_time:LazyLock<AtomicU64> = LazyLock::new(||AtomicU64::new(0));
 
@@ -53,7 +52,7 @@ async fn main() -> tokio::io::Result<()> {
     web::router::ready();
 
     //开启内网穿透监听
-    nps::ready();
+    nps_client::ready();
 
     //开启端口转发监听
     forward::read();

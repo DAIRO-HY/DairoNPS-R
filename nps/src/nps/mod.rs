@@ -7,14 +7,13 @@ pub mod security_util;
 
 use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps::nps_pool::tcp_pool::TCPPool;
-use bytes::Bytes;
 use dashmap::DashMap;
 use itertools::Itertools;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::sync::Arc;
 use std::sync::LazyLock;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, Notify};
 
@@ -81,15 +80,4 @@ pub struct TCPBridging {
 
     ///关闭监听器
     pub closer: Arc<Notify>,
-}
-
-// NPS模块开启
-pub fn ready() {
-    // 启动定时任务
-    nps_timer::init();
-    tokio::spawn(async {
-        if let Err(e) = nps_client::accept().await {
-            eprintln!("监听客户端发生了错误:{:?}", e);
-        }
-    });
 }

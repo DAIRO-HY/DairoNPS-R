@@ -4,6 +4,8 @@ pub mod nps_session;
 use crate::application;
 use crate::dao::client_dao;
 use crate::nps::nps_pool::tcp_pool;
+use crate::nps::nps_timer;
+use crate::nps_error::NpsError;
 use np_common::{head_flag, time_util};
 use sqlx::Error;
 use std::net::SocketAddr;
@@ -11,43 +13,53 @@ use std::sync::atomic::Ordering;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
-use crate::nps_error::NpsError;
 
-/// 监听客户端连接
-pub async fn accept() -> Result<(), NpsError> {
-    let listener = TcpListener::bind("0.0.0.0:1781").await?;
-    loop {
-        select! {
+// NPS模块开启
+pub fn ready() {
+    // 启动定时任务
+    nps_timer::init();
+    tokio::spawn(async {
+        spawn_start().await;
+        println!("NPS服务端监听已关闭。");
+    });
+}
+
+async fn spawn_start() {
+    select! {
         _ = application::SHUTDOWN_NOTIFY.notified() => {
-                drop(listener);
                 application::IS_NPS_SERVER_DROP.store(true, Ordering::Release);
-                break;
+                return;
         }
-        acc = listener.accept() => {//等待客户端连接
-                start(acc?)
+        result = start() => {//等待客户端连接
+            if let Err(e) = result {
+                eprintln!("监听客户端发生了错误:{:?}", e);
             }
         }
     }
-    println!("NPS服务端监听已关闭。");
-    Ok(())
 }
 
-fn start((tcp_stream, addr): (TcpStream, SocketAddr)) {
-    // println!("接收到客户端连接请求,端口:{}监听成功。", 1781);
-    tokio::spawn(async move {
-        match handle_accept(tcp_stream, addr).await {
-            Err(NpsError::PoolIsFull) => {
-                //Tcp连接池被填充满了，不做任何处理
-                //println!("-->{}",NpsError::PoolIsFull)
-            }
-            Err(NpsError::IoError(e)) => {
-                //@TODO: 应该写入日志
-                println!("处理客户端连接发生错误:{:?}", e);
-            }
-            Ok(()) | _ => {}
-        };
-        // println!("客户端连接处理结束。");
-    });
+/// 监听客户端连接
+async fn start() -> Result<(), NpsError> {
+    let listener = TcpListener::bind("0.0.0.0:1781").await?;
+    loop {
+        let (tcp_stream, addr) = listener.accept().await?;
+        
+        // println!("接收到客户端连接请求,端口:{}监听成功。", 1781);
+        tokio::spawn(async move {
+            match handle_accept(tcp_stream, addr).await {
+                Err(NpsError::PoolIsFull) => {
+                    //Tcp连接池被填充满了，不做任何处理
+                    //println!("-->{}",NpsError::PoolIsFull)
+                }
+                Err(NpsError::IoError(e)) => {
+                    //@TODO: 应该写入日志
+                    println!("处理客户端连接发生错误:{:?}", e);
+                }
+                Ok(()) | _ => {}
+            };
+            // println!("客户端连接处理结束。");
+        });
+    }
 }
 
 /**
@@ -120,6 +132,6 @@ async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result
         client_version,
         time_util::current_millis() as i64,
     )
-        .await;
+    .await;
     nps_session::hold_on(client, tcp_stream).await
 }

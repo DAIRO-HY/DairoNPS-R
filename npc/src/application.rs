@@ -1,10 +1,10 @@
 use arc_swap::ArcSwap;
 use clap::Parser;
 use np_common::time_util;
-use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize};
 use std::sync::Arc;
 use std::sync::LazyLock;
-use tokio::sync::{Mutex, Notify};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize};
+use tokio::sync::{Mutex, Notify, RwLock};
 
 /// 程序版本
 pub const VERSION: &str = "1.0.0";
@@ -13,17 +13,15 @@ pub const VERSION: &str = "1.0.0";
 // pub static IS_CLOSED: AtomicBool = AtomicBool::new(false);
 
 /// 用来接收关闭通知的全局异步通知器
-pub static APP_CLOSER: LazyLock<ArcSwap<Notify>> =
-    LazyLock::new(|| ArcSwap::new(Arc::new(Notify::new())));
+pub static APP_CLOSER: Notify = Notify::const_new();
 
 /// 标记是否正在运行,防止重复启动
-pub static IS_RUNNING: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
+pub static IS_RUNNING: Mutex<bool> = Mutex::const_new(false);
 
 /// 标记NPC监听是否正在运行
-pub static IS_NPC_RUNNING: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
+pub static IS_NPC_RUNNING: Mutex<bool> = Mutex::const_new(false);
 
-pub static NPC_CLOSER: LazyLock<ArcSwap<Notify>> =
-    LazyLock::new(|| ArcSwap::new(Arc::new(Notify::new())));
+pub static NPC_CLOSER: Notify = Notify::const_new();
 
 /// 最后一次收到心跳反馈时间
 pub static LAST_HEART_TIME: LazyLock<AtomicU64> =
@@ -51,8 +49,7 @@ pub static POOL_COUNT: AtomicUsize = AtomicUsize::new(0);
 pub static CLIENT_ID: AtomicI64 = AtomicI64::new(0);
 
 /// 客户端端加密秘钥
-pub static SECURITY_KEY: LazyLock<ArcSwap<[u8; 256]>> =
-    LazyLock::new(|| ArcSwap::new(Arc::new([0u8; 256])));
+pub static SECURITY_KEY: RwLock<[u8; 256]> = RwLock::const_new([0u8; 256]);
 
 // /// 重启函数，设置标记并退出程序
 // pub async fn restart() {

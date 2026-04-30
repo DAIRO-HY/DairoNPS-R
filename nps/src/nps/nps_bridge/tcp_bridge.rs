@@ -81,9 +81,7 @@ async fn start(mut param: TcpBridgeParam, bridge_tag: u64) -> Result<(), NpsErro
 
     if !param.is_stats_traffic {
         // 不需要实时统计流量
-        let result = copy(param)
-        .await;
-        return result;
+        return copy(param).await;
     }
 
     //统计当前桥接流量

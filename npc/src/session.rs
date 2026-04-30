@@ -1,10 +1,8 @@
 use crate::{application, tcp_pool};
 use np_common::{head_flag, time_util};
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
-use tokio::sync::Notify;
 use tokio::time::sleep;
 use tokio::time::Duration;
 use tokio::{io, select, try_join};
@@ -24,7 +22,6 @@ pub async fn open() {
         return;
     }
     *application::IS_RUNNING.lock().await = true;
-    application::APP_CLOSER.store(Arc::new(Notify::new()));
     println!("NPC服务开启成功");
     check_heart().await;
     *application::IS_RUNNING.lock().await = false;
@@ -40,7 +37,7 @@ pub async fn close() {
     shutdown_npc().await;
     while *application::IS_RUNNING.lock().await {
         println!("正在关闭服务...");
-        application::APP_CLOSER.load().notify_waiters();
+        application::APP_CLOSER.notify_waiters();
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     println!("正在关闭NPC服务...");
@@ -48,7 +45,7 @@ pub async fn close() {
 
 // 检测心跳
 async fn check_heart() {
-    let app_closer = application::APP_CLOSER.load();
+    let app_closer = &application::APP_CLOSER;
     loop {
         select! {
             _ = app_closer.notified() => {
@@ -62,9 +59,6 @@ async fn check_heart() {
                     > application::CHECK_HEART_TIME
                 {
                     //长时间没有收到心跳，视为掉线
-
-                    //关闭上次会话
-                    shutdown_npc().await;
                     create_connection().await;
                 }
                 tokio::time::sleep(Duration::from_millis(application::CHECK_HEART_TIME)).await;
@@ -77,6 +71,9 @@ async fn check_heart() {
 
 // 创建连接
 async fn create_connection() {
+    //关闭上次会话,application::NPC_CLOSER会重新进入等待状态
+    shutdown_npc().await;
+
     // 与服务端建立连接
     let nps_tcp = match TcpStream::connect(format!(
         "{}:{}",
@@ -105,10 +102,7 @@ async fn create_connection() {
 }
 
 async fn spawn_start(nps_tcp: TcpStream) {
-    let closer = Arc::new(Notify::new());
-
-    // 将关闭通知器存储到全局变量中，以便其他部分可以发送关闭通知
-    application::NPC_CLOSER.store(closer.clone());
+    let closer =  &application::NPC_CLOSER;
     select! {
         _ = closer.notified() => {
             println!("收到关闭通知，准备关闭连接...");
@@ -143,22 +137,15 @@ async fn start(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
     //客户端加解密秘钥
     let mut buf = [0u8; 256];
     nps_tcp.read_exact(&mut buf).await?;
-    application::SECURITY_KEY.store(Arc::from(buf));
+    
+    //更新秘钥
+    *application::SECURITY_KEY.write().await = buf;
 
     let (reader, mut writer) = io::split(nps_tcp);
-
     let result = try_join!(heart(&mut writer), receive(reader));
     if let Err(e) = result {
         return Err(e);
     }
-    Ok(())
-}
-
-// 客户端加解密秘钥
-async fn read_client_security_key(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
-    let mut buf = [0u8; 256];
-    nps_tcp.read_exact(&mut buf).await?;
-    application::SECURITY_KEY.store(Arc::from(buf));
     Ok(())
 }
 
@@ -229,7 +216,6 @@ async fn heart(writer: &mut WriteHalf<TcpStream>) -> Result<(), NpcError> {
         sleep(Duration::from_millis(application::HEART_TIME)).await;
         writer.write_u8(head_flag::MAIN_HEART_BEAT).await?
     }
-    Ok(())
 }
 
 /**
@@ -238,7 +224,7 @@ async fn heart(writer: &mut WriteHalf<TcpStream>) -> Result<(), NpcError> {
 async fn shutdown_npc() {
     while *application::IS_NPC_RUNNING.lock().await {
         println!("正在关闭NPC服务...");
-        application::NPC_CLOSER.load().notify_waiters();
+        application::NPC_CLOSER.notify_waiters();
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
 }

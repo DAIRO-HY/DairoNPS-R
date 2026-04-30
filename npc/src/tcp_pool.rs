@@ -15,10 +15,11 @@ static SERVER_ADDR: LazyLock<String> =
 // Create 创建TCP连接池
 pub fn create(count: u8) {
     for _ in 0..count {
-        tokio::spawn(async {
+        tokio::spawn(async move{
             //桥接数+1
             application::POOL_COUNT.fetch_add(1, Ordering::Relaxed);
 
+            // 由于[u8]已经实现了Copy,所以这里的security_key会被复制一份,由于数据量比较小,没有必要使用Arc或者Bytes,直接复制性能会更好
             spawn_start().await;
 
             //桥接数-1
@@ -29,7 +30,7 @@ pub fn create(count: u8) {
 
 async fn spawn_start() {
     //npc服务端关闭通知
-    let closer = application::NPC_CLOSER.load();
+    let closer = &application::NPC_CLOSER;
     select! {
         _ = closer.notified() => {
             println!("收到关闭通知，准备关闭连接池...");

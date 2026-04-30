@@ -1,16 +1,14 @@
 use crate::nps;
 use clap::Parser;
 use std::env;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::sync::Notify;
-use std::sync::LazyLock;
 
 /// 用来生成当前桥接唯一标识
 pub static BRIDGE_NEXT_TAG: AtomicU64 = AtomicU64::new(0);
 
 /// 用来接收关闭通知的全局异步通知器
-pub static SHUTDOWN_NOTIFY: LazyLock<Arc<Notify>> = LazyLock::new(|| Arc::new(Notify::const_new()));
+pub static SHUTDOWN_NOTIFY: Notify = Notify::const_new();
 
 /// 标记是否需要重启
 pub static IS_NEED_RESTART: AtomicBool = AtomicBool::new(false);
@@ -43,7 +41,7 @@ pub async fn restart() {
         // 通知退出监听
         println!("正在关闭服务...");
         SHUTDOWN_NOTIFY.notify_waiters();
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
         if !nps::CHANNEL_LIVE_MAP.lock().await.is_empty() {
             //等待所有隧道代理监听停止,否则可能导致下次监听同一端口失败
             continue;
