@@ -1,5 +1,6 @@
 /target
 /.idea/
 /dairo-nps.sqlite
+/account.txt
 /nps/dairo-nps.sqlite
 /test/
