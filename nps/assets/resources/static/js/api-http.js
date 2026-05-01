@@ -164,6 +164,10 @@ class ApiHttp {
             },
             error: xhr => {
                 this.removeMask()
+                if(xhr.status === 401) {
+                    window.location.href = "/login.html"
+                    return
+                }
                 const resText = xhr.responseText
                 if (resText === undefined) {
                     alert("网络连接失败")
@@ -180,10 +184,6 @@ class ApiHttp {
                 }
                 if (data.code === undefined) {//非业务错误
                     alert(resText)
-                    return
-                }
-                if (data.code === 5) {
-                    window.location.href = "/login"
                     return
                 }
                 if (data.code === 2) {//单项目检查错误

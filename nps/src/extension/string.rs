@@ -1,22 +1,13 @@
 
 /// 将数字转换为更友好的数据大小格式
-pub trait ToDataSize {
-    fn to_data_size(&self) -> String;
+pub trait StringExtension {
+    fn md5(&self) -> String;
 }
-impl<T> ToDataSize for T
-where T: Into<u64> + Copy,
-{
-    fn to_data_size(&self) -> String {
-        const KB: u64 = 1024;
-        const MB: u64 = KB * 1024;
-        const GB: u64 = MB * 1024;
-        const TB: u64 = GB * 1024;
-        match (*self).into() {
-            b if b < KB => format!("{} Byte", b),
-            b if b < MB => format!("{:.2} KB", b as f64 / KB as f64),
-            b if b < GB => format!("{:.2} MB", b as f64 / MB as f64),
-            b if b < TB => format!("{:.2} GB", b as f64 / GB as f64),
-            b => format!("{:.2} TB", b as f64 / TB as f64),
-        }
+impl<T: AsRef<str>> StringExtension for T {
+    fn md5(&self) -> String {
+        let digest = md5::compute(self.as_ref());
+
+        // 转成16进制字符串
+        format!("{:x}", digest)
     }
 }

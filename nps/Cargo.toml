@@ -13,6 +13,7 @@ pollster = "0.3"
 db = { path = "../db" }
 source_gen = { path = "../source_gen" }
 np_common = { path = "../np_common" }
+md5 = "0.8"
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros"] }
@@ -37,6 +38,7 @@ axum = { version = "0.8", features = [
     "multipart",   # 用到 Multipart
 ] }
 tokio-stream = "0.1"
+axum-extra = { version = "0.12", features = ["cookie"] }
 futures = "0.3"
 
 #表单验证
@@ -44,3 +46,6 @@ validator = { version = "0.20", features = ["derive"] }
 maplit = "1.0"
 itertools = "0.14"
 #sysinfo = "0.38"
+
+#适合读非常多,写非常少的场景,比如配置文件,全局状态等
+arc-swap = "1"

@@ -92,7 +92,7 @@
      */
     function initGetDataWebsocket() {
         if (es) return; // 防止重复创建
-        es = new EventSource("/index/nps_status");
+        es = new EventSource("/api/index/nps_status");
         es.onmessage = (e) => {
             const data = JSON.parse(e.data)
             fillData(data)
@@ -106,13 +106,6 @@
         for (let key in data) {
             $("#" + key).text(data[key])
         }
-    }
-
-    /**
-     * 垃圾回收
-     */
-    function onGCClick() {
-        $.ajaxByData("/index/gc").post()
     }
 
 </script>

@@ -115,7 +115,7 @@
      * 获取数据
      */
     function getDataSizeLog(start, end) {
-        $.ajaxByData("/chart/data_len")
+        $.ajaxByData("/api/chart/data_len")
             .addAll({
                 clientId: dataSizeChartClientId,
                 channelId: dataSizeChartChannelId,

@@ -8,18 +8,9 @@ np_common = { path = "../np_common" }
 thiserror = "2"
 tokio = { version = "1", features = ["full", "rt-multi-thread"] }
 
-bytes = "1"
-
 #用来解析启动参数
 clap = { version = "4", features = ["derive"] }
-chrono = "0.4" # 日期时间处理
-serde = { version = "1", features = ["derive","rc"] }
 rand = { version = "0.10", features = ["std"] }
-rust-embed = "8" #嵌入文件
-futures = "0.3"
-maplit = "1.0"
-itertools = "0.14"
-tokio-stream = "0.1"
 
 #适合读非常多,写非常少的场景,比如配置文件,全局状态等
 arc-swap = "1"

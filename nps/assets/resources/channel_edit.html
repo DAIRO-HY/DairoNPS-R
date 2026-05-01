@@ -9,7 +9,7 @@
 {{template include/data_len_chart}}
 {{template include/speed_chart}}
 <div class="m-3 p-2 bg-white rounded">
-    <form action="/channel/edit">
+    <form action="/api/channel/edit">
         <input type="hidden" name="clientId">
         <input type="hidden" name="id" value="0">
         <input type="hidden" id="version" name="version" value="0">
@@ -167,7 +167,7 @@
         if (id === ""){
             id = "0"
         }
-        $.ajaxByData("/channel/detail")
+        $.ajaxByData("/api/channel/detail")
             .addAll({
                 id: id,
                 clientId: getParam("clientId")

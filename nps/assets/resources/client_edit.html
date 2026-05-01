@@ -9,7 +9,7 @@
 {{template include/data_len_chart}}
 {{template include/speed_chart}}
 <div class="m-3 p-2 bg-white rounded">
-    <form action="/client/edit">
+    <form action="/api/client/edit">
         <input type="hidden" id="id" name="id" value="0">
         <input type="hidden" id="version" name="version" value="0">
         <div class="row row-cols-1 row-cols-sm-2">
@@ -130,7 +130,7 @@
 
     function init() {
         let id = getParam("id", "0")
-        $.ajaxByData("/client/detail?id=" + id).success(data => {
+        $.ajaxByData("/api/client/detail?id=" + id).success(data => {
             $("form").bindValue(data)
         }).get()
     }

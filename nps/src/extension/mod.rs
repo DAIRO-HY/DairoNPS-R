@@ -1,4 +1,5 @@
 pub mod number;
+pub mod string;
 
 use crate::web::model::ResultData;
 use axum::{
@@ -7,27 +8,8 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use maplit::hashmap;
-// use rusqlite::types::FromSql;
-// use rusqlite::{Connection, Params};
 use std::{collections::HashMap};
 
-// // 这个模块提供了一个扩展 trait，用于简化查询单个值的操作
-// pub trait SelectSingleExt {
-//     fn select_single<T, P>(&self, sql: &str, params: P) -> T
-//     where
-//         T: FromSql,
-//         P: Params;
-// }
-// impl SelectSingleExt for Connection {
-//     fn select_single<T, P>(&self, sql: &str, params: P) -> T
-//     where
-//         T: FromSql,
-//         P: Params,
-//     {
-//         self.query_row(sql, params, |row| row.get::<_, T>(0))
-//             .unwrap()
-//     }
-// }
 
 // 这个模块提供了一个扩展 trait，用于简化查询单个值的操作
 pub trait ResponseEmptyExt {

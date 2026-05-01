@@ -1,9 +1,7 @@
-use arc_swap::ArcSwap;
 use clap::Parser;
 use np_common::time_util;
-use std::sync::Arc;
-use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize};
+use std::sync::LazyLock;
 use tokio::sync::{Mutex, Notify, RwLock};
 
 /// 程序版本

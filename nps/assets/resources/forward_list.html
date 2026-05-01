@@ -19,7 +19,7 @@
     });
 
     function init() {
-        $.ajaxByData("/forward/list").success(data => {
+        $.ajaxByData("/api/forward/list").success(data => {
             fillData(data)
         }).get()
     }
@@ -63,7 +63,7 @@
         if (!confirm("确定删除?")) {
             return
         }
-        $.ajaxByData("/forward/delete?id=" + id).success(() => {
+        $.ajaxByData("/api/forward/delete?id=" + id).success(() => {
             init()
         }).delete()
     }
@@ -73,7 +73,7 @@
      * @param id
      */
     function onSetStateClick(id) {
-        $.ajaxByData("/forward/toggle_enable?id=" + id).success(() => {
+        $.ajaxByData("/api/forward/toggle_enable?id=" + id).success(() => {
             init()
         }).put()
     }

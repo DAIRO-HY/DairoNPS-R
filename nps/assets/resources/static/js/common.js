@@ -113,7 +113,7 @@ function initDropdown(){
     $("select[dropdown-tag]").each((_,obj)=>{
         const $obj = $(obj)
         const tag = $obj.attr("dropdown-tag")
-        $.ajaxByData("common/dropdown/" + tag).sync().success(data=>{
+        $.ajaxByData("/api/common/dropdown/" + tag).sync().success(data=>{
             data.forEach(item=>{
                 $obj.append(`<option value="${item.value}">${item.label}</option>`)
             })
@@ -122,7 +122,7 @@ function initDropdown(){
 }
 
 function initGlobelData(){
-    $.ajaxByData("/common/global").sync().success(data=>{
+    $.ajaxByData("/api/common/global").sync().success(data=>{
         if(data.isNeedRestart){
             $("#restartDiv").show();
         } else {

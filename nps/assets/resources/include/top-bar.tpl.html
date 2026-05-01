@@ -78,8 +78,8 @@
      * 退出登录点击事件
      */
     function onLogoutClick() {
-        $.ajaxByData("/login/login_out").success(()=>{
-            location.href = "/login"
-        }).post()
+        $.ajaxByData("/api/login/logout").success(()=>{
+            location.href = "/login.html"
+        }).delete()
     }
 </script>

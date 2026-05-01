@@ -9,7 +9,7 @@
 {{template include/data_len_chart}}
 {{template include/speed_chart}}
 <div class="m-3 p-2 bg-white rounded">
-    <form action="/forward/edit">
+    <form action="/api/forward/edit">
         <input type="hidden" name="id" value="0">
         <div class="row row-cols-1 row-cols-sm-2">
             <div class="col mt-2">
@@ -118,7 +118,7 @@
      */
     function getDetail() {
         let id = getParam("id" , "0")
-        $.ajaxByData("/forward/detail?id=" + id)
+        $.ajaxByData("/api/forward/detail?id=" + id)
             .success(data => {
                 $("form").bindValue(data)
             }).get()

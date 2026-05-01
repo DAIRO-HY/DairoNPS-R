@@ -5,6 +5,7 @@ use crate::npc_error::NpcError;
 use np_common::head_flag;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, LazyLock};
+use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::select;
@@ -80,6 +81,7 @@ async fn start() -> Result<(), NpcError> {
  * 等待分配工作
  */
 async fn wait_work(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
+    // let flag = tokio::time::timeout(Duration::from_millis(10), nps_tcp.read_u8()).await;
     let flag = nps_tcp.read_u8().await?;
     match flag{
         head_flag::POOL_IS_FULL =>{
@@ -120,7 +122,6 @@ async fn start_work(mut nps_tcp: TcpStream) -> Result<(), NpcError> {
         is_encode_data,
         nps_tcp,
         target_addr,
-        // closer: Arc::new(Notify::new()),
     });
     Ok(())
 }

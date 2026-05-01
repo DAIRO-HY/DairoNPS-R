@@ -19,7 +19,7 @@
     });
 
     function init() {
-        $.ajaxByData("/client/list").success(data => {
+        $.ajaxByData("/api/client/list").success(data => {
             fillData(data)
         }).get()
     }
@@ -72,7 +72,7 @@
         if (!confirm("确定删除?")) {
             return
         }
-        $.ajaxByData("/client/delete?id=" + id).success(() => {
+        $.ajaxByData("/api/client/delete?id=" + id).success(() => {
             initGlobelData()
             init()
         }).delete()
@@ -83,7 +83,7 @@
      * @param id
      */
     function onToggleEnableClick(id) {
-        $.ajaxByData("/client/toggle_enable?id=" + id).success(() => {
+        $.ajaxByData("/api/client/toggle_enable?id=" + id).success(() => {
             initGlobelData()
             init()
         }).put()

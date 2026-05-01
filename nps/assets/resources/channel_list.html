@@ -76,7 +76,7 @@
      * 初始化数据
      */
     function init() {
-        $.ajaxByData("/channel/list").success(data=>{
+        $.ajaxByData("/api/channel/list").success(data=>{
             dataList = data
             fillData()
         }).get()
@@ -142,7 +142,7 @@
         if (!confirm("确定删除?")) {
             return
         }
-        $.ajaxByData("/channel/delete?id=" + id).success(() => {
+        $.ajaxByData("/api/channel/delete?id=" + id).success(() => {
             initGlobelData()
             init()
         }).delete()
@@ -153,7 +153,7 @@
      * @param id
      */
     function onToggleEnableClick(id) {
-        $.ajaxByData("/channel/toggle_enable?id=" + id).success(() => {
+        $.ajaxByData("/api/channel/toggle_enable?id=" + id).success(() => {
             initGlobelData()
             init()
         }).put()

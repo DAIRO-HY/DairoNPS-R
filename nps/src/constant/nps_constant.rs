@@ -61,17 +61,6 @@ pub const MIN_POOL_COUNT: u64 = 1;
  */
 pub const ADD_POOL_COUNT: u8 = 1;
 
-/**
- * 系统配置
- */
-//var systemConfig = SystemConfigDao.SelectOne()
-
-// 管理员用户名
-pub static LOGIN_NAME: &str = "admin";
-
-// 管理员登录密码 默认随机6位数
-pub static  LOGIN_PWD:&str = "111111";
-
 // 是否开发模式
 pub static IS_DEV: bool = false;
 

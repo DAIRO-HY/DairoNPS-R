@@ -76,7 +76,7 @@
     function init() {
         $("#tbody").empty()
         let flag = getParam("flag")
-        $("form").ajaxByForm("/bridge/list?value=" + flag).success(data => {
+        $("form").ajaxByForm("/api/bridge/list?value=" + flag).success(data => {
             fillData(data)
         }).get()
     }
@@ -101,7 +101,7 @@
      * 强制中断点击事件
      */
     function onBrokenClick(tag){
-        $.ajaxByData("/bridge/broken?value=" + tag).success(() => {
+        $.ajaxByData("/api/bridge/broken?value=" + tag).success(() => {
             init()
         }).put()
     }

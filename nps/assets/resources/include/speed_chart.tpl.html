@@ -58,7 +58,7 @@
             forwardId: 0,
             ...option
         }).toString();
-        chartEs = new EventSource("/chart/real_len?" + query);
+        chartEs = new EventSource("/api/chart/real_len?" + query);
         chartEs.onmessage = (e) => {
             const datas = e.data.split(":")
             computeSpeed(parseInt(datas[0]), parseInt(datas[1]))

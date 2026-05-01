@@ -1,81 +1,82 @@
-use crate::constant::nps_constant;
+use crate::extension::string::StringExtension;
 use crate::extension::ResponseEmptyExt;
 use crate::web::extract::AppForm;
-use crate::biz_error;
+use crate::{biz_error, biz_errorf, web};
 use axum::response::{IntoResponse, Response};
+use axum_extra::extract::cookie::Cookie;
+use axum_extra::extract::CookieJar;
+use np_common::time_util;
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::LazyLock;
-use tokio::sync::RwLock;
+use std::fs;
+use std::path::Path;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use validator::Validate;
-use np_common::time_util;
 
-pub static LOGGED_INFO: LazyLock<RwLock<LoggedInfo>> = LazyLock::new(|| {
-    RwLock::new(LoggedInfo {
-        token: String::new(),
-        last_time: 0,
-    })
-});
-
-// 记录密码错误次数
-pub static LOGIN_ERROR_COUNT: AtomicU8 = AtomicU8::new(0);
-
-// DoLogin 登录API
-// post:/login/do_login
-pub async fn do_login(AppForm(form): AppForm<LoginForm>) -> Response {
-    if LOGIN_ERROR_COUNT.load(Ordering::Relaxed) > 10 {
+/// 登录API
+pub async fn do_login(jar: CookieJar, AppForm(form): AppForm<LoginForm>) -> Response {
+    let account_path = Path::new(web::ACCOUNT_PATH);
+    if !fs::exists(account_path).unwrap() {
+        //文件不存在
+        let content = format!("{}\n{}", form.name, form.pwd.md5());
+        fs::write(&account_path, content.as_bytes()).unwrap();
+    }
+    if web::LOGIN_ERROR_COUNT.load(Ordering::Relaxed) > 10 {
         return biz_error!("用户名或密码错误次数超过限制，请联系管理员。");
     }
-    if let Err(e) = form.validate() {//验证表单数据是否合法
+    if let Err(e) = form.validate() {
+        //验证表单数据是否合法
         return Response::field_errors(e);
     }
-    if form.name != nps_constant::LOGIN_NAME || form.pwd != nps_constant::LOGIN_PWD {
-        LOGIN_ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+    let account_account = fs::read_to_string(&account_path).unwrap();
+    let account: Vec<&str> = account_account.split("\n").collect();
+    if account.len() != 2 {
+        return biz_errorf!("文件:{}内容不合法,请删除后再重试!", web::ACCOUNT_PATH);
+    }
+
+    if form.name != account[0] || form.pwd.md5() != account[1] {
+        web::LOGIN_ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
         return biz_error!("用户名或密码错误");
     }
 
     // 登录成功，重置错误次数
-    LOGIN_ERROR_COUNT.store(0, Ordering::Relaxed);
-
-    // timeRand := time.Now().UnixMilli() + int64(rand.IntN(900000)+100000)
-    // timeRandStr := strconv.FormatInt(timeRand, 10)
-    // token := String.ToMd5(timeRandStr)
-    // tokenCookie := &http.Cookie{
-    // 	Name:    login_state.COOKIE_TOKEN,
-    // 	Value:   token,
-    // 	Path:    "/",
-    // 	Expires: time.Now().AddDate(100, 0, 0), //100年以后过期
-    // 	MaxAge:  100 * 365 * 24 * 60 * 60,
-    // 	//HttpOnly: true,
-    // }
-    // http.SetCookie(writer, tokenCookie)
-
-    // login_state.Login(token);
+    web::LOGIN_ERROR_COUNT.store(0, Ordering::Relaxed);
 
     // 生成一个随机的32位token，作为登录状态的标识
     let token = Alphanumeric.sample_string(&mut rand::rng(), 32);
 
-    let mut logged_info = LOGGED_INFO.write().await;
-    logged_info.last_time = time_util::current_millis();
-    logged_info.token = token.clone();
-    Response::empty()
+    //记录登录信息,默认只允许一个客户端登录
+    web::LOGIN_TIME.store(time_util::current_millis(), Ordering::Relaxed);
+    web::LAST_USE_TIME.store(time_util::current_millis(), Ordering::Relaxed);
+    web::API_TOKEN.store(Arc::new(token.clone()));
+
+    // 写入 Cookie
+    let cookie = Cookie::build(("token", token))
+        .path("/") // 全站生效
+        .http_only(true) // 防止 JS 读取（安全）
+        //.secure(true)            // HTTPS 才建议开启
+        //.max_age(time::Duration::hours(1))
+        .build();
+
+    let jar = jar.add(cookie);
+    jar.into_response()
 }
 
-// // Logout 退出登录
-// // post:/login/login_out
-// func Logout() {
-// 	login_state.LoginOut()
-// }
+/// 退出登录
+pub async fn logout() {
+    web::API_TOKEN.store(Arc::new(Default::default()));
+}
 
-// // Logout 退出登录
-// // post:/login/login_out/test
-// func LogoutTest() string {
-// 	return "123"
-// }
-
-
-
+/// 忘记密码
+pub async fn forget() -> String {
+    let account_path = Path::new(web::ACCOUNT_PATH);
+    if fs::exists(account_path).unwrap() {
+        format!("请删除文件:{}后重新设置登录信息!", web::ACCOUNT_PATH)
+    } else {
+        "第一次登录时请直接输入用户名及密码,系统会根据您输入的内容自动创建用户".to_string()
+    }
+}
 
 /// 登录表单数据结构
 #[derive(Deserialize, Serialize, Debug, Validate)]
