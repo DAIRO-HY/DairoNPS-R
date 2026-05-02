@@ -27,8 +27,8 @@ pub fn ready() {
 async fn spawn_start() {
     select! {
         _ = application::SHUTDOWN_NOTIFY.notified() => {
-                application::IS_NPS_SERVER_DROP.store(true, Ordering::Release);
-                return;
+            application::IS_NPS_SERVER_DROP.store(true, Ordering::Relaxed);
+            return;
         }
         result = start() => {//等待客户端连接
             if let Err(e) = result {
@@ -40,7 +40,7 @@ async fn spawn_start() {
 
 /// 监听客户端连接
 async fn start() -> Result<(), NpsError> {
-    let listener = TcpListener::bind("0.0.0.0:1781").await?;
+    let listener = TcpListener::bind(format!("0.0.0.0:{}",application::ARGS.tcp_port)).await?;
     loop {
         let (tcp_stream, addr) = listener.accept().await?;
         

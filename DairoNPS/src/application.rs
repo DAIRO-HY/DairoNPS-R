@@ -2,7 +2,11 @@ use crate::nps;
 use clap::Parser;
 use std::env;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::LazyLock;
 use tokio::sync::Notify;
+
+/// 心跳间隔时间
+pub const HEART_TIME: u64 = 3000;
 
 /// 用来生成当前桥接唯一标识
 pub static BRIDGE_NEXT_TAG: AtomicU64 = AtomicU64::new(0);
@@ -22,19 +26,13 @@ pub static IS_AXUM_DROP: AtomicBool = AtomicBool::new(false);
 /// 标记是否退出了NPS服务端监听
 pub static IS_NPS_SERVER_DROP: AtomicBool = AtomicBool::new(false);
 
-/// 心跳间隔时间
-pub const HEART_TIME: u64 = 3000;
-
-/// 数据流量收集统计间隔，单位毫秒
-pub const DATA_COLLECT_INTERVAL: u64 = 1000;
-
-/// 数据流量收集插入数据库间隔，单位毫秒
-pub const DATA_COLLECT_INSERT_INTERVAL: u64 = 6000;
+/// 用来接收关闭通知的全局异步通知器
+pub static ARGS: LazyLock<Argument> = LazyLock::new(|| Argument::try_parse().unwrap());
 
 /// 重启函数，设置标记并退出程序
 pub async fn restart() {
-    IS_NEED_RESTART.store(false, Ordering::Release);
-    IS_RESTARTING.store(true, Ordering::Release);
+    IS_NEED_RESTART.store(false, Ordering::Relaxed);
+    IS_RESTARTING.store(true, Ordering::Relaxed);
 
     println!("准备关闭服务...");
     loop {
@@ -61,7 +59,7 @@ pub async fn restart() {
     println!("准备重启...");
     let exe = env::current_exe().expect("获取程序路径失败");
     let mut args: Vec<String> = env::args().skip(1).collect();
-    let arg = Args::try_parse().unwrap();
+    let arg = Argument::try_parse().unwrap();
     if !arg.is_restart_mode {
         //防止重复添加重启参数
         args.push("--is-restart-mode".to_string());
@@ -75,9 +73,55 @@ pub async fn restart() {
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "myapp", version, about = "示例程序")]
-pub struct Args {
+#[command(name = "DairoNPS", version, about = "DairoNPS")]
+pub struct Argument {
+
+    /// WEB管理端口
+    #[arg(long,default_value="1880")]
+    pub web_port:u16,
+
+    /// 服务端监听TCP端口,客户端通过此端口进行连接
+    #[arg(long,default_value="1881")]
+    pub tcp_port:u16,
+
+    /// 服务端监听UDP端口,客户端通过此端口进行连接
+    #[arg(long,default_value="1882")]
+    pub udp_port:u16,
+
     /// 是否重启模式
-    #[arg(short, long)]
+    #[arg(long)]
     pub is_restart_mode: bool,
+
+    /// 流量数据有效期时间(秒),0:永久有效
+    #[arg(long,default_value="0")]
+    pub traffic_stats_expired:u64,
+
+    /// 连接池最大数量
+    #[arg(long,default_value="6")]
+    pub max_pool_count:usize,
+
+    /// 连接池最低数量
+    /// 连接池中的Socket在一段时间内无任何操作
+    #[arg(long,default_value="1")]
+    pub min_pool_count:usize,
+
+    /// 连接池不足时,一次性创建连接数
+    #[arg(long,default_value="1")]
+    pub add_pool_count:u8,
+
+    /// 读取数据缓存大小
+    #[arg(long,default_value="8192")]
+    pub read_cache_size:usize,
+
+    /// 每隔一段时间回收长时间不用的连接池（毫秒）
+    #[arg(long,default_value="180000")]
+    pub recycle_pool_time_out:u64,
+
+    /// 数据流量收集统计间隔，单位毫秒
+    #[arg(long,default_value="1000")]
+    pub data_collect_interval:u64,
+
+    /// 数据流量收集插入数据库间隔，单位毫秒
+    #[arg(long,default_value="6000")]
+    pub data_collect_insert_interval:u64,
 }

@@ -28,7 +28,7 @@ async fn collect_data_len() {
     // 记录距离上次统计间隔时间
     let mut pre_insert_time: u64 = 0;
     loop {
-        sleep(Duration::from_millis(application::DATA_COLLECT_INTERVAL)).await;
+        sleep(Duration::from_millis(application::ARGS.data_collect_interval)).await;
         collect_data(&mut pre_len_map, &mut pre_insert_time)
             .await
             .unwrap_or_else(|it| {
@@ -44,7 +44,7 @@ async fn collect_data(
     pre_insert_time: &mut u64,
 ) -> Result<(), sqlx::Error> {
     let mut insert_cache_list = INSERT_CACHE_LIST.lock().await;
-    *pre_insert_time += application::DATA_COLLECT_INTERVAL;
+    *pre_insert_time += application::ARGS.data_collect_interval;
 
     //当前时间戳
     let now = time_util::current_secs() as i64;
@@ -79,7 +79,7 @@ async fn collect_data(
         *pre_len = current_data_io;
     }
     drop(forward_live_map);
-    if *pre_insert_time > application::DATA_COLLECT_INSERT_INTERVAL {
+    if *pre_insert_time > application::ARGS.data_collect_insert_interval {
         let mut tx = db::get().begin().await?;
 
         //批量循环插入数据

@@ -1,12 +1,11 @@
 use std::error::Error;
-// use crate::extension::SelectSingleExt;
 use rust_embed::RustEmbed;
 use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::{Sqlite, SqlitePool, Transaction};
 use std::sync::LazyLock;
 
 #[derive(RustEmbed)]
-#[folder = "../nps/assets/sql/"]
+#[folder = "../DairoNPS/assets/sql/"]
 struct Assets;
 
 // VERSION 数据库版本号

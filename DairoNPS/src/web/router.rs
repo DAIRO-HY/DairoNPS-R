@@ -1,5 +1,5 @@
 use crate::extension::ResponseEmptyExt;
-use crate::web;
+use crate::{application, web};
 use crate::web::extract::{AppJson, AppPath, AppQuery};
 use axum::extract::Request;
 use axum::middleware::Next;
@@ -117,15 +117,13 @@ async fn init_router() {
                 .route("/json", post(json))
                 .layer(middleware::from_fn(auth_login)),
         );
-
-    // run our app with hyper, listening globally on port 1880
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:1880").await.unwrap();
-    axum::serve(listener, app)
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}",application::ARGS.web_port)).await.unwrap();
+    let _ = axum::serve(listener, app)
         .with_graceful_shutdown(async move {
-            crate::application::SHUTDOWN_NOTIFY.notified().await;
+            application::SHUTDOWN_NOTIFY.notified().await;
 
             // 标记axum已经退出
-            crate::application::IS_AXUM_DROP.store(true, std::sync::atomic::Ordering::Release);
+            application::IS_AXUM_DROP.store(true, Ordering::Relaxed);
         })
         .await;
 }

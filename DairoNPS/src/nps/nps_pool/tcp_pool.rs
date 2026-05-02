@@ -1,17 +1,15 @@
-use crate::constant::nps_constant;
-use crate::nps;
+use crate::nps::nps_client::nps_session;
 use crate::nps_error::NpsError;
-use std::time::{SystemTime, UNIX_EPOCH};
+use crate::{application, nps};
+use np_common::{head_flag, time_util};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use np_common::head_flag;
-use crate::nps::nps_client::nps_session;
 
 // TCP连接池
 pub struct TCPPool {
     pub tcp: TcpStream,
 
-    // 创建时间(秒)
+    // 创建时间(毫秒)
     pub create_time:u64,
 }
 
@@ -33,7 +31,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
     let Some(mut client_live) = client_live_map.get_mut(&client_id) else {
         return Ok(());
     };
-    if client_live.tcp_pool.len() >= nps_constant::MAX_POOL_COUNT {
+    if client_live.tcp_pool.len() >= application::ARGS.max_pool_count {
         // println!("-->客户端: {}连接池已满,拒绝新连接。count: {}", client_id, pools.len());
         //已经达到最大连接数,拒绝新连接
         drop(client_live_map); // 释放锁
@@ -46,10 +44,7 @@ pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
         return Err(NpsError::PoolIsFull);
     }
     let pool = TCPPool {
-        create_time: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
+        create_time: time_util::current_millis(),
         tcp: tcp,
     };
     (client_live.tcp_pool).push(pool);
@@ -89,7 +84,7 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
         }
 
         //连接池里没有数据，申请创建连接池
-        nps_session::send_tcp_pool_request(client_id, nps_constant::ADD_POOL_COUNT)
+        nps_session::send_tcp_pool_request(client_id, application::ARGS.add_pool_count)
             .await;
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
@@ -100,7 +95,7 @@ pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
     //申请创建连接池
     nps_session::send_tcp_pool_request(
         client_id,
-        if (nps_constant::MAX_POOL_COUNT == count) {
+        if application::ARGS.max_pool_count == count {
             1
         } else {
             2

@@ -18,3 +18,7 @@ fn select_io_len_by_channel(channel_id:i64, start_date:i64, end_date:i64) ->Vec<
 
 select date,in_len,out_len from traffic_stats where forward_id = :forward_id and date between :start_date and :end_date
 fn select_io_len_by_forward(forward_id:i64, start_date:i64, end_date:i64) ->Vec<DateLen>
+
+/// 删除过期的数据
+delete from traffic_stats where date < :date;
+fn delete_expired(date: i64)

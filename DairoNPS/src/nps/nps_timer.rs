@@ -1,8 +1,6 @@
-use crate::constant::nps_constant;
 use crate::dao::traffic_stats_dao::TrafficStats;
 use crate::dao::{channel_dao, traffic_stats_dao, client_dao, system_config_dao};
 use crate::model::data_io_len::DataIOLen;
-use crate::nps::{CHANNEL_LIVE_MAP, CLIENT_LIVE_MAP};
 use crate::{application, nps};
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -28,6 +26,9 @@ pub fn init() {
 
     //超时连接池整理
     tokio::spawn(tcp_pool_timeout_check());
+
+    //删除过期的流量数据
+    tokio::spawn(delete_expired_traffic_stats());
 }
 
 /// 统计隧道数据总量
@@ -38,7 +39,7 @@ async fn channel_collect_data() {
     // 记录距离上次统计间隔时间
     let mut pre_insert_time: u64 = 0;
     loop {
-        sleep(Duration::from_millis(application::DATA_COLLECT_INTERVAL)).await;
+        sleep(Duration::from_millis(application::ARGS.data_collect_interval)).await;
         collect_data(
             &mut pre_channel_len_map,
             &mut pre_insert_time,
@@ -57,11 +58,11 @@ async fn collect_data(
     pre_insert_time: &mut u64,
 ) -> Result<(), sqlx::Error> {
     let mut insert_cache_list = INSERT_CACHE_LIST.lock().await;
-    *pre_insert_time += application::DATA_COLLECT_INTERVAL;
+    *pre_insert_time += application::ARGS.data_collect_interval;
 
     //当前时间戳
     let now = time_util::current_secs() as i64;
-    let channel_live_map = CHANNEL_LIVE_MAP.lock().await;
+    let channel_live_map = nps::CHANNEL_LIVE_MAP.lock().await;
     for (channel_id, channel_live) in channel_live_map.iter() {
         let mut pre_len = match pre_channel_len_map.get_mut(channel_id) {
             Some(it) => it,
@@ -92,7 +93,7 @@ async fn collect_data(
         *pre_len = current_data_io;
     }
     drop(channel_live_map);
-    if *pre_insert_time > application::DATA_COLLECT_INSERT_INTERVAL {
+    if *pre_insert_time > application::ARGS.data_collect_insert_interval {
         let mut tx = db::get().begin().await?;
 
         //批量循环插入数据
@@ -153,7 +154,7 @@ async fn close_not_heart_client() {
     loop {
         sleep(Duration::from_millis(application::HEART_TIME * 2)).await;
         let now = time_util::current_millis();
-        let not_heart_client_id: Vec<i64> = CLIENT_LIVE_MAP
+        let not_heart_client_id: Vec<i64> = nps::CLIENT_LIVE_MAP
             .lock()
             .await
             .iter()
@@ -175,11 +176,8 @@ async fn close_not_heart_client() {
 /// 超时连接池整理
 async fn tcp_pool_timeout_check() {
     loop {
-        sleep(Duration::from_secs(nps_constant::RECYLE_POOL_TIME_OUT / 2)).await;
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        sleep(Duration::from_millis(application::ARGS.recycle_pool_time_out / 2)).await;
+        let now = time_util::current_millis();
         let mut client_map = nps::CLIENT_LIVE_MAP.lock().await;
 
         //用来记录连接池被清空的客户端ID,用于请求创建新的连接池
@@ -187,7 +185,7 @@ async fn tcp_pool_timeout_check() {
         for (client_id, client_live) in client_map.iter_mut() {
             client_live.tcp_pool.retain_mut(|it| {
                 //连接池超过指定时间,关闭连接
-                if now - it.create_time > nps_constant::RECYLE_POOL_TIME_OUT {
+                if now - it.create_time > application::ARGS.recycle_pool_time_out {
                     //连接池超过指定时间,关闭连接
                     return false;
                 }
@@ -204,9 +202,25 @@ async fn tcp_pool_timeout_check() {
         for client_id in empty_pool_clients {
             nps_session::send_tcp_pool_request(
                 client_id,
-                nps_constant::ADD_POOL_COUNT,
+                application::ARGS.add_pool_count
             )
-            .await;
+                .await;
         }
+    }
+}
+
+/// 删除过期的流量数据
+async fn delete_expired_traffic_stats() {
+    if application::ARGS.traffic_stats_expired <= 0{//无期限
+        return;
+    }
+    loop {
+        sleep(Duration::from_hours(1)).await;
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let target_date = now - application::ARGS.traffic_stats_expired;
+        let _ = traffic_stats_dao::delete_expired(&db::get(),target_date as i64).await;
     }
 }

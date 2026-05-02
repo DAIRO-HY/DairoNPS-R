@@ -129,7 +129,6 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
 
     //通知关闭该客户端会话
     nps_session::shutdown(form.id).await.unwrap();
-    // application::IS_NEED_RESTART.store(true, std::sync::atomic::Ordering::Release);//标记需要重启
     Response::empty()
 }
 
@@ -141,7 +140,6 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
     nps_session::shutdown(query.id)
         .await
         .unwrap();
-    // application::IS_NEED_RESTART.store(true, std::sync::atomic::Ordering::Release);//标记需要重启
 }
 
 /// 修改可用状态
@@ -160,7 +158,6 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     client_dao::toggle_enable(&conn, query.id, to)
         .await
         .unwrap();
-    // application::IS_NEED_RESTART.store(true, Ordering::Release);//标记需要重启
 }
 
 mod model {
