@@ -6,12 +6,7 @@ version = 4
 name = "DairoNPC"
 version = "0.1.0"
 dependencies = [
- "arc-swap",
- "clap",
- "np_common",
- "rand 0.10.0",
- "thiserror",
- "tokio",
+ "npc_lib",
 ]
 
 [[package]]
@@ -1614,6 +1609,25 @@ name = "np_common"
 version = "0.1.0"
 dependencies = [
  "thiserror",
+]
+
+[[package]]
+name = "npc_lib"
+version = "0.1.0"
+dependencies = [
+ "arc-swap",
+ "clap",
+ "np_common",
+ "rand 0.10.0",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "npc_lib_ios"
+version = "0.1.0"
+dependencies = [
+ "npc_lib",
 ]
 
 [[package]]
