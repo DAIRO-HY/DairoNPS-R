@@ -52,6 +52,7 @@ async fn check_heart(args: Argument) {
                 if time_util::current_millis() - application::LAST_HEART_TIME.load(Ordering::Relaxed)
                     > application::CHECK_HEART_TIME
                 {
+
                     //长时间没有收到心跳，视为掉线
                     create_connection(args.clone()).await;
                 }
@@ -76,6 +77,8 @@ async fn create_connection(args: Argument) {
                 "-->与主机连接失败:{}:{}  error:{:?}",
                 args.host, args.tcp_port, e
             );
+
+            // *application::TEST_INFO.lock().await = format!("与主机连接失败:{}:{}  error:{:?} : {}", args.host, args.tcp_port, e, time_util::current_millis());
             return;
         }
     };

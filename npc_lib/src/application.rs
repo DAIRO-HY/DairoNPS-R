@@ -46,6 +46,8 @@ pub static CLIENT_ID: AtomicI64 = AtomicI64::new(0);
 /// 客户端端加密秘钥
 pub static SECURITY_KEY: RwLock<[u8; 256]> = RwLock::const_new([0u8; 256]);
 
+pub static TEST_INFO: Mutex<String> = Mutex::const_new(String::new());
+
 /// 程序启动参数
 ///
 #[derive(Parser, Clone, Debug)]

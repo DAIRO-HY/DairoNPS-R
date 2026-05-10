@@ -13,7 +13,7 @@ pub mod session;
 mod tcp_bridge;
 mod tcp_pool;
 
-static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
+pub static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
     // Builder::new_current_thread()
     Builder::new_multi_thread().enable_all().build().unwrap()
 });

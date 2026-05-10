@@ -1,2 +1,2 @@
 [workspace]
-members = ["DairoNPS", "DairoNPC", "np_common", "npc_lib", "source_gen", "db", "npc_lib_ios", "test"]
+members = ["DairoNPS", "DairoNPC", "np_common", "npc_lib", "source_gen", "db", "npc_lib_ios", "lib_npc_android", "test"]

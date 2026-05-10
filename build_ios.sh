@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# 事前准备
+# 安装 iOS 编译目标
+# rustup target add aarch64-apple-ios
+# rustup target add aarch64-apple-ios-sim
+# rustup target add x86_64-apple-ios
+# 说明：
+# target	用途
+# aarch64-apple-ios	真机
+# aarch64-apple-ios-sim	Apple Silicon 模拟器
+# x86_64-apple-ios	Intel 模拟器
+
+
 set -e
 
 # 删除旧依赖
