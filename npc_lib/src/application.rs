@@ -1,7 +1,8 @@
+use std::string::ToString;
 use clap::Parser;
 use np_common::time_util;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize};
-use std::sync::{LazyLock, OnceLock};
+use std::sync::LazyLock;
 use tokio::sync::{Mutex, Notify, RwLock};
 
 /// 程序版本
@@ -14,11 +15,12 @@ pub const VERSION: &str = "1.0.0";
 pub static APP_CLOSER: Notify = Notify::const_new();
 
 /// 标记是否正在运行,防止重复启动
-pub static IS_RUNNING: Mutex<bool> = Mutex::const_new(false);
+pub static IS_OPENED: Mutex<bool> = Mutex::const_new(false);
 
 /// 标记NPC监听是否正在运行
 pub static IS_NPC_RUNNING: Mutex<bool> = Mutex::const_new(false);
 
+/// NPC服务连接状态
 pub static NPC_CLOSER: Notify = Notify::const_new();
 
 /// 最后一次收到心跳反馈时间
@@ -46,10 +48,10 @@ pub static CLIENT_ID: AtomicI64 = AtomicI64::new(0);
 /// 客户端端加密秘钥
 pub static SECURITY_KEY: RwLock<[u8; 256]> = RwLock::const_new([0u8; 256]);
 
-pub static TEST_INFO: Mutex<String> = Mutex::const_new(String::new());
+/// NPC运行状态信息
+pub static NPC_CONNECT_MSG: LazyLock<RwLock<String>> = LazyLock::new(|| RwLock::new("NPC服务未启动".to_string()));
 
 /// 程序启动参数
-///
 #[derive(Parser, Clone, Debug)]
 #[command(name = "npc", version, about = "示例程序")]
 pub struct Argument {

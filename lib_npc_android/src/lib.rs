@@ -3,13 +3,10 @@ use jni::signature::JavaType::{Object, Primitive};
 use jni::signature::Primitive::{Int, Void};
 use jni::signature::{MethodSignature, ReturnType};
 use jni::strings::{JNIStr, JNIString};
-use jni::sys::{jint, jobject, jshort, jlong, jstring};
+use jni::sys::{jboolean, jint, jlong, jobject, jshort, jstring};
 use jni::{EnvUnowned, JValue, jni_sig, jni_str};
-use std::sync::atomic::Ordering;
 use npc_lib::application::Argument;
-use npc_lib::{application, session, RUNTIME};
-// use npc_lib::application::Argument;
-
+use std::sync::atomic::Ordering;
 // #[unsafe(no_mangle)]
 // pub extern "C" fn npc_start(host_p: *const c_char, tcp_port:i32, udp_port:i32, key_p: *const c_char) {
 //     let (host,key) = unsafe{
@@ -47,19 +44,21 @@ pub extern "system" fn Java_cn_dairo_npc_RustBridge_start<'local>(
     udp_port: jshort,
     key: JString<'local>,
 ) {
-    unowned_env.with_env(|_| -> jni::errors::Result<_> {
-
-        //JString的值必须要在这里才能被读取出来，因为一旦这个函数返回，JNI的局部引用就会被释放掉，JString对象也就无法再被访问了。
-        npc_lib::start(Some(Argument{
-            host: host.to_string(),
-            tcp_port: tcp_port.cast_unsigned(),
-            udp_port: udp_port.cast_unsigned(),
-            key: key.to_string(),
-        }));
-        Ok(())
-    }).resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+    unowned_env
+        .with_env(|_| -> jni::errors::Result<_> {
+            //JString的值必须要在这里才能被读取出来，因为一旦这个函数返回，JNI的局部引用就会被释放掉，JString对象也就无法再被访问了。
+            npc_lib::start(Some(Argument {
+                host: host.to_string(),
+                tcp_port: tcp_port.cast_unsigned(),
+                udp_port: udp_port.cast_unsigned(),
+                key: key.to_string(),
+            }));
+            Ok(())
+        })
+        .resolve::<jni::errors::ThrowRuntimeExAndDefault>()
 }
 
+/// 停止NPC服务
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_cn_dairo_npc_RustBridge_stop() {
     npc_lib::stop();
@@ -106,10 +105,7 @@ pub extern "system" fn Java_cn_dairo_npc_RustBridge_getHello<'local>(
     let outcome = unowned_env.with_env(|env| -> jni::errors::Result<_> {
         let input: String = input.to_string();
 
-
-        let test_info = RUNTIME.block_on(async {
-            npc_lib::application::TEST_INFO.lock().await.clone()
-        });
+        let test_info = "";
 
         env.new_string(format!("Hello, {}!{}", input, test_info))
     });
@@ -133,6 +129,44 @@ pub extern "system" fn Java_cn_dairo_npc_RustBridge_getHello<'local>(
     outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
 }
 
+/// 获取NPC信息
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_cn_dairo_npc_RustBridge_getNpcInfo<'local>(
+    mut unowned_env: EnvUnowned<'local>,
+    _this: JObject<'local>,
+) -> JObject<'local> {
+    // 使用 with_env 获取可用的 Env 引用
+    let rs = unowned_env.with_env(|env| -> jni::errors::Result<_> {
+        let class = jni_str!("cn/dairo/npc/NpcInfo");
+        let ctor_id = env.get_method_id(
+            class,
+            jni_str!("<init>"),
+            &jni_sig!((npsId: jlong, bridgeCount: jint, poolCount: jint) -> void),
+        )?;
+
+        // 获取客户端ID
+        let client_id = npc_lib::application::CLIENT_ID.load(Ordering::Relaxed);
+
+        // NPC版本号
+        let version = JString::from_str(env, env!("CARGO_PKG_VERSION"))?;
+
+        // 创建对象
+        let obj = unsafe {
+            env.new_object_unchecked(
+                &class,
+                ctor_id,
+                &[
+                    JValue::Long(client_id).as_jni(),
+                    JValue::from(&version).as_jni(),
+                ],
+            )?
+        };
+        Ok(obj)
+    });
+    rs.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+}
+
+/// 获取NPC运行状态
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_cn_dairo_npc_RustBridge_getStatusInfo<'local>(
     mut unowned_env: EnvUnowned<'local>,
@@ -146,7 +180,7 @@ pub extern "system" fn Java_cn_dairo_npc_RustBridge_getStatusInfo<'local>(
             .get_method_id(
                 class,
                 jni_str!("<init>"),
-                &jni_sig!((npsId: jlong, bridgeCount: jint, poolCount: jint) -> void),
+                &jni_sig!((isOpened: jboolean, isRunning: jboolean, connectMsg: java.lang.String, npsId: jlong, bridgeCount: jint, poolCount: jint) -> void),
             )?;
 
         // 获取桥接数量
@@ -154,20 +188,27 @@ pub extern "system" fn Java_cn_dairo_npc_RustBridge_getStatusInfo<'local>(
 
         // 获取线程池数量
         let pool_count = npc_lib::application::POOL_COUNT.load(Ordering::Relaxed) as i32;
+        let args = npc_lib::RUNTIME.block_on(async{
+            let connect_msg = JString::from_str(env, &*npc_lib::application::NPC_CONNECT_MSG.read().await).unwrap();
+            [
+                JValue::Bool(*npc_lib::application::IS_OPENED.lock().await).as_jni(),
+                JValue::Bool(*npc_lib::application::IS_NPC_RUNNING.lock().await).as_jni(),
+                JValue::from(&connect_msg).as_jni(),
+                // 获取客户端ID
+                JValue::Long(npc_lib::application::CLIENT_ID.load(Ordering::Relaxed)).as_jni(),
+                JValue::Int(bridge_count).as_jni(),
+                JValue::Int(pool_count).as_jni(),
+            ]
+        });
 
-        // 获取客户端ID
-        let client_id = npc_lib::application::CLIENT_ID.load(Ordering::Relaxed);
 
         // 创建对象
         let obj = unsafe {
+
             let obj = env.new_object_unchecked(
                 &class,
                 ctor_id,
-                &[
-                    JValue::Long(client_id).as_jni(),
-                    JValue::Int(bridge_count).as_jni(),
-                    JValue::Int(pool_count).as_jni(),
-                ],
+                &args,
             )?;
 
             // // 设置字段值

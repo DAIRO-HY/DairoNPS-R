@@ -6,6 +6,21 @@ package cn.dairo.npc
 data class NpcStatusInfo(
 
     /**
+     * NPC打开状态
+     */
+    val isOpened: Boolean,
+
+    /**
+     * NPC正在运行
+     */
+    val isRunning: Boolean,
+
+    /**
+     * NPC连接消息
+     */
+    val connectMsg: String,
+
+    /**
      * 服务器端id
      */
     val npsId: Long,
@@ -18,5 +33,5 @@ data class NpcStatusInfo(
     /**
      * 当前连接池数量
      */
-    val poolCount: Int
+    val poolCount: Int,
 )

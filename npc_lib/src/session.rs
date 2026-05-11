@@ -12,25 +12,25 @@ use tokio::{io, select, try_join};
 
 // 开启客户端
 pub async fn open(args: Argument) {
-    if *application::IS_RUNNING.lock().await {
+    if *application::IS_OPENED.lock().await {
         //如果正在运行中
         return;
     }
-    *application::IS_RUNNING.lock().await = true;
+    *application::IS_OPENED.lock().await = true;
     println!("-->NPC服务开启成功");
     check_heart(args).await;
-    *application::IS_RUNNING.lock().await = false;
+    *application::IS_OPENED.lock().await = false;
 }
 
 pub async fn stop() {
-    if !*application::IS_RUNNING.lock().await {
+    if !*application::IS_OPENED.lock().await {
         //如果没有运行中
         return;
     }
 
     //关闭npc服务
     shutdown_npc().await;
-    while *application::IS_RUNNING.lock().await {
+    while *application::IS_OPENED.lock().await {
         println!("-->正在停止服务...");
         application::APP_CLOSER.notify_waiters();
         tokio::time::sleep(Duration::from_millis(10)).await;
@@ -69,6 +69,8 @@ async fn create_connection(args: Argument) {
     //关闭上次会话,application::NPC_CLOSER会重新进入等待状态
     shutdown_npc().await;
 
+    *application::NPC_CONNECT_MSG.write().await = "正在连接NPS服务器...".to_string();
+
     // 与服务端建立连接
     let nps_tcp = match TcpStream::connect(format!("{}:{}", args.host, args.tcp_port)).await {
         Ok(v) => v,
@@ -77,8 +79,7 @@ async fn create_connection(args: Argument) {
                 "-->与主机连接失败:{}:{}  error:{:?}",
                 args.host, args.tcp_port, e
             );
-
-            // *application::TEST_INFO.lock().await = format!("与主机连接失败:{}:{}  error:{:?} : {}", args.host, args.tcp_port, e, time_util::current_millis());
+            *application::NPC_CONNECT_MSG.write().await = format!("与主机连接失败:{}:{}  错误:{:?}", args.host, args.tcp_port, e);
             return;
         }
     };
@@ -133,14 +134,17 @@ async fn start(args: Argument, mut nps_tcp: TcpStream) -> Result<(), NpcError> {
         head_flag::UNKNOW_KEY => {
             //未知的秘钥,直接返回,不再进行后续操作
             println!("-->未知的秘钥:{}", args.key);
+            *application::NPC_CONNECT_MSG.write().await = "未知的秘钥".to_string();
             return Ok(());
         }
         head_flag::DISABLED_KEY => {
             //未知的秘钥,直接返回,不再进行后续操作
             println!("-->该秘钥被禁用:{}", args.key);
+            *application::NPC_CONNECT_MSG.write().await = "该秘钥被禁用".to_string();
             return Ok(());
         }
         head_flag::CONNECT_SUCCESS => {
+            *application::NPC_CONNECT_MSG.write().await = "已连接到NPS服务器".to_string();
             //连接成功
         }
         _ => {

@@ -23,6 +23,7 @@ pub fn start(args: Option<Argument>) {
     let args = args.unwrap_or(Argument::try_parse().unwrap());
     RUNTIME.block_on(async {
         session::open(args).await;
+        *application::NPC_CONNECT_MSG.write().await = "NPC服务已关闭".to_string();
     });
     println!("-->程序已退出");
 }

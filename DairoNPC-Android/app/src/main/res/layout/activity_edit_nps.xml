@@ -6,49 +6,44 @@
     android:orientation="vertical"
     android:padding="30dp">
 
-    <EditText
-        android:id="@+id/host"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:hint="主机" />
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:src="@mipmap/launcher" />
+
+    <View
+        android:layout_width="1dp"
+        android:layout_height="30dp"/>
 
     <EditText
-        android:id="@+id/tcpPort"
+        android:id="@+id/editHost"
         android:layout_width="match_parent"
         android:layout_height="44dp"
-        android:hint="TCP端口" />
+        android:hint="服务器(必填)" />
 
     <EditText
-        android:id="@+id/udpPort"
+        android:id="@+id/editTcpPort"
         android:layout_width="match_parent"
         android:layout_height="44dp"
-        android:hint="UDP端口" />
+        android:hint="TCP端口(选填;默认1881)" />
 
     <EditText
-        android:id="@+id/key"
+        android:id="@+id/editUdpPort"
         android:layout_width="match_parent"
         android:layout_height="44dp"
-        android:hint="秘钥" />
+        android:hint="UDP端口(选填;默认1882)" />
+
+    <EditText
+        android:id="@+id/editKey"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:hint="秘钥(必填)" />
 
     <Button
-        android:id="@+id/btnConnect"
+        android:id="@+id/btnSaveAndOpen"
         android:layout_width="match_parent"
         android:layout_height="44dp"
         android:layout_marginTop="10dp"
-        android:text="连接" />
-
-    <Button
-        android:id="@+id/btnStart"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="10dp"
-        android:text="开启" />
-
-    <Button
-        android:id="@+id/btnStop"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="10dp"
-        android:text="停止" />
+        android:text="保存并连接" />
 
 </LinearLayout>
