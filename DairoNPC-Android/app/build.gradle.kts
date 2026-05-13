@@ -1,82 +1,66 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("kotlin-kapt")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
 }
-
 
 android {
     namespace = "cn.dairo.npc"
-    compileSdk = 36
+    compileSdk {
+        version = release(36) {
+            minorApiLevel = 1
+        }
+    }
 
     defaultConfig {
         applicationId = "cn.dairo.npc"
-        minSdk = 29
+        minSdk = 24
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
 
-        vectorDrawables {
-            useSupportLibrary = true
-        }
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    dataBinding {
-        enable = false
-    }
-    signingConfigs {
-        create("releaseConfig") {
-            storeFile = File(rootProject.projectDir, "farming.jks")
-            storePassword = "Hd78.jioigp-puUInn"
-            keyAlias = "farming"
-            //keyPassword = System.getenv("KEY_PASSWORD")
-            keyPassword = "Hd78.jioigp-puUInn"
-        }
-    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("releaseConfig")
-
-            //开启代码混淆
-            isMinifyEnabled = true
-            proguardFiles(
-                //在很多情况下，proguard-android-optimize.txt 文件并不是必须手动创建的。这个文件通常是由 Android Gradle 插件隐式引入的，用于启用一些激进的优化配置。
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-        debug {
-            signingConfig = signingConfigs.getByName("releaseConfig")
-
-            //开启代码混淆
             isMinifyEnabled = false
             proguardFiles(
-                //在很多情况下，proguard-android-optimize.txt 文件并不是必须手动创建的。这个文件通常是由 Android Gradle 插件隐式引入的，用于启用一些激进的优化配置。
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
+        sourceCompatibility = JavaVersion.VERSION_16
+        targetCompatibility = JavaVersion.VERSION_16
     }
     buildFeatures {
-        compose = false//禁用Compose,该项目没有使用Compose,这里要明确禁用,否则会报错
-        buildConfig = true
-    }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
+        compose = true
     }
 }
 
 dependencies {
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.datastore)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.gson)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.junit)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 }

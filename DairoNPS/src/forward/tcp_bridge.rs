@@ -1,5 +1,4 @@
 use crate::forward::TCPBridging;
-use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps_error::NpsError;
 use crate::{application, forward};
 use np_common::time_util;
@@ -9,6 +8,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::{io, select, try_join};
+use np_common::data_io_len::AtomicDataIOLen;
 
 pub struct TcpBridgeParam {
     pub ip: String, // 代理客户端ip地址

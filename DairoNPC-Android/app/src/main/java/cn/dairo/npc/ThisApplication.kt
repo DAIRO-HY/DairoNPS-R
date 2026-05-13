@@ -1,21 +1,9 @@
 package cn.dairo.npc
 
-import android.app.Application
+import androidx.compose.material3.ColorScheme
 
-/**
- * 全局Application对象
- */
-class ThisApplication: Application() {
-    override fun onCreate() {
-        super.onCreate()
-        app = this
-    }
-
+class ThisApplication {
     companion object{
-
-        /**
-         * 全局保存Application对象
-         */
-        lateinit var app:Application
+        lateinit var colorScheme: ColorScheme
     }
 }

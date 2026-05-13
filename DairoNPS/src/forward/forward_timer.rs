@@ -1,6 +1,5 @@
 use crate::dao::traffic_stats_dao::TrafficStats;
 use crate::dao::{traffic_stats_dao, forward_dao, system_config_dao};
-use crate::model::data_io_len::DataIOLen;
 use crate::{application, forward};
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -8,6 +7,7 @@ use std::sync::LazyLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
+use np_common::data_io_len::DataIOLen;
 use np_common::time_util;
 
 /// 准备用来存入数据库的数据缓存，避免频繁操作数据库

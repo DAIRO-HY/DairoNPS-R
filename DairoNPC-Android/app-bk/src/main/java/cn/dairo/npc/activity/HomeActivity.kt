@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.TextView
 import android.widget.Button
+import android.widget.EditText
 import cn.dairo.npc.Constant
 import cn.dairo.npc.R
 import cn.dairo.npc.RustBridge
@@ -59,6 +60,36 @@ class HomeActivity : Activity() {
      */
     private val txtPoolCount by lazy { this.findViewById<TextView>(R.id.txtPoolCount) }
 
+    /**
+     * NPC客户端ID
+     */
+    private val txtNpcClientId by lazy { this.findViewById<TextView>(R.id.txtNpcClientId) }
+
+    /**
+     * NPC版本号
+     */
+    private val txtNpcVersion by lazy { this.findViewById<TextView>(R.id.txtNpcVersion) }
+
+    /**
+     * 服务器
+     */
+    private val txtHost by lazy { this.findViewById<TextView>(R.id.txtHost) }
+
+    /**
+     * tcp端口
+     */
+    private val txtTcpPort by lazy { this.findViewById<TextView>(R.id.txtTcpPort) }
+
+    /**
+     * Udp端口
+     */
+    private val txtUdpPort by lazy { this.findViewById<TextView>(R.id.txtUdpPort) }
+
+    /**
+     * 秘钥
+     */
+    private val txtKey by lazy { this.findViewById<TextView>(R.id.txtKey) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         super.actionBar?.hide()
@@ -77,6 +108,13 @@ class HomeActivity : Activity() {
     }
 
     private fun initView() {
+        val sharedPreferences = this.getSharedPreferences(Constant.NPS_SHARED_PREFERENCES_NAME,Context.MODE_PRIVATE)
+        this.txtHost.setText(sharedPreferences.getString("host",""))
+        this.txtTcpPort.setText(sharedPreferences.getString("tcp_port",""))
+        this.txtUdpPort.setText(sharedPreferences.getString("udp_port",""))
+        this.txtKey.setText(sharedPreferences.getString("key",""))
+
+
         this.btnToggle.setOnClickListener(this::onOpenNpcClick)
         this.btnEditNps.setOnClickListener{
 
@@ -87,6 +125,10 @@ class HomeActivity : Activity() {
             this.startActivity(intent)
             this.finish()
         }
+
+        val npcInfo = RustBridge.getNpcInfo()
+        this.txtNpcClientId.text = if(npcInfo.clientId == 0L) "未连接" else npcInfo.clientId.toString()
+        this.txtNpcVersion.text = npcInfo.version
     }
 
     private fun showStatus() {

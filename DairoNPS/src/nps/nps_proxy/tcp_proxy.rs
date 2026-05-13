@@ -1,15 +1,13 @@
 use crate::dao::channel_dao;
 use crate::dao::channel_dao::Channel;
-use crate::model::data_io_len::AtomicDataIOLen;
-use crate::nps::TCPBridging;
 use crate::nps::nps_bridge::tcp_bridge;
 use crate::nps::nps_pool::tcp_pool;
 use crate::nps_error::NpsError;
 use crate::{application, nps};
-use dashmap::DashMap;
-use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
 use tokio::{net::TcpListener, select, sync::Notify};
+use np_common::data_io_len::AtomicDataIOLen;
 
 // 开始客户端的所有监听
 pub async fn ready_client(client_id: i64) -> Result<(), NpsError> {

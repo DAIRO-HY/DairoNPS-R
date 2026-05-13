@@ -1,12 +1,12 @@
 use crate::dao::forward_dao;
 use crate::dao::forward_dao::Forward;
 use crate::forward::tcp_bridge;
-use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps_error::NpsError;
 use crate::{application, forward};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use tokio::{net::TcpListener, select, sync::Notify};
+use np_common::data_io_len::AtomicDataIOLen;
 
 // 开始客户端的所有监听
 pub async fn ready() -> Result<(), NpsError> {

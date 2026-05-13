@@ -1,10 +1,6 @@
 use jni::objects::{JClass, JObject, JString};
-use jni::signature::JavaType::{Object, Primitive};
-use jni::signature::Primitive::{Int, Void};
-use jni::signature::{MethodSignature, ReturnType};
-use jni::strings::{JNIStr, JNIString};
-use jni::sys::{jboolean, jint, jlong, jobject, jshort, jstring};
-use jni::{EnvUnowned, JValue, jni_sig, jni_str};
+use jni::sys::jshort;
+use jni::{jni_sig, jni_str, EnvUnowned, JValue};
 use npc_lib::application::Argument;
 use std::sync::atomic::Ordering;
 // #[unsafe(no_mangle)]
@@ -131,17 +127,17 @@ pub extern "system" fn Java_cn_dairo_npc_RustBridge_getHello<'local>(
 
 /// 获取NPC信息
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_cn_dairo_npc_RustBridge_getNpcInfo<'local>(
+pub extern "system" fn Java_cn_dairo_npc_RustBridge_getInfo<'local>(
     mut unowned_env: EnvUnowned<'local>,
     _this: JObject<'local>,
 ) -> JObject<'local> {
     // 使用 with_env 获取可用的 Env 引用
     let rs = unowned_env.with_env(|env| -> jni::errors::Result<_> {
-        let class = jni_str!("cn/dairo/npc/NpcInfo");
+        let class = jni_str!("cn/dairo/npc/bean/NpcInfo");
         let ctor_id = env.get_method_id(
             class,
             jni_str!("<init>"),
-            &jni_sig!((npsId: jlong, bridgeCount: jint, poolCount: jint) -> void),
+            &jni_sig!((clientId: jlong, version: java.lang.String) -> void),
         )?;
 
         // 获取客户端ID
@@ -168,19 +164,19 @@ pub extern "system" fn Java_cn_dairo_npc_RustBridge_getNpcInfo<'local>(
 
 /// 获取NPC运行状态
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_cn_dairo_npc_RustBridge_getStatusInfo<'local>(
+pub extern "system" fn Java_cn_dairo_npc_RustBridge_getStatus<'local>(
     mut unowned_env: EnvUnowned<'local>,
     _this: JObject<'local>,
 ) -> JObject<'local> {
     // 使用 with_env 获取可用的 Env 引用
     let rs = unowned_env.with_env(|env| -> jni::errors::Result<_> {
-        let class = jni_str!("cn/dairo/npc/NpcStatusInfo");
+        let class = jni_str!("cn/dairo/npc/bean/NpcStatus");
         let ctor_id = env
             // .get_method_id(class, jni_str!("<init>"), &jni_sig!("()V"))?;
             .get_method_id(
                 class,
                 jni_str!("<init>"),
-                &jni_sig!((isOpened: jboolean, isRunning: jboolean, connectMsg: java.lang.String, npsId: jlong, bridgeCount: jint, poolCount: jint) -> void),
+                &jni_sig!((isOpened: jboolean, isRunning: jboolean, connectMsg: java.lang.String, bridgeCount: jint, poolCount: jint) -> void),
             )?;
 
         // 获取桥接数量
@@ -188,23 +184,19 @@ pub extern "system" fn Java_cn_dairo_npc_RustBridge_getStatusInfo<'local>(
 
         // 获取线程池数量
         let pool_count = npc_lib::application::POOL_COUNT.load(Ordering::Relaxed) as i32;
-        let args = npc_lib::RUNTIME.block_on(async{
-            let connect_msg = JString::from_str(env, &*npc_lib::application::NPC_CONNECT_MSG.read().await).unwrap();
-            [
-                JValue::Bool(*npc_lib::application::IS_OPENED.lock().await).as_jni(),
-                JValue::Bool(*npc_lib::application::IS_NPC_RUNNING.lock().await).as_jni(),
-                JValue::from(&connect_msg).as_jni(),
-                // 获取客户端ID
-                JValue::Long(npc_lib::application::CLIENT_ID.load(Ordering::Relaxed)).as_jni(),
-                JValue::Int(bridge_count).as_jni(),
-                JValue::Int(pool_count).as_jni(),
-            ]
-        });
+
+        let connect_msg = JString::from_str(env, &*npc_lib::application::NPC_CONNECT_MSG.lock().unwrap()).unwrap();
+        let args = [
+            JValue::Bool(*npc_lib::application::IS_OPENED.lock().unwrap()).as_jni(),
+            JValue::Bool(*npc_lib::application::IS_NPC_RUNNING.lock().unwrap()).as_jni(),
+            JValue::from(&connect_msg).as_jni(),
+            JValue::Int(bridge_count).as_jni(),
+            JValue::Int(pool_count).as_jni(),
+        ];
 
 
         // 创建对象
         let obj = unsafe {
-
             let obj = env.new_object_unchecked(
                 &class,
                 ctor_id,

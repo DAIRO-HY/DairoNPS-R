@@ -3,6 +3,7 @@ use crate::npc_error::NpcError;
 use crate::{application, tcp_pool};
 use np_common::{head_flag, time_util};
 use std::io::ErrorKind;
+use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
@@ -12,25 +13,25 @@ use tokio::{io, select, try_join};
 
 // 开启客户端
 pub async fn open(args: Argument) {
-    if *application::IS_OPENED.lock().await {
+    if *application::IS_OPENED.lock().unwrap() {
         //如果正在运行中
         return;
     }
-    *application::IS_OPENED.lock().await = true;
+    *application::IS_OPENED.lock().unwrap() = true;
     println!("-->NPC服务开启成功");
     check_heart(args).await;
-    *application::IS_OPENED.lock().await = false;
+    *application::IS_OPENED.lock().unwrap() = false;
 }
 
 pub async fn stop() {
-    if !*application::IS_OPENED.lock().await {
+    if !*application::IS_OPENED.lock().unwrap() {
         //如果没有运行中
         return;
     }
 
     //关闭npc服务
     shutdown_npc().await;
-    while *application::IS_OPENED.lock().await {
+    while *application::IS_OPENED.lock().unwrap() {
         println!("-->正在停止服务...");
         application::APP_CLOSER.notify_waiters();
         tokio::time::sleep(Duration::from_millis(10)).await;
@@ -68,8 +69,7 @@ async fn check_heart(args: Argument) {
 async fn create_connection(args: Argument) {
     //关闭上次会话,application::NPC_CLOSER会重新进入等待状态
     shutdown_npc().await;
-
-    *application::NPC_CONNECT_MSG.write().await = "正在连接NPS服务器...".to_string();
+    *application::NPC_CONNECT_MSG.lock().unwrap() = "正在连接NPS服务器...".to_string();
 
     // 与服务端建立连接
     let nps_tcp = match TcpStream::connect(format!("{}:{}", args.host, args.tcp_port)).await {
@@ -79,15 +79,19 @@ async fn create_connection(args: Argument) {
                 "-->与主机连接失败:{}:{}  error:{:?}",
                 args.host, args.tcp_port, e
             );
-            *application::NPC_CONNECT_MSG.write().await = format!("与主机连接失败:{}:{}  错误:{:?}", args.host, args.tcp_port, e);
+            *application::NPC_CONNECT_MSG.lock().unwrap() = format!(
+                "与主机连接失败:{}:{}  错误:{:?}",
+                args.host, args.tcp_port, e
+            );
             return;
         }
     };
 
     tokio::spawn(async move {
-        *application::IS_NPC_RUNNING.lock().await = true;
+        *application::IS_NPC_RUNNING.lock().unwrap() = true;
         spawn_start(args, nps_tcp).await;
-        *application::IS_NPC_RUNNING.lock().await = false;
+        *application::IS_NPC_RUNNING.lock().unwrap() = false;
+
         println!("-->与服务端连接已经断开");
     });
 }
@@ -134,17 +138,17 @@ async fn start(args: Argument, mut nps_tcp: TcpStream) -> Result<(), NpcError> {
         head_flag::UNKNOW_KEY => {
             //未知的秘钥,直接返回,不再进行后续操作
             println!("-->未知的秘钥:{}", args.key);
-            *application::NPC_CONNECT_MSG.write().await = "未知的秘钥".to_string();
+            *application::NPC_CONNECT_MSG.lock().unwrap() = "未知的秘钥".to_string();
             return Ok(());
         }
         head_flag::DISABLED_KEY => {
             //未知的秘钥,直接返回,不再进行后续操作
             println!("-->该秘钥被禁用:{}", args.key);
-            *application::NPC_CONNECT_MSG.write().await = "该秘钥被禁用".to_string();
+            *application::NPC_CONNECT_MSG.lock().unwrap() = "该秘钥被禁用".to_string();
             return Ok(());
         }
         head_flag::CONNECT_SUCCESS => {
-            *application::NPC_CONNECT_MSG.write().await = "已连接到NPS服务器".to_string();
+            *application::NPC_CONNECT_MSG.lock().unwrap() = "已连接到NPS服务器".to_string();
             //连接成功
         }
         _ => {
@@ -165,7 +169,7 @@ async fn start(args: Argument, mut nps_tcp: TcpStream) -> Result<(), NpcError> {
 
     println!("-->与服务端连接成功");
     let (reader, mut writer) = io::split(nps_tcp);
-    let result = try_join!(heart(&mut writer), receive(args,reader));
+    let result = try_join!(heart(&mut writer), receive(args, reader));
 
     if let Err(e) = result {
         return Err(e);
@@ -176,7 +180,7 @@ async fn start(args: Argument, mut nps_tcp: TcpStream) -> Result<(), NpcError> {
 /**
  * 从服务端收到数据
  */
-async fn receive(args: Argument,mut reader: ReadHalf<TcpStream>) -> Result<(), NpcError> {
+async fn receive(args: Argument, mut reader: ReadHalf<TcpStream>) -> Result<(), NpcError> {
     loop {
         let flag = reader.read_u8().await?;
         //fmt.Printf("-->收到标记：%d : %c\n", flag, rune(flag))
@@ -246,7 +250,7 @@ async fn heart(writer: &mut WriteHalf<TcpStream>) -> Result<(), NpcError> {
  * 关闭服务
  */
 async fn shutdown_npc() {
-    while *application::IS_NPC_RUNNING.lock().await {
+    while *application::IS_NPC_RUNNING.lock().unwrap() {
         println!("-->正在关闭NPC服务...");
         application::NPC_CLOSER.notify_waiters();
         tokio::time::sleep(Duration::from_millis(10)).await;

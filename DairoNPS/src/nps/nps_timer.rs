@@ -1,6 +1,5 @@
 use crate::dao::traffic_stats_dao::TrafficStats;
 use crate::dao::{channel_dao, traffic_stats_dao, client_dao, system_config_dao};
-use crate::model::data_io_len::DataIOLen;
 use crate::{application, nps};
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -12,6 +11,7 @@ use tokio::sync::Mutex;
 /// 一些定时任务
 use tokio::time::sleep;
 use np_common::{head_flag, time_util};
+use np_common::data_io_len::DataIOLen;
 use crate::nps::nps_client::nps_session;
 
 //准备用来存入数据库的数据缓存，避免频繁操作数据库

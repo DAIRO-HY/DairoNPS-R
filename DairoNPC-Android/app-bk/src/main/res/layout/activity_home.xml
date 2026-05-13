@@ -71,11 +71,11 @@
                         android:text="服务器" />
 
                     <TextView
+                        android:id="@+id/txtHost"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:gravity="right"
-                        android:text="192.168.3.57" />
+                        android:gravity="end" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -89,11 +89,11 @@
                         android:text="TCP端口" />
 
                     <TextView
+                        android:id="@+id/txtTcpPort"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:gravity="right"
-                        android:text="1881" />
+                        android:gravity="end" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -107,11 +107,11 @@
                         android:text="UDP端口" />
 
                     <TextView
+                        android:id="@+id/txtUdpPort"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:gravity="end"
-                        android:text="1882" />
+                        android:gravity="end" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -125,11 +125,11 @@
                         android:text="连接秘钥" />
 
                     <TextView
+                        android:id="@+id/txtKey"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:gravity="end"
-                        android:text="jnkJKhj*jhhj" />
+                        android:gravity="end" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -143,6 +143,7 @@
                         android:text="客户端ID" />
 
                     <TextView
+                        android:id="@+id/txtNpcClientId"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -402,6 +403,7 @@
                         android:text="NPC版本" />
 
                     <TextView
+                        android:id="@+id/txtNpcVersion"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="1.0.0" />

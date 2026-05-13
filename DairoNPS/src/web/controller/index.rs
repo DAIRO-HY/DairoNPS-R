@@ -1,7 +1,6 @@
 use crate::dao::system_config_dao;
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::NumberExtension;
-use crate::model::data_io_len::DataIOLen;
 use crate::{forward, nps};
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
@@ -9,6 +8,7 @@ use futures::{Stream, TryFutureExt};
 use std::{convert::Infallible, time::Duration};
 use std::sync::atomic::Ordering;
 use tokio_stream::StreamExt;
+use np_common::data_io_len::DataIOLen;
 use crate::forward::forward_timer;
 use crate::nps::nps_timer;
 

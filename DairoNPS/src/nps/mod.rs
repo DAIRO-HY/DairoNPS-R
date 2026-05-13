@@ -5,7 +5,6 @@ pub mod nps_proxy;
 pub mod nps_timer;
 pub mod security_util;
 
-use crate::model::data_io_len::AtomicDataIOLen;
 use crate::nps::nps_pool::tcp_pool::TCPPool;
 use dashmap::DashMap;
 use itertools::Itertools;
@@ -16,6 +15,7 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, Notify};
+use np_common::data_io_len::AtomicDataIOLen;
 
 /// 客户端连接池
 pub static CLIENT_LIVE_MAP: LazyLock<Mutex<HashMap<i64, ClientLive>>> =

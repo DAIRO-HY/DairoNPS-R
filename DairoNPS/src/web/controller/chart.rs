@@ -1,7 +1,6 @@
 use crate::dao::traffic_stats_dao;
 use crate::extension::ResponseEmptyExt;
 use crate::extension::number::{Div, NumberExtension};
-use crate::model::data_io_len::{DataIOLen, ToU64};
 use crate::web::extract::AppQuery;
 use crate::{forward, nps};
 use axum::response::sse::{Event, Sse};
@@ -11,6 +10,7 @@ use futures::{Stream, TryFutureExt};
 use itertools::Itertools;
 use std::{convert::Infallible, time::Duration};
 use tokio_stream::StreamExt;
+use np_common::data_io_len::DataIOLen;
 
 ///　实时获取当前流量大小
 pub async fn real_len(

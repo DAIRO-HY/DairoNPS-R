@@ -1,5 +1,8 @@
 package cn.dairo.npc
 
+import cn.dairo.npc.bean.NpcInfo
+import cn.dairo.npc.bean.NpcStatus
+
 object RustBridge {
 
     init {
@@ -23,6 +26,14 @@ object RustBridge {
 
     external fun getHello(input: String): String
 
-    external fun getStatusInfo(): NpcStatusInfo
+    /**
+     * 获取状态信息
+     */
+    external fun getStatus(): NpcStatus
+
+    /**
+     * 获取Npc信息
+     */
+    external fun getInfo(): NpcInfo
 
 }
