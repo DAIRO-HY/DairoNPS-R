@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, Notify};
-use np_common::data_io_len::AtomicDataIOLen;
+use lib_np_common::data_io_len::AtomicDataIOLen;
 
 /// 客户端连接池
 pub static CLIENT_LIVE_MAP: LazyLock<Mutex<HashMap<i64, ClientLive>>> =

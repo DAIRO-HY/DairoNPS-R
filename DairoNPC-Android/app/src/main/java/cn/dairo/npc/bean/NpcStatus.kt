@@ -29,4 +29,14 @@ data class NpcStatus(
      * 当前连接池数量
      */
     val poolCount: Int = 0,
+
+    /**
+     * 入网流量
+     */
+    val inLen: Long = 0,
+
+    /**
+     * 出网流量
+     */
+    val outLen: Long = 0,
 )

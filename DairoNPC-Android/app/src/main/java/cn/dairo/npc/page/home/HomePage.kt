@@ -19,14 +19,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.HotTub
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -38,41 +46,91 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import cn.dairo.npc.extension.readableSize
 import cn.dairo.npc.extension.relaunch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(
     navController: NavController, modifier: Modifier = Modifier, vm: HomeViewModel = viewModel()
 ) {
-    val context = LocalContext.current
-    val state by vm.state.collectAsState()
-    Column(modifier = modifier
-        .verticalScroll(rememberScrollState())
-        .padding(10.dp)) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    // 用户返回桌面
+                    vm.cancelLoopGetStatus()
+                }
+
+                Lifecycle.Event.ON_RESUME -> {
+                    vm.loopGetStatus()
+                }
+
+                else -> {}
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                modifier = modifier.background(Color.Red),
+                title = {
+                    Text("DairoNPC", color = MaterialTheme.colorScheme.onPrimary)
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                actions = {
+                    IconButton(onClick = {
+                        vm.reset {
+                            navController.relaunch("setting")
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            contentDescription = null
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        ContentView(Modifier.padding(innerPadding))
+    }
+
+
+}
+
+@Composable
+private fun ContentView(modifier: Modifier = Modifier, vm: HomeViewModel = viewModel()){
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(10.dp)
+    ) {
         NpcStatusView()
         Spacer(Modifier.height(10.dp))
         DataSizeView()
         Spacer(Modifier.height(10.dp))
         ConnectCountView()
-        Spacer(Modifier.height(30.dp))
-        Button(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp),
-            contentPadding = PaddingValues(0.dp),
-            onClick = {
-                vm.reset {
-                    navController.relaunch("setting")
-                }
-            }
-        ) {
-            Text("变更配置", fontSize = 14.sp)
-        }
+        Spacer(Modifier.height(10.dp))
+        SystemInfoView()
     }
 }
 
@@ -138,8 +196,6 @@ private fun NpcStatusView(vm: HomeViewModel = viewModel()) = Column {
             NpcInfoView("TCP端口", state.npcSetting.tcpPort)
             NpcInfoView("UDP端口", state.npcSetting.udpPort)
             NpcInfoView("连接秘钥", state.npcSetting.key)
-            NpcInfoView("NPC客户端ID", state.npcInfo.clientId.toString())
-            NpcInfoView("NPC版本号", state.npcInfo.version)
         }
     }
 }
@@ -153,8 +209,8 @@ private fun DataSizeView(vm: HomeViewModel = viewModel()) = Column(
         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
         .padding(10.dp),
 ) {
+    val state by vm.state.collectAsState()
     Text("流量统计", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
-    Spacer(modifier = Modifier.height(10.dp))
     Row(
         modifier = Modifier
             .fillMaxWidth(),
@@ -172,11 +228,8 @@ private fun DataSizeView(vm: HomeViewModel = viewModel()) = Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("上行流量", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
-            Row {
-                Text("12.345", fontSize = 16.sp)
-                Text("MB", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-            }
-            Text("1.23MB/s", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+            Text(state.npcStatus.outLen.readableSize, fontSize = 14.sp)
+            Text(state.outSpeed, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
         }
         VerticalDivider(
             modifier = Modifier.padding(15.dp),
@@ -189,11 +242,9 @@ private fun DataSizeView(vm: HomeViewModel = viewModel()) = Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("下行流量", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
-            Row {
-                Text("12.345", fontSize = 16.sp)
-                Text("MB", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-            }
-            Text("1.23MB/s", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+            Text(state.npcStatus.inLen.readableSize, fontSize = 14.sp)
+
+            Text(state.inSpeed, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
         }
         Icon(
             imageVector = Icons.Default.ArrowDownward,
@@ -205,7 +256,7 @@ private fun DataSizeView(vm: HomeViewModel = viewModel()) = Column(
 }
 
 /**
- * 桥接ji连接池数量信息
+ * 桥接连接池数量信息
  */
 @Composable
 private fun ConnectCountView(vm: HomeViewModel = viewModel()) = Column(
@@ -219,7 +270,6 @@ private fun ConnectCountView(vm: HomeViewModel = viewModel()) = Column(
     val state by vm.state.collectAsState()
 
     Text(text = "连接信息", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
-    Spacer(modifier = Modifier.height(10.dp))
     Row(
         modifier = Modifier
             .fillMaxWidth(),
@@ -261,18 +311,53 @@ private fun ConnectCountView(vm: HomeViewModel = viewModel()) = Column(
 }
 
 
+/**
+ * 系统信息
+ */
+@Composable
+private fun SystemInfoView(vm: HomeViewModel = viewModel()) = Column(
+    modifier = Modifier
+        .fillMaxWidth()
+        .height(IntrinsicSize.Min)//子控件fillMaxHeight()使其子控件一样高
+        .clip(RoundedCornerShape(8.dp))
+        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+        .padding(10.dp),
+) {
+    val state by vm.state.collectAsState()
+
+    Text(text = "系统信息", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,//让子控件垂直居中
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("NPC版本", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+            Text(state.npcInfo.version, fontSize = 12.sp)
+        }
+        VerticalDivider(
+            modifier = Modifier.padding(15.dp),
+            thickness = 1.dp,
+            color = Color.Gray
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("客户端ID", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+            Text(state.npcInfo.clientId.toString(), fontSize = 12.sp)
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 fun HomePagePreview() {
-    _root_ide_package_.cn.dairo.npc.ui.theme.MyApplicationTheme {
-        val navController = rememberNavController()
-        NavHost(
-            navController = navController,
-            startDestination = "npc-config"
-        ) {
-            composable("npc-config") { _ ->
-                HomePage(navController)
-            }
-        }
-    }
+    NpcInfoView("测试", "123")
 }

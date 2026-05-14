@@ -10,7 +10,7 @@ use futures::{Stream, TryFutureExt};
 use itertools::Itertools;
 use std::{convert::Infallible, time::Duration};
 use tokio_stream::StreamExt;
-use np_common::data_io_len::DataIOLen;
+use lib_np_common::data_io_len::DataIOLen;
 
 ///　实时获取当前流量大小
 pub async fn real_len(
@@ -100,7 +100,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
 
     let data_len_list = if param.client_id > 0 {
         traffic_stats_dao::select_io_len_by_client(
-            &db::get(),
+            &lib_db::get(),
             param.client_id,
             param.start_time,
             param.end_time,
@@ -109,7 +109,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         .unwrap()
     } else if param.channel_id > 0 {
         traffic_stats_dao::select_io_len_by_channel(
-            &db::get(),
+            &lib_db::get(),
             param.channel_id,
             param.start_time,
             param.end_time,
@@ -118,7 +118,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         .unwrap()
     }  else if param.forward_id > 0 {
         traffic_stats_dao::select_io_len_by_forward(
-            &db::get(),
+            &lib_db::get(),
             param.forward_id,
             param.start_time,
             param.end_time,
@@ -126,7 +126,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         .await
         .unwrap()
     } else {
-        traffic_stats_dao::select_io_len(&db::get(), param.start_time, param.end_time)
+        traffic_stats_dao::select_io_len(&lib_db::get(), param.start_time, param.end_time)
             .await
             .unwrap()
     };

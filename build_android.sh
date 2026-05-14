@@ -12,7 +12,7 @@
 set -e
 
 # 删除旧依赖
-#rm ./DairoNPC-Android/app/src/main/jniLibs/arm64-v8a/libnpc_android.so
+#rm ./DairoNPC-Android/app/src/main/jniLibs/arm64-v8a/liblib_npc_android.so
 #rm ./DairoNPC-Android/app/src/main/jniLibs/x86_64/libnpc_android.so
 
 # 编译目标平台

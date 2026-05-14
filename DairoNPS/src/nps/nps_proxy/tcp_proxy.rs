@@ -7,12 +7,12 @@ use crate::{application, nps};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use tokio::{net::TcpListener, select, sync::Notify};
-use np_common::data_io_len::AtomicDataIOLen;
+use lib_np_common::data_io_len::AtomicDataIOLen;
 
 // 开始客户端的所有监听
 pub async fn ready_client(client_id: i64) -> Result<(), NpsError> {
     //开启NPS客户端ID下所有的隧道
-    let active_list = channel_dao::select_active_by_client_id(&db::get(), client_id).await?;
+    let active_list = channel_dao::select_active_by_client_id(&lib_db::get(), client_id).await?;
     for it in active_list {
         if it.mode == 1 {
             //只监听TCP隧道
@@ -85,14 +85,14 @@ async fn start(
     let tcp_listener = match TcpListener::bind(format!("0.0.0.0:{}", channel.server_port)).await {
         Ok(v) => v,
         Err(e) => {
-            channel_dao::set_error(&db::get(), channel.id, format!("监听端口失败:{:?}", e)).await?;
+            channel_dao::set_error(&lib_db::get(), channel.id, format!("监听端口失败:{:?}", e)).await?;
             // return Err(NpsError::IoError(e));
             return Ok(());
         }
     };
 
     //清除错误消息
-    channel_dao::clear_error(&db::get(), channel.id).await?;
+    channel_dao::clear_error(&lib_db::get(), channel.id).await?;
     loop {
         let (mut proxy_tcp, addr) = tcp_listener.accept().await?;
 

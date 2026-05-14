@@ -6,7 +6,7 @@ version = 4
 name = "DairoNPC"
 version = "0.1.0"
 dependencies = [
- "npc_lib",
+ "lib_npc",
 ]
 
 [[package]]
@@ -20,20 +20,20 @@ dependencies = [
  "chrono",
  "clap",
  "dashmap",
- "db",
  "futures",
  "itertools",
+ "lib_db",
+ "lib_np_common",
+ "lib_source_gen",
  "maplit",
  "md5",
  "mime_guess",
- "np_common",
  "pollster",
  "rand 0.10.0",
  "regex",
  "rust-embed",
  "serde",
  "serde_json",
- "source_gen",
  "sqlx",
  "thiserror",
  "tokio",
@@ -689,21 +689,6 @@ dependencies = [
  "lock_api",
  "once_cell",
  "parking_lot_core",
-]
-
-[[package]]
-name = "db"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "mime_guess",
- "prettyplease",
- "regex",
- "rust-embed",
- "serde",
- "sqlparser",
- "sqlx",
- "syn",
 ]
 
 [[package]]
@@ -1515,11 +1500,66 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
+name = "lib_db"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "mime_guess",
+ "prettyplease",
+ "regex",
+ "rust-embed",
+ "serde",
+ "sqlparser",
+ "sqlx",
+ "syn",
+]
+
+[[package]]
+name = "lib_np_common"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
+name = "lib_npc"
+version = "1.0.0"
+dependencies = [
+ "arc-swap",
+ "clap",
+ "lib_np_common",
+ "rand 0.10.0",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "lib_npc_android"
 version = "0.1.0"
 dependencies = [
  "jni",
- "npc_lib",
+ "lib_npc",
+]
+
+[[package]]
+name = "lib_npc_ios"
+version = "0.1.0"
+dependencies = [
+ "lib_npc",
+]
+
+[[package]]
+name = "lib_source_gen"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "mime_guess",
+ "prettyplease",
+ "regex",
+ "serde",
+ "sqlparser",
+ "sqlx",
+ "syn",
 ]
 
 [[package]]
@@ -1669,32 +1709,6 @@ dependencies = [
  "mime",
  "spin",
  "version_check",
-]
-
-[[package]]
-name = "np_common"
-version = "0.1.0"
-dependencies = [
- "thiserror",
-]
-
-[[package]]
-name = "npc_lib"
-version = "1.0.0"
-dependencies = [
- "arc-swap",
- "clap",
- "np_common",
- "rand 0.10.0",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "npc_lib_ios"
-version = "0.1.0"
-dependencies = [
- "npc_lib",
 ]
 
 [[package]]
@@ -2399,20 +2413,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "source_gen"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "mime_guess",
- "prettyplease",
- "regex",
- "serde",
- "sqlparser",
- "sqlx",
- "syn",
-]
-
-[[package]]
 name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2712,8 +2712,8 @@ dependencies = [
  "clap",
  "futures",
  "itertools",
+ "lib_np_common",
  "maplit",
- "np_common",
  "rand 0.10.0",
  "rust-embed",
  "serde",

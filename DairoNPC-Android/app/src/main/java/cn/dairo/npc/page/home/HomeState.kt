@@ -29,4 +29,10 @@ data class HomeState(
 
     //状态颜色
     val statusColor:Color = Color.Gray,
+
+    //入网网速
+    val inSpeed:String = "",
+
+    //出网网速
+    val outSpeed:String = ""
 )

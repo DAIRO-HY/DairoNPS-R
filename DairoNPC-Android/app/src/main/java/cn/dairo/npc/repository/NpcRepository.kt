@@ -24,7 +24,7 @@ class NpcRepository(private val context: Context) {
     /**
      * 是否已经配置标记存储key
      */
-    private val isSetKey = booleanPreferencesKey("is_set")
+    private val isSetKey = booleanPreferencesKey("isSet")
 
     /**
      * 从缓存加载

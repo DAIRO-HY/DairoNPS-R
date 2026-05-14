@@ -1,4 +1,4 @@
-use source_gen::*;
+use lib_source_gen::*;
 
 /// 追求极致的性能，编译时生成静态资源路由代码块，避免运行时扫描文件系统和猜测 MIME 类型的开销
 /// 但是付出的代价是：
@@ -10,7 +10,7 @@ fn main() {
     pollster::block_on(async {
 
         //初始化数据库,这个数据用来支持sqlx宏编译检查sql语句的正确性，必须在编译阶段就初始化数据库，否则sqlx会报错
-        db::init().await;
+        lib_db::init().await;
 
         // 生成 DAO 相关的代码块
         make_dao::make("sqlite://dairo-nps.sqlite?mode=rwc", "assets/mapper").await;

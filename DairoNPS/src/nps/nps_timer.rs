@@ -10,8 +10,8 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 /// 一些定时任务
 use tokio::time::sleep;
-use np_common::{head_flag, time_util};
-use np_common::data_io_len::DataIOLen;
+use lib_np_common::{head_flag, time_util};
+use lib_np_common::data_io_len::DataIOLen;
 use crate::nps::nps_client::nps_session;
 
 //准备用来存入数据库的数据缓存，避免频繁操作数据库
@@ -94,7 +94,7 @@ async fn collect_data(
     }
     drop(channel_live_map);
     if *pre_insert_time > application::ARGS.data_collect_insert_interval {
-        let mut tx = db::get().begin().await?;
+        let mut tx = lib_db::get().begin().await?;
 
         //批量循环插入数据
         for it in &*insert_cache_list {
@@ -221,6 +221,6 @@ async fn delete_expired_traffic_stats() {
             .unwrap()
             .as_secs();
         let target_date = now - application::ARGS.traffic_stats_expired;
-        let _ = traffic_stats_dao::delete_expired(&db::get(),target_date as i64).await;
+        let _ = traffic_stats_dao::delete_expired(&lib_db::get(),target_date as i64).await;
     }
 }

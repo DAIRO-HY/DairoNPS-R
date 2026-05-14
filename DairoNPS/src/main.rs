@@ -17,7 +17,7 @@ use sqlx::{Column, Executor, Statement, TypeInfo};
 
 #[tokio::main]
 async fn main() -> tokio::io::Result<()> {
-    db::init().await;
+    lib_db::init().await;
     web::router::ready();
 
     //开启内网穿透监听

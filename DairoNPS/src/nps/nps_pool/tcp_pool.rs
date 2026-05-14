@@ -1,7 +1,7 @@
 use crate::nps::nps_client::nps_session;
 use crate::nps_error::NpsError;
 use crate::{application, nps};
-use np_common::{head_flag, time_util};
+use lib_np_common::{head_flag, time_util};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 

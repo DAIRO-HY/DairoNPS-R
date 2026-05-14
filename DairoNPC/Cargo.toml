@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-npc_lib = { path = "../npc_lib" }
+lib_npc = { path = "../lib_npc" }

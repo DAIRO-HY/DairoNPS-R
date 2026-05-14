@@ -7,5 +7,5 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-npc_lib = { path = "../npc_lib" }
+lib_npc = { path = "../lib_npc" }
 jni = "0.22"

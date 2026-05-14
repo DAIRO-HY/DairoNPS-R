@@ -21,6 +21,39 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("releaseConfig") {
+            storeFile = File(rootProject.projectDir, "dairo-npc.jks")
+            storePassword = "aWd88@4ffffAAsfdn084evdf"
+            keyAlias = "dairo-npc"
+            //keyPassword = System.getenv("KEY_PASSWORD")
+            keyPassword = "aWd88@4ffffAAsfdn084evdf"
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("releaseConfig")
+
+            //开启代码混淆
+            isMinifyEnabled = false
+            proguardFiles(
+                //在很多情况下，proguard-android-optimize.txt 文件并不是必须手动创建的。这个文件通常是由 Android Gradle 插件隐式引入的，用于启用一些激进的优化配置。
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("releaseConfig")
+
+            //开启代码混淆
+            isMinifyEnabled = false
+            proguardFiles(
+                //在很多情况下，proguard-android-optimize.txt 文件并不是必须手动创建的。这个文件通常是由 Android Gradle 插件隐式引入的，用于启用一些激进的优化配置。
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false

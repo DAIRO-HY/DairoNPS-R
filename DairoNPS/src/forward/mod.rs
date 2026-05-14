@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 use std::sync::atomic::{AtomicU64, AtomicUsize};
 use tokio::sync::{Mutex, Notify};
-use np_common::data_io_len::AtomicDataIOLen;
+use lib_np_common::data_io_len::AtomicDataIOLen;
 
 pub mod tcp_accept;
 pub mod tcp_bridge;

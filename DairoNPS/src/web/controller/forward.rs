@@ -15,7 +15,7 @@ use validator::Validate;
 
 ///  转发列表
 pub async fn list() -> Response {
-    let conn = db::get();
+    let conn = lib_db::get();
     let forward_id_name_map = forward_dao::select_all(&conn)
         .await
         .unwrap_or_default()
@@ -43,7 +43,7 @@ pub async fn list() -> Response {
 
 /// 隧道详情获取API
 pub async fn detail(AppQuery(query): AppQuery<IdQuery>) -> Response {
-    let conn = db::get();
+    let conn = lib_db::get();
     let detail = if query.id > 0 {
         let Ok(channel) = forward_dao::select_one(&conn, query.id).await else {
             return biz_error!("未找到隧道信息");
@@ -77,7 +77,7 @@ pub async fn edit(AppForm(form): AppForm<model::ForwardEdit>) -> Response {
         //验证表单数据是否合法
         return Response::field_errors(e);
     }
-    let conn = db::get();
+    let conn = lib_db::get();
     let mut forward = if form.id == 0 {
         Forward {
             is_enabled: true,
@@ -125,7 +125,7 @@ pub async fn edit(AppForm(form): AppForm<model::ForwardEdit>) -> Response {
 
 /// 通过id删除一个隧道
 pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
-    let conn = db::get();
+    let conn = lib_db::get();
     let mut tx = conn.begin().await.unwrap();
     if let Err(e) = forward_dao::delete(&mut *tx, query.id).await {
         return biz_errorf!("删除失败:{}", e);
@@ -146,7 +146,7 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
 
 /// 修改可用状态
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
-    let conn = db::get();
+    let conn = lib_db::get();
     let mut forward = forward_dao::select_one(&conn, query.id).await.unwrap();
     forward_dao::toggle_enable(&conn, query.id, !forward.is_enabled)
         .await

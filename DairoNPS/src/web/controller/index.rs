@@ -8,7 +8,7 @@ use futures::{Stream, TryFutureExt};
 use std::{convert::Infallible, time::Duration};
 use std::sync::atomic::Ordering;
 use tokio_stream::StreamExt;
-use np_common::data_io_len::DataIOLen;
+use lib_np_common::data_io_len::DataIOLen;
 use crate::forward::forward_timer;
 use crate::nps::nps_timer;
 
@@ -36,7 +36,7 @@ pub async fn get_nps_status() -> Sse<impl Stream<Item = Result<Event, Infallible
 // 页面初始化
 async fn get_data() -> model::NPSStatus {
     //系统配置
-    let system_config = system_config_dao::get(&db::get()).await.unwrap_or_default();
+    let system_config = system_config_dao::get(&lib_db::get()).await.unwrap_or_default();
 
     //系统总流量
     let system_len = DataIOLen::from(system_config.in_len,system_config.out_len);

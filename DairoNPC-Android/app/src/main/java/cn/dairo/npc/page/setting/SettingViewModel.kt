@@ -33,35 +33,40 @@ class SettingViewModel(private val application: Application) : AndroidViewModel(
         viewModelScope.launch {
             _state.update {
                 it.copy(
-                    npc = repo.loadSetting()
+                    npcSetting = repo.loadSetting()
                 )
             }
         }
     }
     fun save(block:()-> Unit) {
-        val npc = this.state.value.npc
-        if(npc.host.isBlank()){
+        var npcSetting = this.state.value.npcSetting
+        if(npcSetting.tcpPort.isBlank()){
+            npcSetting = npcSetting.copy(tcpPort = "1881")
+        }
+        if(npcSetting.udpPort.isBlank()){
+            npcSetting = npcSetting.copy(udpPort = "1882")
+        }
+
+        if(npcSetting.host.isBlank()){
             application.toast("服务器地址不能为空")
             return
         }
-
-        if(npc.key.isBlank()){
+        if(npcSetting.key.isBlank()){
             application.toast("秘钥不能为空")
             return
         }
-        if(npc.tcpPort.toShortOrNull() == null || npc.tcpPort.toShort() <= 0) {
+        if(npcSetting.tcpPort.toShortOrNull() == null || npcSetting.tcpPort.toShort() <= 0) {
             application.toast("TCP端口必须为正整数且小于65536")
             return
         }
-        if(npc.udpPort.toShortOrNull() == null || npc.udpPort.toShort() <= 0) {
+        if(npcSetting.udpPort.toShortOrNull() == null || npcSetting.udpPort.toShort() <= 0) {
             application.toast("UDP端口必须为正整数且小于65536")
             return
         }
         viewModelScope.launch {
-            repo.saveSetting(
-                _state.value.npc
-            )
+            repo.saveSetting(npcSetting)
             repo.saveSet(true)
+            repo.setOpened(true)
             block()
         }
     }

@@ -2,14 +2,14 @@ use crate::nps::TCPBridging;
 use crate::nps::security_util::SERVER_SECURITY_KEY;
 use crate::nps_error::NpsError;
 use crate::{application, nps};
-use np_common::{head_flag, time_util};
+use lib_np_common::{head_flag, time_util};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio::{io, select, try_join};
-use np_common::data_io_len::AtomicDataIOLen;
+use lib_np_common::data_io_len::AtomicDataIOLen;
 
 /// 桥接参数
 pub struct TcpBridgeParam {

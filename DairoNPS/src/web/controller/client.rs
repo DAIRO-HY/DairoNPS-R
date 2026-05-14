@@ -23,7 +23,7 @@ pub async fn list() -> Response {
         .keys()
         .map(|it| it.clone())
         .collect(); //收集在线状态的客户端id
-    let list = client_dao::select_all(&db::get())
+    let list = client_dao::select_all(&lib_db::get())
         .await
         .unwrap_or_default()
         .into_iter()
@@ -46,7 +46,7 @@ pub async fn list() -> Response {
 /// 获取客户端详情API
 pub async fn detail(AppQuery(id): AppQuery<IdQuery>) -> Response {
     let detail = if id.id > 0 {
-        let Ok(client) = client_dao::select_one(&db::get(), id.id).await else {
+        let Ok(client) = client_dao::select_one(&lib_db::get(), id.id).await else {
             return biz_error!("未找到客户端信息");
         };
         model::ClientDetail {
@@ -90,7 +90,7 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
         return Response::field_errors(e);
     }
 
-    let conn = db::get();
+    let conn = lib_db::get();
     let mut client = if form.id == 0 {
         Client {
             is_enabled: true,
@@ -134,7 +134,7 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
 
 /// 通过id删除一个客户端
 pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
-    client_dao::delete(&db::get(), query.id)
+    client_dao::delete(&lib_db::get(), query.id)
         .await
         .unwrap();
     nps_session::shutdown(query.id)
@@ -144,7 +144,7 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
 
 /// 修改可用状态
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
-    let conn = db::get();
+    let conn = lib_db::get();
     let client = client_dao::select_one(&conn, query.id).await.unwrap();
     let to = if client.is_enabled {
         //关闭客户端

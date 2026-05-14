@@ -2,10 +2,7 @@ package cn.dairo.npc.page.root
 
 import android.app.Application
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,7 +28,7 @@ fun Root(
     vm: RootViewModel = viewModel()
 ) = MyApplicationTheme {
     ThisApplication.colorScheme = MaterialTheme.colorScheme
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+//    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         val state by vm.state.collectAsState()
         val navController = rememberNavController()
         NavHost(
@@ -43,14 +40,14 @@ fun Root(
             }
 
             composable("setting") {
-                NpcConfigPage(navController, modifier = Modifier.padding(innerPadding))
+                NpcConfigPage(navController)
             }
 
             composable("home") {
-                HomePage(navController, modifier = Modifier.padding(innerPadding))
+                HomePage(navController)
             }
         }
-    }
+//    }
 }
 
 class RootViewModel(application: Application) : AndroidViewModel(application) {

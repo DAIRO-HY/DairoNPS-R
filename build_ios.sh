@@ -18,16 +18,16 @@ set -e
 rm -rf ./DairoNPC-IOS/DairoNPC/NpcLibIOS.xcframework
 
 # 编译目标平台
-cargo build --release --package npc_lib_ios --target x86_64-apple-ios
-cargo build --release --package npc_lib_ios --target aarch64-apple-ios-sim
-cargo build --release --package npc_lib_ios --target aarch64-apple-ios
+cargo build --release --package lib_npc_ios --target x86_64-apple-ios
+cargo build --release --package lib_npc_ios --target aarch64-apple-ios-sim
+cargo build --release --package lib_npc_ios --target aarch64-apple-ios
 
 # 合并模拟器架构(苹果要求)
-lipo -create target/aarch64-apple-ios-sim/release/libnpc_lib_ios.a target/x86_64-apple-ios/release/libnpc_lib_ios.a -output libnpc_lib_ios.a
+lipo -create target/aarch64-apple-ios-sim/release/liblib_npc_ios.a target/x86_64-apple-ios/release/liblib_npc_ios.a -output liblib_npc_ios.a
 
 # 创建 xcframework
-xcodebuild -create-xcframework -library target/aarch64-apple-ios/release/libnpc_lib_ios.a -headers ./npc_lib_ios/include \
--library libnpc_lib_ios.a -headers ./npc_lib_ios/include \
+xcodebuild -create-xcframework -library target/aarch64-apple-ios/release/liblib_npc_ios.a -headers ./lib_npc_ios/include \
+-library liblib_npc_ios.a -headers ./lib_npc_ios/include \
 -output ./DairoNPC-IOS/DairoNPC/NpcLibIOS.xcframework
 
 # 后续操作

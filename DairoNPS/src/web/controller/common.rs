@@ -26,7 +26,7 @@ pub async fn restart() {
 /// 这个模块定义了一个公共的控制器函数 `dropdown`，它根据路径参数 `tag` 的值来查询数据库中的不同表（如 `client` 或 `channel`），并返回一个包含标签和值的下拉列表数据结构。
 pub async fn dropdown(AppPath(tag): AppPath<String>) -> impl IntoResponse {
     let list = match tag.as_str() {
-        "client" => client_dao::select_all(&db::get()).await
+        "client" => client_dao::select_all(&lib_db::get()).await
             .unwrap_or_default()
             .into_iter()
             .map(|item| model::Dropdown {
@@ -34,7 +34,7 @@ pub async fn dropdown(AppPath(tag): AppPath<String>) -> impl IntoResponse {
                 value: item.id.to_string(),
             })
             .collect::<Vec<_>>(),
-        "channel" => channel_dao::select_all(&db::get()).await
+        "channel" => channel_dao::select_all(&lib_db::get()).await
             .unwrap_or_default()
             .into_iter()
             .map(|item| model::Dropdown {

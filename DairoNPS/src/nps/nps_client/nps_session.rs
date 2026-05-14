@@ -3,7 +3,7 @@ use crate::nps;
 use crate::nps::nps_proxy::tcp_proxy;
 use crate::nps::{security_util, ClientLive};
 use crate::nps_error::NpsError;
-use np_common::{head_flag, time_util};
+use lib_np_common::{head_flag, time_util};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

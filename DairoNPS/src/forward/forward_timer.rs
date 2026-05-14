@@ -7,8 +7,8 @@ use std::sync::LazyLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
-use np_common::data_io_len::DataIOLen;
-use np_common::time_util;
+use lib_np_common::data_io_len::DataIOLen;
+use lib_np_common::time_util;
 
 /// 准备用来存入数据库的数据缓存，避免频繁操作数据库
 pub static INSERT_CACHE_LIST: LazyLock<Mutex<Vec<TrafficStats>>> =
@@ -80,7 +80,7 @@ async fn collect_data(
     }
     drop(forward_live_map);
     if *pre_insert_time > application::ARGS.data_collect_insert_interval {
-        let mut tx = db::get().begin().await?;
+        let mut tx = lib_db::get().begin().await?;
 
         //批量循环插入数据
         for it in &*insert_cache_list {
