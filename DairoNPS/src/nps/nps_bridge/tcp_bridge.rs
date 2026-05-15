@@ -1,4 +1,4 @@
-use crate::nps::TCPBridging;
+use crate::nps::{security_util, TCPBridging};
 use crate::nps::security_util::SERVER_SECURITY_KEY;
 use crate::nps_error::NpsError;
 use crate::{application, nps};
@@ -197,7 +197,7 @@ async fn client_to_proxy(
     let mut buf = [0u8; 1024 * 8];
 
     //使用&*,避免发生值复制
-    let security_keys = &*SERVER_SECURITY_KEY;
+    let security_keys = &*security_util::SERVER_SECURITY_KEY;
     loop {
         let n = client_reader.read(&mut buf).await?;
         if n == 0 {

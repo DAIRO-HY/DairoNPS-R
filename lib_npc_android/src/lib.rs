@@ -103,7 +103,7 @@ pub extern "system" fn Java_cn_dairo_npc_NPCRustBridge_getInfo<'local>(
     rs.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
 }
 
-/// 获取NPC运行状态
+/// 获取NPC实时状态
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_cn_dairo_npc_NPCRustBridge_getStatus<'local>(
     mut unowned_env: EnvUnowned<'local>,
@@ -122,18 +122,18 @@ pub extern "system" fn Java_cn_dairo_npc_NPCRustBridge_getStatus<'local>(
                         isOpened: jboolean,
                         isRunning: jboolean,
                         connectMsg: java.lang.String,
-                        bridgeCount: jint,
-                        poolCount: jint,
+                        bridgeCount: jshort,
+                        poolCount: jshort,
                         inLen: jlong,
                         outLen: jlong
                     ) -> void),
             )?;
 
         // 获取桥接数量
-        let bridge_count = lib_npc::application::BRIDGE_COUNT.load(Ordering::Relaxed) as i32;
+        let bridge_count = lib_npc::application::BRIDGE_COUNT.load(Ordering::Relaxed) as i16;
 
         // 获取线程池数量
-        let pool_count = lib_npc::application::POOL_COUNT.load(Ordering::Relaxed) as i32;
+        let pool_count = lib_npc::application::POOL_COUNT.load(Ordering::Relaxed) as i16;
 
         let connect_msg =
             JString::from_str(env, &*lib_npc::application::NPC_CONNECT_MSG.lock().unwrap())
@@ -142,8 +142,8 @@ pub extern "system" fn Java_cn_dairo_npc_NPCRustBridge_getStatus<'local>(
             JValue::Bool(*lib_npc::application::IS_OPENED.lock().unwrap()).as_jni(),
             JValue::Bool(*lib_npc::application::IS_NPC_RUNNING.lock().unwrap()).as_jni(),
             JValue::from(&connect_msg).as_jni(),
-            JValue::Int(bridge_count).as_jni(),
-            JValue::Int(pool_count).as_jni(),
+            JValue::Short(bridge_count).as_jni(),
+            JValue::Short(pool_count).as_jni(),
             JValue::Long(lib_npc::application::IN_LEN.load(Ordering::Relaxed) as i64).as_jni(),
             JValue::Long(lib_npc::application::OUT_LEN.load(Ordering::Relaxed) as i64).as_jni(),
         ];

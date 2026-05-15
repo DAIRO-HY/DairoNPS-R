@@ -3,7 +3,7 @@ use lib_np_common::data_io_len::AtomicDataIOLen;
 use std::string::ToString;
 use std::sync::LazyLock;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicI64, AtomicU64, AtomicUsize};
+use std::sync::atomic::{AtomicI64, AtomicU16, AtomicU64, AtomicUsize};
 use tokio::sync::{Notify, RwLock};
 
 /// 程序版本
@@ -31,10 +31,10 @@ pub const HEART_TIME: u64 = 3000;
 pub const CHECK_HEART_TIME: u64 = HEART_TIME * 3;
 
 /// 桥接数量
-pub static BRIDGE_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub static BRIDGE_COUNT: AtomicU16 = AtomicU16::new(0);
 
 /// 连接池数量
-pub static POOL_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub static POOL_COUNT: AtomicU16 = AtomicU16::new(0);
 
 /// 客户端ID
 pub static CLIENT_ID: AtomicI64 = AtomicI64::new(0);

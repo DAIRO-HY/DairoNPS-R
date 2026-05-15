@@ -1,7 +1,7 @@
 package cn.dairo.npc.bean
 
 /**
- * Npc信息
+ * NPC信息
  */
 data class NpcInfo(
 

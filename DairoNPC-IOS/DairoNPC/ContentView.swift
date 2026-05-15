@@ -17,24 +17,25 @@ struct ContentView: View {
                 .foregroundStyle(.tint)
             Text("Hello, world!\(count)")
             Button("START"){
-                "192.168.3.57".withCString{host in
-                    "njeHds*fs4tfsd".withCString{key in
-                        npc_start(host, 1881, 1881, key)
-                    }
-                }
+                NPCRustBridge.open("192.168.3.63", 1881, 1881, "dvdvdf")
             }
             Button("STOP"){
-                npc_stop()
+                NPCRustBridge.close()
+            }
+            Button("STRUCT_TEST"){
+                for _ in 0 ... 1{
+                    print(NPCRustBridge.getStatus())
+                }
             }
         }
         .padding()
         .onAppear{
-            Task{
-                while true{
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    count = npc_bridge_count()
-                }
-            }
+            //            Task{
+            //                while true{
+            //                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+            //                    count = npc_bridge_count()
+            //                }
+            //            }
         }
     }
 }

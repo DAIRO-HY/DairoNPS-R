@@ -23,12 +23,12 @@ data class NpcStatus(
     /**
      * 当前桥接数量
      */
-    val bridgeCount: Int = 0,
+    val bridgeCount: Short = 0,
 
     /**
      * 当前连接池数量
      */
-    val poolCount: Int = 0,
+    val poolCount: Short = 0,
 
     /**
      * 入网流量

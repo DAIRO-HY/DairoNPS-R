@@ -30,6 +30,8 @@ xcodebuild -create-xcframework -library target/aarch64-apple-ios/release/liblib_
 -library liblib_npc_ios.a -headers ./lib_npc_ios/include \
 -output ./DairoNPC-IOS/DairoNPC/NpcLibIOS.xcframework
 
+rm liblib_npc_ios.a
+
 # 后续操作
 #  xcode配置桥接头部文件,TARGETS -> Build Settings -> 搜索(bridging) -> Objective-C Bridging Header
 #  设置桥接文件路径如:DairoNPC/Npc-Bridging-Header.h
