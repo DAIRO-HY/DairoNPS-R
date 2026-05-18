@@ -35,31 +35,26 @@ class NPCRustBridge {
             connectMsg: String(cString: rustStatus.connect_msg),
             bridgeCount: rustStatus.bridge_count,
             poolCount: rustStatus.pool_count,
-            inLen: rustStatus.in_len,
-            outLen: rustStatus.out_len
+            inLen: Int64(rustStatus.in_len),
+            outLen: Int64(rustStatus.out_len)
         )
         npc_free_status(ptr)
         return status
         
     }
     
-    //    /**
-    //     * 获取Npc信息
-    //     */
-    //    static func getInfo()-> NpcInfo{
-    //
-    //    }
+    /**
+     * 获取Npc信息
+     */
+    static func getInfo() -> NpcInfo{
+        let ptr = npc_get_info()!
+        let rustInfo = ptr.pointee
+        let info = NpcInfo(
+            clientId: 0,
+            version: String(cString: rustInfo.version)
+        )
+        npc_free_info(ptr)
+        return info
+    }
     
-}
-
-
-// NPC实时状态信息
-struct NpcStatus {
-    let isOpened: Bool
-    let isRunning: Bool
-    let connectMsg: String
-    let bridgeCount: UInt16
-    let poolCount: UInt16
-    let inLen: UInt64
-    let outLen: UInt64
 }

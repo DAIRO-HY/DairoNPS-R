@@ -24,7 +24,7 @@ data class HomeState(
     //状态标签文字
     val statusLabel:String = "",
 
-    //连接按钮文字
+    //标记是否已经打开过
     val isOpened:Boolean = false,
 
     //状态颜色

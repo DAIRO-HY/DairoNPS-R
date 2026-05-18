@@ -5,7 +5,7 @@ data class NpcSetting (
     /**
      * 服务器
      */
-    var host: String = "",
+    val host: String = "",
 
     /**
      * tcp端口

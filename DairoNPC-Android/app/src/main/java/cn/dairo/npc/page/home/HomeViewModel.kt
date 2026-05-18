@@ -30,12 +30,12 @@ class HomeViewModel(private val application: Application) : AndroidViewModel(app
      */
     private var lastOutLen = 0L
 
+    private var loopGetStatusJob: Job? = null
+
     private val _state = MutableStateFlow(
         HomeState()
     )
     val state = this._state.asStateFlow()
-
-    private var loopGetStatusJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -105,7 +105,8 @@ class HomeViewModel(private val application: Application) : AndroidViewModel(app
     /**
      * 标记为重新配置
      */
-    fun reset(block: () -> Unit) {
+    fun onResetClick(block: () -> Unit) {
+        NPCRustBridge.close()
         viewModelScope.launch {
             NpcRepository(application).saveSet(false)
             block()

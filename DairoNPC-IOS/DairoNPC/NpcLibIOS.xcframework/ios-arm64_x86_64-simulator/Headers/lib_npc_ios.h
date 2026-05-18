@@ -8,13 +8,13 @@ extern "C" {
 #endif
 
 // NPC信息
-typedef struct NpcInfo {
+typedef struct RustNpcInfo {
     int64_t client_id;
     char *version;
 } RustNpcInfo;
 
 // NPC实时状态信息
-typedef struct NpcStatus {
+typedef struct RustNpcStatus {
     _Bool is_opened;
     _Bool is_running;
     char *connect_msg;
