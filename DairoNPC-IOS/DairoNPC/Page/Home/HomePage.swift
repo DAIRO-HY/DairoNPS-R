@@ -149,12 +149,12 @@ struct HomePage: View {
                 HStack{
                     VStack{
                         Text("NPC版本").foregroundColor(.secondary)
-                        Text("1.0.0")
+                        Text(self.vm.state.npcInfo.version)
                     }.frame(maxWidth: .infinity)
                     Divider().frame(height: 30)
                     VStack{
                         Text("客户端ID").foregroundColor(.secondary)
-                        Text("1")
+                        Text(String(self.vm.state.npcInfo.clientId))
                     }.frame(maxWidth: .infinity)
                 }
             }
