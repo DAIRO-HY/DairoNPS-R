@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "logo-radius-64.png",
+      "filename" : "logo-64x64@1x.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "logo-radius-128.png",
+      "filename" : "logo-64x64@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "logo-radius-256.png",
+      "filename" : "logo-64x64@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

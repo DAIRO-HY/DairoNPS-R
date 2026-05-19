@@ -15,8 +15,8 @@ struct SettingPage: View {
         VStack{
             Image("logo")
                 .resizable()
-                .frame(width: 80, height: 80)
-                .cornerRadius(14)   // 设置圆角半径
+                .frame(width: 60, height: 60)
+                .cornerRadius(12)   // 设置圆角半径
                 .padding(32)
             TextEditBox($vm.state.npcSetting.host, hide: "服务器", icon: "server.rack")
             TextEditBox($vm.state.npcSetting.tcpPort, hide: "TCP端口(默认1881)", icon: "guidepoint.vertical.numbers")

@@ -18,16 +18,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -35,18 +32,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import cn.dairo.npc.R
 import cn.dairo.npc.extension.extraColors
 import cn.dairo.npc.extension.relaunch
-import cn.dairo.npc.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,15 +75,13 @@ private fun ContentView(
 ) {
     val state by vm.state.collectAsState()
     Column(modifier = modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        val context = LocalContext.current
-        val drawable = context.packageManager
-            .getApplicationIcon(context.packageName)
-
         Spacer(Modifier.height(10.dp))
         Image(
-            bitmap = drawable.toBitmap().asImageBitmap(),
-            modifier = Modifier.size(100.dp),
-            contentDescription = "logo"
+            painter = painterResource(R.drawable.logo_xs),
+            contentDescription = null,
+            modifier = Modifier
+                .size(70.dp)
+                .clip(RoundedCornerShape(12.dp))
         )
         Spacer(Modifier.height(20.dp))
         TextEditBox(
