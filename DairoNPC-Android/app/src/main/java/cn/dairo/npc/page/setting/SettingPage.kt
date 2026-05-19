@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -63,7 +64,14 @@ fun NpcConfigPage(
             )
         }
     ) { innerPadding ->
-        ContentView(navController, Modifier.padding(innerPadding))
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            ContentView(navController)
+        }
     }
 }
 
@@ -74,7 +82,12 @@ private fun ContentView(
     vm: SettingViewModel = viewModel()
 ) {
     val state by vm.state.collectAsState()
-    Column(modifier = modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier = modifier
+            .padding(10.dp)
+            .widthIn(max = 360.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Spacer(Modifier.height(10.dp))
         Image(
             painter = painterResource(R.drawable.logo_xs),

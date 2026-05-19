@@ -42,6 +42,7 @@ struct SettingPage: View {
             )
             Spacer()
         }
+        .frame(maxWidth: 360)
         .padding()
         .safeAreaInset(edge: .top){
             HStack {
