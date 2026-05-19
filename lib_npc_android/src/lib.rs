@@ -78,11 +78,8 @@ pub extern "system" fn Java_cn_dairo_npc_NPCRustBridge_getInfo<'local>(
         let ctor_id = env.get_method_id(
             class,
             jni_str!("<init>"),
-            &jni_sig!((clientId: jlong, version: java.lang.String) -> void),
+            &jni_sig!((version: java.lang.String) -> void),
         )?;
-
-        // 获取客户端ID
-        let client_id = lib_npc::application::CLIENT_ID.load(Ordering::Relaxed);
 
         // NPC版本号
         let version = JString::from_str(env, lib_npc::application::VERSION)?;
@@ -93,7 +90,6 @@ pub extern "system" fn Java_cn_dairo_npc_NPCRustBridge_getInfo<'local>(
                 &class,
                 ctor_id,
                 &[
-                    JValue::Long(client_id).as_jni(),
                     JValue::from(&version).as_jni(),
                 ],
             )?
@@ -125,7 +121,8 @@ pub extern "system" fn Java_cn_dairo_npc_NPCRustBridge_getStatus<'local>(
                         bridgeCount: jshort,
                         poolCount: jshort,
                         inLen: jlong,
-                        outLen: jlong
+                        outLen: jlong,
+                        clientId: jlong,
                     ) -> void),
             )?;
 
@@ -146,6 +143,7 @@ pub extern "system" fn Java_cn_dairo_npc_NPCRustBridge_getStatus<'local>(
             JValue::Short(pool_count).as_jni(),
             JValue::Long(lib_npc::application::IN_LEN.load(Ordering::Relaxed) as i64).as_jni(),
             JValue::Long(lib_npc::application::OUT_LEN.load(Ordering::Relaxed) as i64).as_jni(),
+            JValue::Long(lib_npc::application::CLIENT_ID.load(Ordering::Relaxed)).as_jni(),
         ];
 
         // 创建对象

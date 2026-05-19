@@ -9,7 +9,6 @@ extern "C" {
 
 // NPC信息
 typedef struct RustNpcInfo {
-    int64_t client_id;
     char *version;
 } RustNpcInfo;
 
@@ -22,6 +21,7 @@ typedef struct RustNpcStatus {
     uint16_t pool_count;
     uint64_t in_len;
     uint64_t out_len;
+    int64_t client_id;
 } RustNpcStatus;
 
 

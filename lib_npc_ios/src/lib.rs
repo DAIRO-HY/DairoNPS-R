@@ -5,8 +5,6 @@ use std::sync::atomic::Ordering;
 ///NPC信息
 #[repr(C)]
 pub struct NpcInfo {
-    ///客户端ID
-    pub client_id: i64,
     ///NPC版本号
     pub version: *const c_char,
 }
@@ -36,6 +34,9 @@ pub struct NpcStatus {
 
     /// 出网流量
     pub out_len: u64,
+
+    ///客户端ID
+    pub client_id: i64,
 }
 
 #[unsafe(no_mangle)]
@@ -70,9 +71,11 @@ pub extern "C" fn npc_close() {
 /// 获取NPC信息
 #[unsafe(no_mangle)]
 pub extern "C" fn npc_get_info() -> *const NpcInfo {
+
+    // NPC版本号
+    let version = lib_npc::application::VERSION;
     let user = NpcInfo {
-        client_id: 10010,
-        version: CString::new("Tom").unwrap().into_raw(),
+        version: CString::new(version).unwrap().into_raw(),
     };
     Box::into_raw(Box::new(user))
 }
@@ -113,6 +116,7 @@ pub extern "C" fn npc_get_status() -> *const NpcStatus {
         pool_count: lib_npc::application::POOL_COUNT.load(Ordering::Relaxed),
         in_len: lib_npc::application::IN_LEN.load(Ordering::Relaxed),
         out_len: lib_npc::application::OUT_LEN.load(Ordering::Relaxed),
+        client_id: lib_npc::application::CLIENT_ID.load(Ordering::Relaxed),
     };
     Box::into_raw(Box::new(status))
 }

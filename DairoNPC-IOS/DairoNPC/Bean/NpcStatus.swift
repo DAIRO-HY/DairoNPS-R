@@ -36,6 +36,11 @@ struct NpcStatus {
      * 出网流量
      */
     let outLen: Int64
+    
+    /**
+     * 客户端id
+     */
+    let clientId: Int64
     init() {
         self.isOpened = false
         self.isRunning = false
@@ -44,8 +49,9 @@ struct NpcStatus {
         self.poolCount = 0
         self.inLen = 0
         self.outLen = 0
+        self.clientId = 0
     }
-    init(isOpened: Bool, isRunning: Bool, connectMsg: String, bridgeCount: UInt16, poolCount: UInt16, inLen: Int64, outLen: Int64) {
+    init(isOpened: Bool, isRunning: Bool, connectMsg: String, bridgeCount: UInt16, poolCount: UInt16, inLen: Int64, outLen: Int64, clientId: Int64) {
         self.isOpened = isOpened
         self.isRunning = isRunning
         self.connectMsg = connectMsg
@@ -53,5 +59,6 @@ struct NpcStatus {
         self.poolCount = poolCount
         self.inLen = inLen
         self.outLen = outLen
+        self.clientId = clientId
     }
 }

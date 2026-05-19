@@ -4,31 +4,36 @@ struct HomePage: View {
     @StateObject private var vm = HomeViewModel()
     var body: some View {
         GeometryReader { geo in
-            VStack{
-                npcStatusView(geo.size.width)
-                Spacer().frame(height: 20)
-                dataSizeView()
-                Spacer().frame(height: 20)
-                connectCountView()
-                Spacer().frame(height: 20)
-                systemInfoView()
-            }
-            .padding(.all)
-            .safeAreaInset(edge: .top){
-                HStack {
-                    Spacer().frame(maxWidth: .infinity)
-                    Text("DairoNPC").font(.headline).frame(maxWidth: .infinity).foregroundColor(.white)
-                    Button(action: self.vm.onResetClick){
-                        Image(systemName: "gearshape").foregroundColor(.white)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    //                    .background(Color.red)
+            ScrollView {
+                VStack{
+                    npcStatusView(geo.size.width)
+                    Spacer().frame(height: 20)
+                    dataSizeView()
+                    Spacer().frame(height: 20)
+                    connectCountView()
+                    Spacer().frame(height: 20)
+                    systemInfoView()
                 }
-                .padding()
-                .background(Color("bg_primary"))
-            }
-            .onAppear{
-                self.vm.loopGetStatus()
+                .padding(.all)
+                .safeAreaInset(edge: .top){
+                    HStack {
+                        Spacer().frame(maxWidth: .infinity)
+                        Text("DairoNPC").font(.headline).frame(maxWidth: .infinity).foregroundColor(.white)
+                        Button(action: self.vm.onResetClick){
+                            Image(systemName: "gearshape").foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        //                    .background(Color.red)
+                    }
+                    .padding()
+                    .background(Color("bg_primary"))
+                }
+                .onAppear{
+                    self.vm.loopGetStatus()
+                }
+                .onDisappear{
+                    self.vm.cancelLoopGetStatus()
+                }
             }
         }
     }
@@ -173,7 +178,7 @@ struct HomePage: View {
                     Divider().frame(height: 30)
                     VStack{
                         Text("客户端ID").foregroundColor(.secondary)
-                        Text(String(self.vm.state.npcInfo.clientId))
+                        Text(String(self.vm.state.npcStatus.clientId))
                     }.frame(maxWidth: .infinity)
                 }
             }

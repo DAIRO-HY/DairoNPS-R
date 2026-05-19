@@ -39,4 +39,9 @@ data class NpcStatus(
      * 出网流量
      */
     val outLen: Long = 0,
+
+    /**
+     * 客户端id
+     */
+    val clientId: Long = 0,
 )

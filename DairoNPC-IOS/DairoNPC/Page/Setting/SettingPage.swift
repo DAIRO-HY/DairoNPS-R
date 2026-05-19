@@ -12,44 +12,45 @@ struct SettingPage: View {
     @StateObject var vm = SettingViewModel()
     
     var body: some View {
-        VStack{
-            Image("logo")
-                .resizable()
-                .frame(width: 60, height: 60)
-                .cornerRadius(12)   // 设置圆角半径
-                .padding(32)
-            TextEditBox($vm.state.npcSetting.host, hide: "服务器", icon: "server.rack")
-            TextEditBox($vm.state.npcSetting.tcpPort, hide: "TCP端口(默认1881)", icon: "guidepoint.vertical.numbers")
-            TextEditBox($vm.state.npcSetting.udpPort, hide: "UDP端口(默认1882)", icon: "guidepoint.vertical.numbers")
-            TextEditBox($vm.state.npcSetting.key, hide: "连接秘钥", icon: "key.shield")
-            if self.vm.state.error != nil{
-                Spacer().frame(height: 10)
-                Text(self.vm.state.error!).foregroundColor(Color.red).frame(maxWidth: .infinity,alignment: .leading)
+        ScrollView {
+            VStack{
+                Image("logo")
+                    .resizable()
+                    .frame(width: 60, height: 60)
+                    .cornerRadius(12)   // 设置圆角半径
+                    .padding(32)
+                TextEditBox($vm.state.npcSetting.host, hide: "服务器", icon: "server.rack")
+                TextEditBox($vm.state.npcSetting.tcpPort, hide: "TCP端口(默认1881)", icon: "guidepoint.vertical.numbers")
+                TextEditBox($vm.state.npcSetting.udpPort, hide: "UDP端口(默认1882)", icon: "guidepoint.vertical.numbers")
+                TextEditBox($vm.state.npcSetting.key, hide: "连接秘钥", icon: "key.shield")
+                if self.vm.state.error != nil{
+                    Spacer().frame(height: 10)
+                    Text(self.vm.state.error!).foregroundColor(Color.red).frame(maxWidth: .infinity,alignment: .leading)
+                }
+                Spacer().frame(height: 30)
+                Button(action:self.vm.save){
+                    Text("保存并连接")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .font(.body)
+                        .foregroundColor(Color.white)
+                }
+                .background(Color("bg_primary"))
+                .cornerRadius(6)
+                .overlay(// 设置边框样式
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(.black, lineWidth: 1)
+                )
             }
-            Spacer().frame(height: 30)
-            Button(action:self.vm.save){
-                Text("保存并连接")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .font(.body)
-                    .foregroundColor(Color.white)
-            }
-            .background(Color("bg_primary"))
-            .cornerRadius(6)
-            .overlay(// 设置边框样式
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(.black, lineWidth: 1)
-            )
-            Spacer()
-        }
-        .frame(maxWidth: 360)
-        .padding()
-        .safeAreaInset(edge: .top){
-            HStack {
-                Text("配置DairoNPC").font(.headline).frame(maxWidth: .infinity).foregroundColor(.white)
-            }
+            .frame(maxWidth: 360)
             .padding()
-            .background(Color("bg_primary"))
+            .safeAreaInset(edge: .top){
+                HStack {
+                    Text("配置DairoNPC").font(.headline).frame(maxWidth: .infinity).foregroundColor(.white)
+                }
+                .padding()
+                .background(Color("bg_primary"))
+            }
         }
     }
     

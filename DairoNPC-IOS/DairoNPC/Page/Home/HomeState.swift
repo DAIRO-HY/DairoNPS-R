@@ -32,7 +32,7 @@ struct HomeState{
     let npcSetting: NpcSetting
     
     //NPC客户端信息
-    let npcInfo: NpcInfo
+    var npcInfo: NpcInfo
     
     //NPC连接信息
     var npcStatus: NpcStatus

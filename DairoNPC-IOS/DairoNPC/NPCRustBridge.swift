@@ -36,7 +36,8 @@ class NPCRustBridge {
             bridgeCount: rustStatus.bridge_count,
             poolCount: rustStatus.pool_count,
             inLen: Int64(rustStatus.in_len),
-            outLen: Int64(rustStatus.out_len)
+            outLen: Int64(rustStatus.out_len),
+            clientId: Int64(rustStatus.client_id)
         )
         npc_free_status(ptr)
         return status
@@ -50,7 +51,6 @@ class NPCRustBridge {
         let ptr = npc_get_info()!
         let rustInfo = ptr.pointee
         let info = NpcInfo(
-            clientId: 0,
             version: String(cString: rustInfo.version)
         )
         npc_free_info(ptr)

@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Pin
@@ -84,6 +86,7 @@ private fun ContentView(
     val state by vm.state.collectAsState()
     Column(
         modifier = modifier
+            .verticalScroll(rememberScrollState())
             .padding(10.dp)
             .widthIn(max = 360.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -213,6 +216,7 @@ private fun TextEditBox(
             modifier = Modifier.fillMaxWidth(),
             value = value,
             onValueChange = onValueChange,
+            singleLine = true,
         )
     }
 }

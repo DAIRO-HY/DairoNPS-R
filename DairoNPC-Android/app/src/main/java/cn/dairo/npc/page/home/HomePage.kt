@@ -390,7 +390,7 @@ private fun SystemInfoView(vm: HomeViewModel = viewModel()) = CardView {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("客户端ID", color = MaterialTheme.colorScheme.secondary)
-                Text(state.npcInfo.clientId.toString())
+                Text(state.npcStatus.clientId.toString())
             }
         }
     }

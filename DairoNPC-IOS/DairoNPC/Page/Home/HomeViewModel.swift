@@ -31,7 +31,6 @@ class HomeViewModel: ObservableObject {
             outSpeed: ""
         )
         if NpcRepository.isOpened() {
-//            print("-->11111\(NpcRepository.isOpened())")
             self.openNpc()
         }
     }
@@ -43,9 +42,12 @@ class HomeViewModel: ObservableObject {
         self.loopGetStatusJob?.cancel()
         self.loopGetStatusJob = Task{
             while (true) {
-//                print("-->11111")
                 self.updateStatus()
-                await Task.sleep(1_000_000_000)
+                do{
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                } catch {
+                    break
+                }
             }
         }
     }
