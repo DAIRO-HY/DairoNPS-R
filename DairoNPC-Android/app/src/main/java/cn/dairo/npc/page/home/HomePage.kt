@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -23,11 +24,13 @@ import androidx.compose.material.icons.filled.DynamicFeed
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -40,7 +43,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -50,6 +55,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import cn.dairo.npc.extension.extraColors
 import cn.dairo.npc.extension.readableSize
 import cn.dairo.npc.extension.relaunch
 
@@ -86,10 +92,10 @@ fun HomePage(
             TopAppBar(
                 modifier = modifier.background(Color.Red),
                 title = {
-                    Text("DairoNPC", color = MaterialTheme.colorScheme.onPrimary)
+                    Text("DairoNPC", color = Color.White)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.extraColors.bgPrimary
                 ),
                 actions = {
                     IconButton(onClick = {
@@ -99,7 +105,7 @@ fun HomePage(
                     }) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            tint = MaterialTheme.colorScheme.onPrimary,
+                            tint = Color.White,
                             contentDescription = null
                         )
                     }
@@ -134,24 +140,21 @@ private fun ContentView(modifier: Modifier = Modifier, vm: HomeViewModel = viewM
 
 @Composable
 fun CardView(content: @Composable BoxScope.() -> Unit) {
-//    Box(
-//        modifier = Modifier
-//            .clip(RoundedCornerShape(8.dp))
-//            .shadow(
-//                elevation = 15.dp,
-//                shape = RoundedCornerShape(16.dp),
-//                clip = true
-//            )
-////            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-//            .background(Color.Black),
-//    ) {
-//        content()
-//    }
-
     Card(
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 15.dp
-        )
+        modifier = Modifier
+            .shadow(
+                elevation = 10.dp,
+                shape = RoundedCornerShape(10.dp),
+                ambientColor = Color.Yellow,
+                spotColor = MaterialTheme.colorScheme.onSurface
+            ),
+//        elevation = CardDefaults.cardElevation(
+//            defaultElevation = 10.dp
+//        ),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.background
+        ),
+        shape = RoundedCornerShape(8.dp),//修改圆角大小
     ) {
         Box {
             content()
@@ -164,12 +167,11 @@ fun CardView(content: @Composable BoxScope.() -> Unit) {
  */
 @Composable
 private fun NpcInfoView(title: String, value: String) = Row {
-    Text(title, fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+    Text(title, color = MaterialTheme.colorScheme.secondary)
     Text(
         value,
         modifier = Modifier
             .weight(1f),
-        fontSize = 14.sp,
         textAlign = TextAlign.End
     )
 }
@@ -202,9 +204,26 @@ private fun NpcStatusView(vm: HomeViewModel = viewModel()) = CardView {
                     .fillMaxWidth()
                     .height(30.dp),
                 contentPadding = PaddingValues(0.dp),
-                onClick = vm::onOpenNpcClick
+
+//                contentPadding = PaddingValues(
+////                    horizontal = 16.dp,
+//                    vertical = 10.dp,
+//                ),
+                onClick = vm::onOpenNpcClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.extraColors.bgPrimary,      // 按钮背景色
+                    contentColor = Color.White        // 文字颜色
+                ),
+                shape = RoundedCornerShape(6.dp)    // 圆角大小
             ) {
-                Text(if (state.isOpened) "断开连接" else "启动连接", fontSize = 12.sp)
+                Text(
+                    if (state.isOpened) "断开连接" else "启动连接",
+                    style = LocalTextStyle.current.copy(
+                        platformStyle = PlatformTextStyle(
+                            includeFontPadding = false
+                        )
+                    )
+                )
             }
         }
         Column(
@@ -214,7 +233,7 @@ private fun NpcStatusView(vm: HomeViewModel = viewModel()) = CardView {
                 .padding(10.dp)
         ) {
             Text(state.statusLabel, fontSize = 26.sp, color = state.statusColor)
-            Text(state.npcStatus.connectMsg, fontSize = 14.sp)
+            Text(state.npcStatus.connectMsg)
             NpcInfoView("服务器", state.npcSetting.host)
             NpcInfoView("TCP端口", state.npcSetting.tcpPort)
             NpcInfoView("UDP端口", state.npcSetting.udpPort)
@@ -232,7 +251,7 @@ private fun DataSizeView(vm: HomeViewModel = viewModel()) = CardView {
             .padding(10.dp),
     ) {
         val state by vm.state.collectAsState()
-        Text("流量统计", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+        Text("流量统计", color = MaterialTheme.colorScheme.secondary)
         Row(
             modifier = Modifier
                 .fillMaxWidth(),
@@ -241,17 +260,17 @@ private fun DataSizeView(vm: HomeViewModel = viewModel()) = CardView {
             Icon(
                 imageVector = Icons.Default.ArrowUpward,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(30.dp)
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(25.dp)
             )
             Column(
                 modifier = Modifier
                     .weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("上行流量", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
-                Text(state.npcStatus.outLen.readableSize, fontSize = 14.sp)
-                Text(state.outSpeed, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                Text("上行流量", color = MaterialTheme.colorScheme.secondary)
+                Text(state.npcStatus.outLen.readableSize)
+                Text(state.outSpeed, color = MaterialTheme.colorScheme.secondary)
             }
             VerticalDivider(
                 modifier = Modifier.padding(15.dp),
@@ -263,16 +282,16 @@ private fun DataSizeView(vm: HomeViewModel = viewModel()) = CardView {
                     .weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("下行流量", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
-                Text(state.npcStatus.inLen.readableSize, fontSize = 14.sp)
+                Text("下行流量", color = MaterialTheme.colorScheme.secondary)
+                Text(state.npcStatus.inLen.readableSize)
 
-                Text(state.inSpeed, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                Text(state.inSpeed, color = MaterialTheme.colorScheme.secondary)
             }
             Icon(
                 imageVector = Icons.Default.ArrowDownward,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(30.dp)
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(25.dp)
             )
         }
     }
@@ -291,7 +310,7 @@ private fun ConnectCountView(vm: HomeViewModel = viewModel()) = CardView {
     ) {
         val state by vm.state.collectAsState()
 
-        Text(text = "连接数量", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+        Text(text = "连接数量", color = MaterialTheme.colorScheme.secondary)
         Row(
             modifier = Modifier
                 .fillMaxWidth(),
@@ -300,15 +319,15 @@ private fun ConnectCountView(vm: HomeViewModel = viewModel()) = CardView {
             Icon(
                 imageVector = Icons.Default.SyncAlt,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(30.dp)
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(25.dp)
             )
             Column(
                 modifier = Modifier
                     .weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("桥接数", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+                Text("桥接数", color = MaterialTheme.colorScheme.secondary)
                 Text(state.npcStatus.bridgeCount.toString(), fontSize = 16.sp)
             }
             VerticalDivider(
@@ -320,14 +339,14 @@ private fun ConnectCountView(vm: HomeViewModel = viewModel()) = CardView {
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("连接池", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+                Text("连接池", color = MaterialTheme.colorScheme.secondary)
                 Text(state.npcStatus.poolCount.toString(), fontSize = 16.sp)
             }
             Icon(
                 imageVector = Icons.Default.DynamicFeed,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(30.dp)
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(25.dp)
             )
         }
     }
@@ -347,7 +366,7 @@ private fun SystemInfoView(vm: HomeViewModel = viewModel()) = CardView {
     ) {
         val state by vm.state.collectAsState()
 
-        Text(text = "系统信息", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+        Text(text = "系统信息", color = MaterialTheme.colorScheme.secondary)
         Row(
             modifier = Modifier
                 .fillMaxWidth(),
@@ -358,8 +377,8 @@ private fun SystemInfoView(vm: HomeViewModel = viewModel()) = CardView {
                     .weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("NPC版本", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
-                Text(state.npcInfo.version, fontSize = 12.sp)
+                Text("NPC版本", color = MaterialTheme.colorScheme.secondary)
+                Text(state.npcInfo.version)
             }
             VerticalDivider(
                 modifier = Modifier.padding(15.dp),
@@ -370,8 +389,8 @@ private fun SystemInfoView(vm: HomeViewModel = viewModel()) = CardView {
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("客户端ID", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
-                Text(state.npcInfo.clientId.toString(), fontSize = 12.sp)
+                Text("客户端ID", color = MaterialTheme.colorScheme.secondary)
+                Text(state.npcInfo.clientId.toString())
             }
         }
     }

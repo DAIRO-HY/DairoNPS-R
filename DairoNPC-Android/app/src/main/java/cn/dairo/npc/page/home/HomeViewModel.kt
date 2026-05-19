@@ -93,8 +93,8 @@ class HomeViewModel(private val application: Application) : AndroidViewModel(app
             lastOutLen = npcStatus.outLen
             it.copy(
                 npcStatus = npcStatus,
-                statusLabel = if (npcStatus.isRunning) "⚫\uFE0E连接正常" else "⚫\uFE0E连接断开",
-                statusColor = if (npcStatus.isRunning) ThisApplication.colorScheme.primary else ThisApplication.colorScheme.error,
+                statusLabel = if (npcStatus.isRunning) "⚫︎连接正常" else "⚫︎连接断开",
+                statusColor = if (npcStatus.isRunning) ThisApplication.extraColors.statusLabelSuccess else ThisApplication.extraColors.statusLabelFail,
                 statusIcon = if (npcStatus.isRunning) Icons.Default.Wifi else Icons.Default.WifiOff,
                 inSpeed = inSpeed.readableSize + "/s",
                 outSpeed = outSpeed.readableSize + "/s",

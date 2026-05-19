@@ -1,9 +1,9 @@
 package cn.dairo.npc
 
-import androidx.compose.material3.ColorScheme
+import cn.dairo.npc.extension.ExtraColors
 
 class ThisApplication {
     companion object{
-        lateinit var colorScheme: ColorScheme
+        lateinit var extraColors: ExtraColors
     }
 }

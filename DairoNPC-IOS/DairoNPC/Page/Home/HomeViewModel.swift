@@ -75,7 +75,7 @@ class HomeViewModel: ObservableObject {
         self.lastOutLen = npcStatus.outLen
         self.state.npcStatus = npcStatus
         self.state.statusLabel = npcStatus.isRunning ? "⚫︎连接正常" : "⚫︎连接断开"
-        self.state.statusColor = npcStatus.isRunning ? Color.green : Color.red
+        self.state.statusColor = npcStatus.isRunning ? Color("status_label_success") : Color("status_label_fail")
         self.state.statusIcon = npcStatus.isRunning ? "wifi" : "wifi.slash"
         self.state.inSpeed = inSpeed.readableSize + "/s"
         self.state.outSpeed = outSpeed.readableSize + "/s"

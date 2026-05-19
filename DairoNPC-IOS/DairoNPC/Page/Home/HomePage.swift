@@ -17,15 +17,15 @@ struct HomePage: View {
             .safeAreaInset(edge: .top){
                 HStack {
                     Spacer().frame(maxWidth: .infinity)
-                    Text("DairoNPC").font(.headline).frame(maxWidth: .infinity)
+                    Text("DairoNPC").font(.headline).frame(maxWidth: .infinity).foregroundColor(.white)
                     Button(action: self.vm.onResetClick){
-                        Image(systemName: "gearshape")
+                        Image(systemName: "gearshape").foregroundColor(.white)
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     //                    .background(Color.red)
                 }
                 .padding()
-                .background(.ultraThinMaterial)
+                .background(Color("bg_primary"))
             }
             .onAppear{
                 self.vm.loopGetStatus()
@@ -39,9 +39,12 @@ struct HomePage: View {
         HStack {
             content()
         }
-        //        .background(Color(.systemBackground))
-        .background(Color.secondary.opacity(0.2))
+        .background(Color(.systemBackground))
         .cornerRadius(8)
+        .shadow(
+            color: .primary.opacity(0.2),
+            radius: 30,
+        )
     }
     
     /**
@@ -72,7 +75,7 @@ struct HomePage: View {
                             .font(.body)
                             .foregroundColor(Color.white)
                     }
-                    .background(Color("btn.bg"))
+                    .background(Color("bg_primary"))
                     .cornerRadius(6)
                     .overlay(// 设置边框样式
                         RoundedRectangle(cornerRadius: 6)
@@ -100,7 +103,11 @@ struct HomePage: View {
             VStack{
                 Text("流量统计").frame(maxWidth: .infinity,alignment: .leading).foregroundColor(.secondary)
                 HStack{
-                    Image(systemName: "arrow.up").resizable().frame(width: 15,height: 20)
+                    Image(systemName: "arrow.up")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20,height: 20)
+                        .foregroundColor(Color.secondary)
                     VStack{
                         Text("上行流量").foregroundColor(.secondary)
                         Text(self.vm.state.npcStatus.outLen.readableSize)
@@ -112,7 +119,11 @@ struct HomePage: View {
                         Text(self.vm.state.npcStatus.inLen.readableSize)
                         Text(self.vm.state.inSpeed).foregroundColor(.secondary)
                     }.frame(maxWidth: .infinity)
-                    Image(systemName: "arrow.down").resizable().frame(width: 15,height: 20)
+                    Image(systemName: "arrow.down")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20,height: 20)
+                        .foregroundColor(Color.secondary)
                 }
             }
             .padding(.all,10)
@@ -125,7 +136,11 @@ struct HomePage: View {
             VStack{
                 Text("连接数量").frame(maxWidth: .infinity,alignment: .leading).foregroundColor(.secondary)
                 HStack{
-                    Image(systemName: "arrow.up.arrow.down").resizable().frame(width: 20,height: 20)
+                    Image(systemName: "arrow.up.arrow.down")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20,height: 20)
+                        .foregroundColor(Color.secondary)
                     VStack{
                         Text("桥接数").foregroundColor(.secondary)
                         Text(String(self.vm.state.npcStatus.bridgeCount))
@@ -135,7 +150,11 @@ struct HomePage: View {
                         Text("连接池").foregroundColor(.secondary)
                         Text(String(self.vm.state.npcStatus.poolCount))
                     }.frame(maxWidth: .infinity)
-                    Image(systemName: "square.stack.3d.up").resizable().frame(width: 20,height: 20)
+                    Image(systemName: "square.stack.3d.up")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20,height: 20)
+                        .foregroundColor(Color.secondary)
                 }
             }
             .padding(.all,10)

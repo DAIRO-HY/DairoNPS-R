@@ -2,18 +2,32 @@ package cn.dairo.npc.page.setting
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -23,12 +37,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import cn.dairo.npc.extension.extraColors
 import cn.dairo.npc.extension.relaunch
+import cn.dairo.npc.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,15 +59,15 @@ fun NpcConfigPage(
             TopAppBar(
                 modifier = modifier.background(Color.Red),
                 title = {
-                    Text("配置DairoNPC", color = MaterialTheme.colorScheme.onPrimary)
+                    Text("配置DairoNPC", color = Color.White)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.extraColors.bgPrimary
                 )
             )
         }
     ) { innerPadding ->
-        ContentView(navController,Modifier.padding(innerPadding))
+        ContentView(navController, Modifier.padding(innerPadding))
     }
 }
 
@@ -72,8 +90,9 @@ private fun ContentView(
             contentDescription = "logo"
         )
         Spacer(Modifier.height(20.dp))
-        OutlinedTextField(
+        TextEditBox(
             value = state.npcSetting.host,
+            placeholder = "服务器",
             onValueChange = { host ->
                 vm.update {
                     state.copy(
@@ -81,19 +100,13 @@ private fun ContentView(
                     )
                 }
             },
-            label = {
-                Text("服务器")
-            },
-            placeholder = {
-                Text("必填;例:192.168.0.100;www.xxxxxx.com")
-            },
-            modifier = Modifier.fillMaxWidth()
+            icon = Icons.Default.Storage,
         )
-
         Spacer(Modifier.height(10.dp))
 
-        OutlinedTextField(
+        TextEditBox(
             value = state.npcSetting.tcpPort,
+            placeholder = "TCP端口(默认1881)",
             onValueChange = { tcpPort ->
                 vm.update {
                     state.copy(
@@ -101,19 +114,13 @@ private fun ContentView(
                     )
                 }
             },
-            label = {
-                Text("TCP端口")
-            },
-            placeholder = {
-                Text("默认1881")
-            },
-            modifier = Modifier.fillMaxWidth()
+            icon = Icons.Default.Pin,
         )
-
         Spacer(Modifier.height(10.dp))
 
-        OutlinedTextField(
+        TextEditBox(
             value = state.npcSetting.udpPort,
+            placeholder = "UDP端口(默认1882)",
             onValueChange = { udpPort ->
                 vm.update {
                     state.copy(
@@ -121,19 +128,14 @@ private fun ContentView(
                     )
                 }
             },
-            label = {
-                Text("UDP端口")
-            },
-            placeholder = {
-                Text("默认1882")
-            },
-            modifier = Modifier.fillMaxWidth()
+            icon = Icons.Default.Pin,
         )
 
         Spacer(Modifier.height(20.dp))
 
-        OutlinedTextField(
+        TextEditBox(
             value = state.npcSetting.key,
+            placeholder = "连接秘钥",
             onValueChange = { key ->
                 vm.update {
                     state.copy(
@@ -141,14 +143,9 @@ private fun ContentView(
                     )
                 }
             },
-            label = {
-                Text("秘钥")
-            },
-            placeholder = {
-                Text("必填")
-            },
-            modifier = Modifier.fillMaxWidth()
+            icon = Icons.Default.Key,
         )
+
         Spacer(Modifier.height(20.dp))
 
         Button(
@@ -157,9 +154,58 @@ private fun ContentView(
                     navController.relaunch("home")
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.extraColors.bgPrimary,      // 按钮背景色
+                contentColor = Color.White        // 文字颜色
+            ),
+            shape = RoundedCornerShape(6.dp)    // 圆角大小
         ) {
             Text("保存并连接")
         }
+    }
+}
+
+
+/**
+ * 文本输入框
+ */
+@Composable
+private fun TextEditBox(
+    modifier: Modifier = Modifier,
+    value: String,
+    placeholder: String = "",
+    icon: ImageVector,
+    onValueChange: (String) -> Unit,
+) = Row(
+    modifier = modifier
+        .border(
+            width = 1.dp,
+            color = MaterialTheme.extraColors.bgPrimary,
+            shape = RoundedCornerShape(6.dp)
+        )
+        .padding(vertical = 12.dp, horizontal = 5.dp),
+    verticalAlignment = Alignment.CenterVertically
+) {
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.secondary,
+        modifier = Modifier.size(16.dp)
+    )
+    Spacer(Modifier.width(8.dp))
+    Box(modifier = Modifier.fillMaxWidth()) {
+        if (value.isEmpty()) {
+            Text(
+                placeholder,
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.secondary
+            )
+        }
+        BasicTextField(
+            modifier = Modifier.fillMaxWidth(),
+            value = value,
+            onValueChange = onValueChange,
+        )
     }
 }

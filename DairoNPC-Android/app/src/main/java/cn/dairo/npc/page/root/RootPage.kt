@@ -14,10 +14,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import cn.dairo.npc.ThisApplication
+import cn.dairo.npc.extension.extraColors
 import cn.dairo.npc.page.home.HomePage
 import cn.dairo.npc.page.setting.NpcConfigPage
 import cn.dairo.npc.repository.NpcRepository
-import cn.dairo.npc.ui.theme.MyApplicationTheme
+import cn.dairo.npc.ui.theme.AppTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -26,27 +27,26 @@ import kotlinx.coroutines.launch
 @Composable
 fun Root(
     vm: RootViewModel = viewModel()
-) = MyApplicationTheme {
-    ThisApplication.colorScheme = MaterialTheme.colorScheme
-//    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        val state by vm.state.collectAsState()
-        val navController = rememberNavController()
-        NavHost(
-            navController = navController,
-            startDestination = state.firstRoute
-        ) {
-            composable("welcome") {
-                Spacer(modifier = Modifier)
-            }
-
-            composable("setting") {
-                NpcConfigPage(navController)
-            }
-
-            composable("home") {
-                HomePage(navController)
-            }
+) = AppTheme {
+    ThisApplication.extraColors = MaterialTheme.extraColors
+    val state by vm.state.collectAsState()
+    val navController = rememberNavController()
+    NavHost(
+        navController = navController,
+        startDestination = state.firstRoute
+    ) {
+        composable("welcome") {
+            Spacer(modifier = Modifier)
         }
+
+        composable("setting") {
+            NpcConfigPage(navController)
+        }
+
+        composable("home") {
+            HomePage(navController)
+        }
+    }
 //    }
 }
 
