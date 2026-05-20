@@ -20,9 +20,9 @@ struct SettingPage: View {
                     .cornerRadius(12)   // 设置圆角半径
                     .padding(32)
                 TextEditBox($vm.state.npcSetting.host, hide: "服务器", icon: "server.rack")
-                TextEditBox($vm.state.npcSetting.tcpPort, hide: "TCP端口(默认1881)", icon: "guidepoint.vertical.numbers")
-                TextEditBox($vm.state.npcSetting.udpPort, hide: "UDP端口(默认1882)", icon: "guidepoint.vertical.numbers")
-                TextEditBox($vm.state.npcSetting.key, hide: "连接秘钥", icon: "key.shield")
+                TextEditBox($vm.state.npcSetting.tcpPort, hide: "TCP端口(默认1881)", icon: "number.square")
+                TextEditBox($vm.state.npcSetting.udpPort, hide: "UDP端口(默认1882)", icon: "number.square")
+                TextEditBox($vm.state.npcSetting.key, hide: "连接秘钥", icon: "key.viewfinder")
                 if self.vm.state.error != nil{
                     Spacer().frame(height: 10)
                     Text(self.vm.state.error!).foregroundColor(Color.red).frame(maxWidth: .infinity,alignment: .leading)
@@ -76,7 +76,7 @@ struct SettingPage: View {
         //                .background(Color.white)
         .cornerRadius(6)
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(lineWidth: 1)
-                             .foregroundColor(Color("bg_primary"))
+            .foregroundColor(Color("bg_primary"))
         )
     }
 }
