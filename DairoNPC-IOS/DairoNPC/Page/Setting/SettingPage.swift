@@ -44,13 +44,13 @@ struct SettingPage: View {
             }
             .frame(maxWidth: 360)
             .padding()
-            .safeAreaInset(edge: .top){
-                HStack {
-                    Text("配置DairoNPC").font(.headline).frame(maxWidth: .infinity).foregroundColor(.white)
-                }
-                .padding()
-                .background(Color("bg_primary"))
+        }
+        .safeAreaInset(edge: .top){
+            HStack {
+                Text("配置DairoNPC").font(.headline).frame(maxWidth: .infinity).foregroundColor(.white)
             }
+            .padding()
+            .background(Color("bg_primary"))
         }
     }
     

@@ -15,25 +15,25 @@ struct HomePage: View {
                     systemInfoView()
                 }
                 .padding(.all)
-                .safeAreaInset(edge: .top){
-                    HStack {
-                        Spacer().frame(maxWidth: .infinity)
-                        Text("DairoNPC").font(.headline).frame(maxWidth: .infinity).foregroundColor(.white)
-                        Button(action: self.vm.onResetClick){
-                            Image(systemName: "gearshape").foregroundColor(.white)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        //                    .background(Color.red)
+            }
+            .safeAreaInset(edge: .top){
+                HStack {
+                    Spacer().frame(maxWidth: .infinity)
+                    Text("DairoNPC").font(.headline).frame(maxWidth: .infinity).foregroundColor(.white)
+                    Button(action: self.vm.onResetClick){
+                        Image(systemName: "gearshape").foregroundColor(.white)
                     }
-                    .padding()
-                    .background(Color("bg_primary"))
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    //                    .background(Color.red)
                 }
-                .onAppear{
-                    self.vm.loopGetStatus()
-                }
-                .onDisappear{
-                    self.vm.cancelLoopGetStatus()
-                }
+                .padding()
+                .background(Color("bg_primary"))
+            }
+            .onAppear{
+                self.vm.loopGetStatus()
+            }
+            .onDisappear{
+                self.vm.cancelLoopGetStatus()
             }
         }
     }
@@ -47,8 +47,8 @@ struct HomePage: View {
         .background(Color(.systemBackground))
         .cornerRadius(8)
         .shadow(
-            color: .primary.opacity(0.2),
-            radius: 30,
+            color: .primary.opacity(0.1),
+            radius: 15,
         )
     }
     

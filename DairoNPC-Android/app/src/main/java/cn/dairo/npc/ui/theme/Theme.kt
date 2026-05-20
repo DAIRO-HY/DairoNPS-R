@@ -23,7 +23,7 @@ private val LightExtraColors = ExtraColors(
 )
 
 private val DarkExtraColors = ExtraColors(
-    bgPrimary = Color(0xFF002745),
+    bgPrimary = Color(0xFF001123),
     statusLabelFail = Color(0xFFC22E3D),
     statusLabelSuccess = Color(0xFF157247),
 )
