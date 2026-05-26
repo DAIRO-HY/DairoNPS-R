@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# 获取版本号
+#version=$(grep -oP '(?<=version = ")[^"]+' ./lib_npc/Cargo.toml)
+version=$(sed -n 's/^version = "\(.*\)"/\1/p' ./lib_npc/Cargo.toml)
+
+mkdir ./build/amd64
+mkdir ./build/arm64
+cp ./build/DairoNPC-linux-amd64-$version ./build/amd64/DairoNPC
+cp ./build/DairoNPC-linux-arm64-$version ./build/arm64/DairoNPC
+
 #github登录票据
 github_token=$GITHUB_TOKEN
 
@@ -9,11 +18,6 @@ docker_pwd=$DOCKER_PASSWORD
 
 #项目名
 projectName="DairoNPC"
-
-
-# 获取版本号
-#version=$(grep -oP '(?<=version = ")[^"]+' ./lib_npc/Cargo.toml)
-version=$(sed -n 's/^version = "\(.*\)"/\1/p' ./lib_npc/Cargo.toml)
 
 
 #---------------------------------------上传Docker镜像-----------------------------------------
@@ -29,5 +33,7 @@ docker login -u $docker_user --password $docker_pwd
 docker buildx build --platform linux/amd64,linux/arm64 -t $docker_user/dairo-npc:$version --push .
 #docker push $docker_user/dairo-npc:$version
 docker logout
+
+rm Dockerfile
 
 echo "---------------------------------------docker镜像推送完成--------------------------------------"

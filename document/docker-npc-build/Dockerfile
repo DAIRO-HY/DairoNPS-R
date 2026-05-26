@@ -7,7 +7,7 @@ WORKDIR /app
 
 #下载程序
 #ADD https://github.com/DAIRO-HY/DairoNPC/releases/download/1.0.0/dairo-npc-linux-amd64 /app
-COPY ./build/$TARGETARCH/DairoNPC-linux-$TARGETARCH /app/DairoNPC
+COPY ./build/$TARGETARCH/DairoNPC /app/DairoNPC
 
 #授权可执行
 RUN chmod +x DairoNPC
