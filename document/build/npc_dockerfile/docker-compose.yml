@@ -1,0 +1,13 @@
+services:
+  dairo-npc:
+    restart: always
+    image: dairopapa/dairo-npc:latest
+
+    # 正式环境,建议使用host模式,性能更好
+    network_mode: host
+    environment:
+      #    服务端端口
+      DAIRO_NPC_HOST: www.xxxxxx.com
+      DAIRO_NPC_TCP_PORT: 1881
+      DAIRO_NPC_UDP_PORT: 1882
+      DAIRO_NPC_KEY: xxxxxxxxxx

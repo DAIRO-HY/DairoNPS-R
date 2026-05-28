@@ -1,0 +1,11 @@
+services:
+  dairo-nps:
+    restart: always
+    image: dairopapa/dairo-nps:2.0.0
+
+    # 正式环境,建议使用host模式,性能更好
+    network_mode: host
+    environment:
+      DAIRO_NPS_WEB_PORT: 1880
+      DAIRO_NPS_TCP_PORT: 1881
+      DAIRO_NPS_UDP_PORT: 1882
