@@ -10,7 +10,7 @@ develop_tool_dir=$(echo ~)/develop_tool
 #version=$(grep -oP '(?<=version = ")[^"]+' ./lib_npc/Cargo.toml)
 version=$(sed -n 's/^version = "\(.*\)"/\1/p' ./lib_npc/Cargo.toml)
 
-apt install build-essential
+yes|apt install build-essential
 
 #--------------------------------------安装CARGO--------------------------------------START# 指定安装目录
 export RUSTUP_HOME=$develop_tool_dir/.rustup
