@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 进入项目根目录
+#进入项目根目录
 cd "$(dirname "$0")/../.."
 
 #开发工具安装目录
@@ -10,10 +10,22 @@ develop_tool_dir=$(echo ~)/develop_tool
 #version=$(grep -oP '(?<=version = ")[^"]+' ./lib_npc/Cargo.toml)
 version=$(sed -n 's/^version = "\(.*\)"/\1/p' ./lib_npc/Cargo.toml)
 
+apt install build-essential
+
+#--------------------------------------安装CARGO--------------------------------------START# 指定安装目录
+export RUSTUP_HOME=$develop_tool_dir/.rustup
+export CARGO_HOME=$develop_tool_dir/.cargo
+
+# 加入PATH
+export PATH=${CARGO_HOME}/bin:${PATH}
+curl https://sh.rustup.rs -sSf | sh -s -- -y     --default-toolchain 1.93.0
+
+cargo --version
+#--------------------------------------安装CARGO--------------------------------------START
+
 #打包amd64位linux二进制文件
-docker run --platform linux/amd64 -it --rm -v ./:/home/rust/src -v $develop_tool_dir/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
-sh -c "cargo --version && cargo clean && cargo build --release --package DairoNPC"
-#mv ./target/release/DairoNPC ./build/DairoNPC-linux-amd64-$version
+cargo --version && cargo clean && cargo build --release --package DairoNPC
+mv ./target/release/DairoNPC ./build/DairoNPC-linux-amd64-$version
 
 #
 ##打包amd32位linux二进制文件
