@@ -4,7 +4,7 @@
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 # 项目目录
-project_root="$(cd "$SCRIPT_DIR/../.." && pwd)"
+project_root="$(cd "$script_dir/../.." && pwd)"
 
 #开发工具安装目录
 develop_tool_dir=$(echo ~)/develop_tool
