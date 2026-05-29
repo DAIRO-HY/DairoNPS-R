@@ -10,6 +10,9 @@ develop_tool_dir=$(echo ~)/develop_tool
 #version=$(grep -oP '(?<=version = ")[^"]+' ./lib_npc/Cargo.toml)
 version=$(sed -n 's/^version = "\(.*\)"/\1/p' $project_root/lib_npc/Cargo.toml)
 
+#先创建build文件夹
+mkdir $develop_tool_dir/build
+
 apt update
 yes|apt install build-essential
 
