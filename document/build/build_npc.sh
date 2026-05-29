@@ -9,6 +9,11 @@ project_root="$(cd "$script_dir/../.." && pwd)"
 #开发工具安装目录
 develop_tool_dir=$(echo ~)/develop_tool
 
+
+#先创建build文件夹
+mkdir $develop_tool_dir
+mkdir $project_root/build
+
 # 获取版本号
 version=$(sed -n 's/^version = "\(.*\)"/\1/p' $project_root/lib_npc/Cargo.toml)
 
@@ -17,9 +22,6 @@ echo "project_root:$project_root"
 echo "develop_tool_dir:$develop_tool_dir"
 echo "version:$version"
 
-
-#先创建build文件夹
-mkdir $develop_tool_dir/build
 
 apt update
 yes|apt install build-essential
