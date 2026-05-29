@@ -30,9 +30,9 @@ curl https://sh.rustup.rs -sSf | sh -s -- -y     --default-toolchain 1.93.0
 cargo --version
 #--------------------------------------安装CARGO--------------------------------------START
 
-#打包amd64位linux二进制文件
-cargo --version && cargo clean && cargo build --release --package DairoNPC
-mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-amd64-$version
+##打包amd64位linux二进制文件
+#cargo --version && cargo clean && cargo build --release --package DairoNPC
+#mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-amd64-$version
 
 
 ##打包amd32位linux二进制文件
