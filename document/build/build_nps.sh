@@ -20,19 +20,16 @@ cargo clean && cargo build --release --package DairoNPS
 mv $project_root/target/release/DairoNPS $project_root/build/DairoNPS-linux-amd64-$version
 
 
-##打包amd32位linux二进制文件
-#docker run --platform linux/386 -it --rm -v ./:/home/rust/src -v $HOME/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
-#sh -c "cargo clean && cargo build --release --package DairoNPS"
-#mv ./target/release/DairoNPS ./build/DairoNPS-linux-386-$version
-#
-#
-##打包arm64位linux二进制文件
-#docker run --platform linux/arm64 -it --rm -v ./:/home/rust/src -v $HOME/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
-#sh -c "cargo clean && cargo build --release --package DairoNPS"
-#mv ./target/release/DairoNPS ./build/DairoNPS-linux-arm64-$version
-#
-#
-##打包arm32位linux二进制文件
-#docker run --platform linux/arm/v7 -it --rm -v ./:/home/rust/src -v $HOME/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
-#sh -c "cargo clean && cargo build --release --package DairoNPS"
-#mv ./target/release/DairoNPS ./build/DairoNPS-linux-arm32-v7-$version
+#打包amd32位linux二进制文件
+cargo clean && cargo build --release --package DairoNPS
+mv $project_root/target/release/DairoNPS $project_root/build/DairoNPS-linux-386-$version
+
+
+#打包arm64位linux二进制文件
+cargo clean && cargo build --release --package DairoNPS
+mv $project_root/target/release/DairoNPS $project_root/build/DairoNPS-linux-arm64-$version
+
+
+#打包arm32位linux二进制文件
+cargo clean && cargo build --release --package DairoNPS
+mv $project_root/target/release/DairoNPS $project_root/build/DairoNPS-linux-arm32-v7-$version

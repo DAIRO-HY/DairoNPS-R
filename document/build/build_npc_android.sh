@@ -1,41 +1,16 @@
 #!/bin/bash
 
+# 当前 sh 文件所在目录
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 
-#进入项目根目录
-project_root="$(pwd)/../.."
+# 项目目录
+project_root="$(cd "$script_dir/../.." && pwd)"
 
 #开发工具安装目录
 develop_tool_dir=$(echo ~)/develop_tool
 
-#mkdir /home/rust/src
-#cd /home/rust/src
-
-#--------------------------------------获取代码-----------------------------------------
-#if [ -d $projectName ]; then
-#    echo "项目已存在，正在更新代码..."
-#    cd $projectName
-#
-#    #删除所有新添加的文件
-#    git clean -f
-#
-#    #取消所有更改
-#    git reset --hard
-#    git pull
-#else
-#    CLONE_URL="https://${github_token}@github.com/${repo}.git"
-#    echo "正在克隆代码，URL:$CLONE_URL 分支：$branch..."
-#    git clone --branch $branch $CLONE_URL
-#    cd $projectName
-#fi
-
-#--------------------------------------编译Linux二进制文件-----------------------------------------START
-#cargo --version && cargo clean && cargo build --release --package DairoNPC
-#--------------------------------------编译Linux二进制文件-----------------------------------------END
-
-##创建软件安装目录
-#mkdir ~/develop_tool
-#
-
+#先创建文件夹
+mkdir $project_root/build
 
 #--------------------------------------安装JDK--------------------------------------START
 
@@ -119,32 +94,8 @@ yes|sdkmanager --licenses
 #--------------------------------------编译Android-----------------------------------------END
 
 #进入项目根目录
-cd $project_root
-
-cd ./DairoNPC-Android/app
+cd $project_root/DairoNPC-Android/app
 gradle clean
 gradle assembleRelease
 
-#rustup target add aarch64-linux-android
-#rustup target add armv7-linux-androideabi
-#rustup target add x86_64-linux-android
-#cargo install cargo-ndk
-
-#cd "/home/rust/src/$projectName"
-
-## 编译目标平台
-#cargo ndk build --release  --package lib_npc_android --target arm64-v8a
-#cargo ndk build --release  --package lib_npc_android --target x86_64
-#
-#mv ./target/aarch64-linux-android/release/liblib_npc_android.so ./DairoNPC-Android/app/src/main/jniLibs/arm64-v8a/libnpc_android.so
-#mv ./target/x86_64-linux-android/release/liblib_npc_android.so ./DairoNPC-Android/app/src/main/jniLibs/x86_64/libnpc_android.so
-#
-#cd DairoNPC-Android
-#./gradlew :app:assembleRelease
-#--------------------------------------编译Android-----------------------------------------END
-
-
-#echo "---------------------------------------docker镜像推送完成--------------------------------------"
-#ls
-#pwd
-#echo "---------------------------------------docker镜像推送完成--------------------------------------"
+mv $project_root/DairoNPC-Android/app/build/outputs/apk/release/app-release.apk $project_root/build/DairoNPC-$version.apk
