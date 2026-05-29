@@ -20,16 +20,16 @@ cargo --version && cargo clean && cargo build --release --package DairoNPC
 mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-amd64-$version
 
 
-##打包amd32位linux二进制文件
-#cargo --version && cargo clean && cargo build --release --package DairoNPC
-#mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-386-$version
-#
-#
-##打包arm64位linux二进制文件
-#cargo --version && cargo clean && cargo build --release --package DairoNPC
-#mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-arm64-$version
-#
-#
-##打包arm32位linux二进制文件
-#cargo --version && cargo clean && cargo build --release --package DairoNPC
-#mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-arm32-v7-$version
+#打包amd32位linux二进制文件
+cargo --version && cargo clean && cargo build --release --package DairoNPC
+mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-386-$version
+
+
+#打包arm64位linux二进制文件
+cargo --version && cargo clean && cargo build --release --package DairoNPC
+mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-arm64-$version
+
+
+#打包arm32位linux二进制文件
+cargo --version && cargo clean && cargo build --release --package DairoNPC
+mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-arm32-v7-$version
