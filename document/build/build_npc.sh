@@ -13,9 +13,10 @@ develop_tool_dir=$(echo ~)/develop_tool
 #version=$(grep -oP '(?<=version = ")[^"]+' ./lib_npc/Cargo.toml)
 version=$(sed -n 's/^version = "\(.*\)"/\1/p' $project_root/lib_npc/Cargo.toml)
 
-echo $project_root
-echo $pdevelop_tool_dir
-echo $version
+echo "script_dir:$script_dir"
+echo "project_root:$project_root"
+echo "pdevelop_tool_dir:$pdevelop_tool_dir"
+echo "version:$version"
 
 
 #先创建build文件夹
