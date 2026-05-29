@@ -10,6 +10,7 @@ develop_tool_dir=$(echo ~)/develop_tool
 #version=$(grep -oP '(?<=version = ")[^"]+' ./lib_npc/Cargo.toml)
 version=$(sed -n 's/^version = "\(.*\)"/\1/p' $project_root/lib_npc/Cargo.toml)
 
+apt update
 yes|apt install build-essential
 
 #--------------------------------------安装CARGO--------------------------------------START# 指定安装目录
@@ -25,22 +26,19 @@ cargo --version
 
 #打包amd64位linux二进制文件
 cargo --version && cargo clean && cargo build --release --package DairoNPC
-mv ./target/release/DairoNPC ./build/DairoNPC-linux-amd64-$version
+mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-amd64-$version
 
-#
+
 ##打包amd32位linux二进制文件
-#docker run --platform linux/386 -it --rm -v ./:/home/rust/src -v $HOME/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
-#sh -c "cargo --version && cargo clean && cargo build --release --package DairoNPC"
-#mv ./target/release/DairoNPC ./build/DairoNPC-linux-386-$version
+#cargo --version && cargo clean && cargo build --release --package DairoNPC
+#mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-386-$version
 #
 #
 ##打包arm64位linux二进制文件
-#docker run --platform linux/arm64 -it --rm -v ./:/home/rust/src -v $HOME/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
-#sh -c "cargo --version && cargo clean && cargo build --release --package DairoNPC"
-#mv ./target/release/DairoNPC ./build/DairoNPC-linux-arm64-$version
+#cargo --version && cargo clean && cargo build --release --package DairoNPC
+#$project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-arm64-$version
 #
 #
 ##打包arm32位linux二进制文件
-#docker run --platform linux/arm/v7 -it --rm -v ./:/home/rust/src -v $HOME/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
-#sh -c "cargo --version && cargo clean && cargo build --release --package DairoNPC"
-#mv ./target/release/DairoNPC ./build/DairoNPC-linux-arm32-v7-$version
+#cargo --version && cargo clean && cargo build --release --package DairoNPC
+#$project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-arm32-v7-$version
