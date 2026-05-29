@@ -1,14 +1,14 @@
 #!/bin/bash
 
 #进入项目根目录
-cd "$(dirname "$0")/../.."
+project_root="$(dirname "$0")/../.."
 
 #开发工具安装目录
 develop_tool_dir=$(echo ~)/develop_tool
 
 # 获取版本号
 #version=$(grep -oP '(?<=version = ")[^"]+' ./lib_npc/Cargo.toml)
-version=$(sed -n 's/^version = "\(.*\)"/\1/p' ./lib_npc/Cargo.toml)
+version=$(sed -n 's/^version = "\(.*\)"/\1/p' $project_root/lib_npc/Cargo.toml)
 
 yes|apt install build-essential
 
