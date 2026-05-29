@@ -1,7 +1,10 @@
 #!/bin/bash
 
-#进入项目根目录
-project_root="$(dirname "$0")/../.."
+# 当前 sh 文件所在目录
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+
+# 项目目录
+project_root="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 #开发工具安装目录
 develop_tool_dir=$(echo ~)/develop_tool
