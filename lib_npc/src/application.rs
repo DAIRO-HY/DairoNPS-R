@@ -58,15 +58,15 @@ pub static OUT_LEN: AtomicU64 = AtomicU64::new(0);
 #[derive(Parser, Clone, Debug)]
 #[command(name = "npc", version, about = "示例程序")]
 pub struct Argument {
-    #[arg(long, default_value = "127.0.0.1")]
+    #[arg(long, env = "DAIRO_NPC_HOST", default_value = "127.0.0.1")]
     pub host: String,
 
-    #[arg(short, long, default_value = "1881")]
+    #[arg(short, long, env = "DAIRO_NPC_TCP_PORT", default_value = "1881")]
     pub tcp_port: u16,
 
-    #[arg(short, long, default_value = "1882")]
+    #[arg(short, long, env = "DAIRO_NPC_UDP_PORT", default_value = "1882")]
     pub udp_port: u16,
 
-    #[arg(short, long, default_value = "njeHds*fs4tfsd")]
+    #[arg(short, long, env = "DAIRO_NPC_KEY", default_value = "njeHds*fs4tfsd")]
     pub key: String,
 }

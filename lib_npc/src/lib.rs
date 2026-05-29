@@ -21,6 +21,7 @@ pub static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
 /// 开启服务,在iOS或Android中调用
 pub fn start(args: Option<Argument>) {
     let args = args.unwrap_or(Argument::try_parse().unwrap());
+    println!("args: {:?}", args);
     RUNTIME.block_on(async {
         session::open(args).await;
         *application::NPC_CONNECT_MSG.lock().unwrap() = "NPC服务已关闭".to_string();

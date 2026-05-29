@@ -17,6 +17,7 @@ use sqlx::{Column, Executor, Statement, TypeInfo};
 
 #[tokio::main]
 async fn main() -> tokio::io::Result<()> {
+    println!("args: {:?}", application::ARGS);
     lib_db::init().await;
     web::router::ready();
 

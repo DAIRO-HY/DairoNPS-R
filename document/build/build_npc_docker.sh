@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# 进入项目根目录
+cd "$(dirname "$0")/../.."
+
 # 获取版本号
 #version=$(grep -oP '(?<=version = ")[^"]+' ./lib_npc/Cargo.toml)
 version=$(sed -n 's/^version = "\(.*\)"/\1/p' ./lib_npc/Cargo.toml)
@@ -22,7 +25,7 @@ projectName="DairoNPC"
 
 #---------------------------------------上传Docker镜像-----------------------------------------
 echo "正在打包Docker镜像..."
-cp ./document/docker-npc-build/Dockerfile .
+cp ./document/build/npc_dockerfile/Dockerfile ./
 
 docker login -u $docker_user --password $docker_pwd
 

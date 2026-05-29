@@ -9,7 +9,7 @@ thiserror = "2"
 tokio = { version = "1", features = ["full", "rt-multi-thread"] }
 
 #用来解析启动参数
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
 rand = { version = "0.10", features = ["std"] }
 
 #适合读非常多,写非常少的场景,比如配置文件,全局状态等

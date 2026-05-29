@@ -23,11 +23,10 @@ android {
 
     signingConfigs {
         create("releaseConfig") {
-            storeFile = File(rootProject.projectDir, "dairo-npc.jks")
-            storePassword = "aWd88@4ffffAAsfdn084evdf"
-            keyAlias = "dairo-npc"
-            //keyPassword = System.getenv("KEY_PASSWORD")
-            keyPassword = "aWd88@4ffffAAsfdn084evdf"
+            storeFile = File(System.getenv("DAIRO_NPC_APK_JKS_PATH"))
+            storePassword = System.getenv("DAIRO_NPC_APK_JKS_PASSWORD")
+            keyAlias = System.getenv("DAIRO_NPC_APK_JKS_KEY_ALIAS")
+            keyPassword = System.getenv("DAIRO_NPC_APK_JKS_PASSWORD")
         }
     }
     buildTypes {

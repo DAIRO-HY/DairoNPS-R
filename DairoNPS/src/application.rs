@@ -1,8 +1,8 @@
 use crate::nps;
 use clap::Parser;
 use std::env;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::LazyLock;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::sync::Notify;
 
 /// 心跳间隔时间
@@ -75,53 +75,52 @@ pub async fn restart() {
 #[derive(Parser, Debug)]
 #[command(name = "DairoNPS", version, about = "DairoNPS")]
 pub struct Argument {
-
     /// WEB管理端口
-    #[arg(long,default_value="1880")]
-    pub web_port:u16,
+    #[arg(long, env = "DAIRO_NPS_WEB_PORT", default_value = "1880")]
+    pub web_port: u16,
 
     /// 服务端监听TCP端口,客户端通过此端口进行连接
-    #[arg(long,default_value="1881")]
-    pub tcp_port:u16,
+    #[arg(long, env = "DAIRO_NPS_TCP_PORT", default_value = "1881")]
+    pub tcp_port: u16,
 
     /// 服务端监听UDP端口,客户端通过此端口进行连接
-    #[arg(long,default_value="1882")]
-    pub udp_port:u16,
+    #[arg(long, env = "DAIRO_NPS_UDP_PORT", default_value = "1882")]
+    pub udp_port: u16,
 
     /// 是否重启模式
     #[arg(long)]
     pub is_restart_mode: bool,
 
     /// 流量数据有效期时间(秒),0:永久有效
-    #[arg(long,default_value="0")]
-    pub traffic_stats_expired:u64,
+    #[arg(long, env = "DAIRO_NPS_TRAFFIC_STATS_EXPIRED", default_value = "0")]
+    pub traffic_stats_expired: u64,
 
     /// 连接池最大数量
-    #[arg(long,default_value="6")]
-    pub max_pool_count:usize,
+    #[arg(long, env = "DAIRO_NPS_MAX_POOL_COUNT", default_value = "6")]
+    pub max_pool_count: usize,
 
     /// 连接池最低数量
     /// 连接池中的Socket在一段时间内无任何操作
-    #[arg(long,default_value="1")]
-    pub min_pool_count:usize,
+    #[arg(long, env = "DAIRO_NPS_MIN_POOL_COUNT", default_value = "1")]
+    pub min_pool_count: usize,
 
     /// 连接池不足时,一次性创建连接数
-    #[arg(long,default_value="1")]
-    pub add_pool_count:u8,
+    #[arg(long, env = "DAIRO_NPS_ADD_POOL_COUNT", default_value = "1")]
+    pub add_pool_count: u8,
 
     /// 读取数据缓存大小
-    #[arg(long,default_value="8192")]
-    pub read_cache_size:usize,
+    #[arg(long, env = "DAIRO_NPS_READ_CACHE_SIZE", default_value = "8192")]
+    pub read_cache_size: usize,
 
     /// 每隔一段时间回收长时间不用的连接池（毫秒）
-    #[arg(long,default_value="180000")]
-    pub recycle_pool_time_out:u64,
+    #[arg(long, env = "DAIRO_NPS_RECYCLE_POOL_TIME_OUT", default_value = "180000")]
+    pub recycle_pool_time_out: u64,
 
     /// 数据流量收集统计间隔，单位毫秒
-    #[arg(long,default_value="1000")]
-    pub data_collect_interval:u64,
+    #[arg(long, env = "DAIRO_NPS_DATA_COLLECT_INTERVAL", default_value = "1000")]
+    pub data_collect_interval: u64,
 
     /// 数据流量收集插入数据库间隔，单位毫秒
-    #[arg(long,default_value="6000")]
-    pub data_collect_insert_interval:u64,
+    #[arg(long, env = "DAIRO_NPS_DATA_COLLECT_INSERT_INTERVAL", default_value = "6000")]
+    pub data_collect_insert_interval: u64,
 }

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# 进入项目根目录
+cd "$(dirname "$0")/../.."
+
 # 事前准备
 # 安装 Android 编译目标
 # rustup target add aarch64-linux-android
