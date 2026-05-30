@@ -21,24 +21,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-//    signingConfigs {
-//        create("releaseConfig") {
-//            storeFile = File(System.getenv("DAIRO_NPC_APK_JKS_PATH"))
-//            storePassword = System.getenv("DAIRO_NPC_APK_JKS_PASSWORD")
-//            keyAlias = System.getenv("DAIRO_NPC_APK_JKS_KEY_ALIAS")
-//            keyPassword = System.getenv("DAIRO_NPC_APK_JKS_PASSWORD")
-//        }
-//    }
+    signingConfigs {
+        create("releaseConfig") {
+            storeFile = File(System.getenv("DAIRO_NPC_APK_JKS_PATH"))
+            storePassword = System.getenv("DAIRO_NPC_APK_JKS_PASSWORD")
+            keyAlias = System.getenv("DAIRO_NPC_APK_JKS_KEY_ALIAS")
+            keyPassword = System.getenv("DAIRO_NPC_APK_JKS_PASSWORD")
+        }
+    }
     buildTypes {
-//        release {
-//            signingConfig = signingConfigs.getByName("releaseConfig")
-//            isMinifyEnabled = true
-//            proguardFiles(
-//                //在很多情况下，proguard-android-optimize.txt 文件并不是必须手动创建的。这个文件通常是由 Android Gradle 插件隐式引入的，用于启用一些激进的优化配置。
-//                getDefaultProguardFile("proguard-android-optimize.txt"),
-//                "proguard-rules.pro"
-//            )
-//        }
+        release {
+            signingConfig = signingConfigs.getByName("releaseConfig")
+            isMinifyEnabled = true
+            proguardFiles(
+                //在很多情况下，proguard-android-optimize.txt 文件并不是必须手动创建的。这个文件通常是由 Android Gradle 插件隐式引入的，用于启用一些激进的优化配置。
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
 //        debug {
 //            signingConfig = signingConfigs.getByName("releaseConfig")
 //            isMinifyEnabled = false

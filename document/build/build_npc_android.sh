@@ -70,6 +70,8 @@ else
   echo "Android SDK command line tools already exist."
 fi
 ANDROID_HOME="${develop_tool_dir}/AndroidSDK"
+
+export ANDROID_SDK_ROOT=$ANDROID_HOME
 export PATH="$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/cmdline-tools/latest/bin:${PATH}"
 
 #修改 .android 存放位置,默认在~/.android
