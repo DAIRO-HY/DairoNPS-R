@@ -31,8 +31,8 @@ docker login -u $docker_user --password $docker_pwd
 
 #前提条件
 #创建新的 builder
- #docker buildx create --name mybuilder --driver docker-container --use
- #docker buildx inspect --bootstrap
+ docker buildx create --name mybuilder --driver docker-container --use
+ docker buildx inspect --bootstrap
 docker buildx build --platform linux/amd64,linux/arm64 -t $docker_user/dairo-nps:$version --push .
 #docker push $docker_user/dairo-nps:$version
 docker logout
