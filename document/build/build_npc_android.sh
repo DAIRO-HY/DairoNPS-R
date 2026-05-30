@@ -9,6 +9,9 @@ project_root="$(cd "$script_dir/../.." && pwd)"
 #开发工具安装目录
 develop_tool_dir=$(echo ~)/develop_tool
 
+# 获取版本号
+version=$(sed -n 's/^version = "\(.*\)"/\1/p' $project_root/lib_npc/Cargo.toml)
+
 #先创建文件夹
 mkdir $project_root/build
 
