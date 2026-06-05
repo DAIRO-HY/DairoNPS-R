@@ -15,7 +15,7 @@ pwd
 echo "-------------------"
 
 
-docker run --platform linux/amd64 -it --rm -v /home/docker/jenkins+jdk17+docker/data/develop_tool/project/DairoNPS-R:/home/rust/src -w /home/rust/src rust:1.93 \
+docker run --platform linux/amd64 -it --rm -v /home/project:/home/rust/src -w /home/rust/src rust:1.93 \
 sh -c "ls"
 
 #./document/build/build_npc.sh
