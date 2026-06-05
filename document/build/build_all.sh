@@ -8,14 +8,14 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 # 项目目录
 project_root="$(cd "$script_dir/../.." && pwd)"
 
-cd /root/develop_tool
+#cd /root/develop_tool
 ls
 echo "-------------------"
 pwd
 echo "-------------------"
 
 
-docker run --platform linux/amd64 -it --rm -v /root/develop_tool/project/DairoNPS-R:/home/rust/src -w /home/rust/src rust:1.93 \
+docker run --platform linux/amd64 -it --rm -v ./data/develop_tool/project/DairoNPS-R:/home/rust/src -w /home/rust/src rust:1.93 \
 sh -c "ls"
 
 #./document/build/build_npc.sh
