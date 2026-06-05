@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #前提条件 安装 QEMU binfmt,目的:在amd64位linux系统上编译arm64位linux二进制文件
-#docker run --privileged --rm tonistiigi/binfmt --install all
+docker run --privileged --rm tonistiigi/binfmt --install all
 
 
 # 当前 sh 文件所在目录
@@ -30,6 +30,9 @@ docker_rust_build(){
   docker run --platform "$1" --rm -v /home/docker/jenkins+jdk17+docker/data/develop_tool/project/DairoNPS-R:/home/rust/src -v /home/docker/jenkins+jdk17+docker/data/develop_tool/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
   sh -c "cargo clean && cargo build --release --package DairoNPC"
 }
+
+docker run --platform linux/arm64 --rm -v /home/docker/jenkins+jdk17+docker/data/develop_tool/project/DairoNPS-R:/home/rust/src -v /home/docker/jenkins+jdk17+docker/data/develop_tool/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
+  sh -c "cargo clean && cargo build --release --package DairoNPC"
 
 #打包amd64位linux二进制文件
 docker_rust_build linux/amd64
