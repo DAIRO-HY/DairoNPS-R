@@ -17,6 +17,12 @@ version=$(sed -n 's/^version = "\(.*\)"/\1/p' $project_root/lib_npc/Cargo.toml)
 
 echo $MASTER_SRC_DIR
 
+
+#打包amd64位linux二进制文件
+docker run --platform linux/amd64 --rm -v $MASTER_SRC_DIR:/home/rust/src -w /home/rust/src rust:1.93 \
+sh -c "cargo clean && cargo build --release --package DairoNPC"
+#mv ./target/release/DairoNPS ./build/DairoNPS-linux-amd64-$version
+
 ##打包amd64位linux二进制文件
 #cargo --version && cargo clean && cargo build --release --package DairoNPC
 #mv $project_root/target/release/DairoNPC $project_root/build/DairoNPC-linux-amd64-$version
