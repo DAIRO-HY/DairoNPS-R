@@ -26,6 +26,7 @@ echo "--------------------"
 echo $MASTER_SRC_DIR
 
 docker_rust_build(){
+  #这里的代码目录一定是宿主机上的绝对路径,不能是相对路径,否则会报错
   docker run --platform "$1" --rm -v /home/docker/jenkins+jdk17+docker/data/develop_tool/project/DairoNPS-R:/home/rust/src -v /home/docker/jenkins+jdk17+docker/data/develop_tool/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
   sh -c "cargo clean && cargo build --release --package DairoNPC"
 }
