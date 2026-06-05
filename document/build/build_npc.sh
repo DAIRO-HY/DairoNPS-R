@@ -19,7 +19,7 @@ echo $MASTER_SRC_DIR
 
 
 #打包amd64位linux二进制文件
-docker run --platform linux/amd64 --rm -v $MASTER_DEVELOP_DIR/project/DairoNPS-R:/home/rust/src -v $MASTER_DEVELOP_DIR/.cargo:~/.cargo -w /home/rust/src rust:1.93 \
+docker run --platform linux/amd64 --rm -v $MASTER_DEVELOP_DIR/project/DairoNPS-R:/home/rust/src -v $MASTER_DEVELOP_DIR/.cargo:/root/.cargo -w /home/rust/src rust:1.93 \
 sh -c "cargo clean && cargo build --release --package DairoNPS"
 #mv ./target/release/DairoNPS ./build/DairoNPS-linux-amd64-$version
 
