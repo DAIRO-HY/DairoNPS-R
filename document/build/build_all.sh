@@ -14,11 +14,13 @@ echo "-------------------"
 pwd
 echo "-------------------"
 
+#宿主机上存放的代码目录
+export MASTER_SRC_DIR=/home/docker/jenkins+jdk17+docker/data/develop_tool/project/DairoNPS-R
 
 docker run --platform linux/amd64 --rm -v /home/docker/jenkins+jdk17+docker/data/develop_tool/project/DairoNPS-R:/home/rust/src -w /home/rust/src rust:1.93 \
 sh -c "ls"
 
-#./document/build/build_npc.sh
+./document/build/build_npc.sh
 #./document/build/build_npc_android.sh
 #./document/build/build_nps.sh
 #./document/build/build_github.sh
