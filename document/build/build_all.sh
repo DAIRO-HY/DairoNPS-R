@@ -10,6 +10,9 @@ project_root="$(cd "$script_dir/../.." && pwd)"
 
 cd /root/develop_tool
 ls
+echo "-------------------"
+pwd
+echo "-------------------"
 
 #./document/build/build_npc.sh
 #./document/build/build_npc_android.sh
