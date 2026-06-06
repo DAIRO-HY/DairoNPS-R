@@ -2,6 +2,7 @@ use std::{
     env, fs,
     path::{Path, PathBuf},
 };
+use regex::NoExpand;
 
 /// 生成静态资源路由代码块，并写入 OUT_DIR 以供 include! 使用。
 const ROUTE_BLOCK_FILE_NAME: &str = "resource_routes.rs.block";
@@ -93,9 +94,10 @@ fn replace_include(deep: u8, html: &str, cur_path: &Path, include_path_str: &str
         .replace(".", "\\.");
 
     //替换 {{template include/head.template}} 这种格式的模板调用
+    //被替换的内容不能包含 $ 符号，否则会被当作正则替换的变量，导致替换结果不正确，所以使用 NoExpand 包装替换内容
     let html_new = regex::Regex::new(&regex_pattern)
         .unwrap()
-        .replace_all(&html, include_content.as_str());
+        .replace_all(&html, NoExpand(include_content.as_str()));
     html_new.to_string()
 }
 
