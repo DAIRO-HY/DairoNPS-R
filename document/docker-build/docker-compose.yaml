@@ -1,0 +1,12 @@
+version: '3.1'
+services:
+  nps-build:
+    build: .
+    container_name: nps-build
+    volumes:
+      - ../../:/home/rust/src
+#      - ./data/jdk:/usr/local/jdk
+#      - ./data/AndroidSDK:/usr/local/AndroidSDK
+#      - ./data/.rustup:/root/.rustup
+      - ./data/.cargo:/root/.cargo
+#      - ~/.gradle:/usr/.gradle

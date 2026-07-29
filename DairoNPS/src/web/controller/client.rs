@@ -1,8 +1,8 @@
 use crate::dao::client_dao;
 use crate::dao::client_dao::Client;
-use crate::extension::ResponseEmptyExt;
+use lib_axum_extract::response::{AppError, AppResponse, ResponseExt};
 use crate::extension::number::NumberExtension;
-use crate::web::extract::{AppForm, AppQuery};
+use lib_axum_extract::AppQuery;
 use crate::web::router::IdQuery;
 use crate::{biz_error, nps};
 use axum::{
@@ -16,14 +16,14 @@ use validator::Validate;
 use crate::nps::nps_client::nps_session;
 
 /// 客户端列表
-pub async fn list() -> Response {
+pub async fn list() -> AppResponse {
     let online_client_set: HashSet<i64> = nps::CLIENT_LIVE_MAP
         .lock()
         .await
         .keys()
         .map(|it| it.clone())
         .collect(); //收集在线状态的客户端id
-    let list = client_dao::select_all(&lib_db::get())
+    let list = client_dao::select_all(&mut lib_db::get_context())
         .await
         .unwrap_or_default()
         .into_iter()
@@ -40,13 +40,13 @@ pub async fn list() -> Response {
             is_online: online_client_set.contains(&it.id),
         })
         .collect::<Vec<_>>();
-    Json(list).into_response()
+    Response::json(list)
 }
 
 /// 获取客户端详情API
-pub async fn detail(AppQuery(id): AppQuery<IdQuery>) -> Response {
+pub async fn detail(AppQuery(id): AppQuery<IdQuery>) -> AppResponse {
     let detail = if id.id > 0 {
-        let Ok(client) = client_dao::select_one(&lib_db::get(), id.id).await else {
+        let Ok(client) = client_dao::select_one(&mut lib_db::get_context(), id.id).await else {
             return biz_error!("未找到客户端信息");
         };
         model::ClientDetail {
@@ -80,24 +80,24 @@ pub async fn detail(AppQuery(id): AppQuery<IdQuery>) -> Response {
             ..Default::default()
         }
     };
-    Json(detail).into_response()
+    Response::json(detail)
 }
 
 // 提交表单API
-pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
+pub async fn edit(form: model::ClientEdit) -> AppResponse {
     if let Err(e) = form.validate() {
         //验证表单数据是否合法
         return Response::field_errors(e);
     }
 
-    let conn = lib_db::get();
+    let mut ctx = lib_db::get_context();
     let mut client = if form.id == 0 {
         Client {
             is_enabled: true,
             ..Default::default()
         }
     } else {
-        if let Ok(it) = client_dao::select_one(&conn, form.id).await {
+        if let Ok(it) = client_dao::select_one(&mut ctx, form.id).await {
             it
         } else {
             return biz_error!("未找到客户端信息");
@@ -113,18 +113,18 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
 
     let mut err = None;
     if form.id == 0 {
-        if let Err(e) = client_dao::insert(&conn, client).await {
+        if let Err(e) = client_dao::insert(&mut ctx, client).await {
             err = Some(e);
         }
     } else {
-        err = client_dao::update(&conn, client).await.err();
+        err = client_dao::update(&mut ctx, client).await.err();
     }
     if let Some(e) = err {
         let err_msg = e.to_string();
         if err_msg == "UNIQUE constraint failed: client.key" {
             return Response::field_error("key", "该秘钥已被其他客户端使用，请换一个秘钥。");
         }
-        return biz_error!(e.to_string());
+        return biz_error!(err_msg);
     }
 
     //通知关闭该客户端会话
@@ -134,7 +134,7 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
 
 /// 通过id删除一个客户端
 pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
-    client_dao::delete(&lib_db::get(), query.id)
+    client_dao::delete(&mut lib_db::get_context(), query.id)
         .await
         .unwrap();
     nps_session::shutdown(query.id)
@@ -144,8 +144,8 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
 
 /// 修改可用状态
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
-    let conn = lib_db::get();
-    let client = client_dao::select_one(&conn, query.id).await.unwrap();
+    let mut ctx = lib_db::get_context();
+    let client = client_dao::select_one(&mut ctx, query.id).await.unwrap();
     let to = if client.is_enabled {
         //关闭客户端
         nps_session::shutdown(query.id)
@@ -155,7 +155,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     } else {
         true
     };
-    client_dao::toggle_enable(&conn, query.id, to)
+    client_dao::toggle_enable(&mut ctx, query.id, to)
         .await
         .unwrap();
 }
@@ -163,6 +163,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
 mod model {
     use serde::{Deserialize, Serialize};
     use validator::Validate;
+    use axum_request_macros::RequestForm;
 
     #[derive(Debug, Default, Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -226,7 +227,7 @@ mod model {
     }
 
     // 客户端编辑信息
-    #[derive(Deserialize, Debug, Validate)]
+    #[derive(Deserialize, Debug, RequestForm, Validate)]
     #[serde(rename_all = "camelCase")]
     pub struct ClientEdit {
         // id

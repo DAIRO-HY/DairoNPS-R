@@ -1,0 +1,334 @@
+use crate::util::image_util;
+use crate::util::image_util::DynamicImageExt;
+use crate::{application, web};
+use axum::extract::{DefaultBodyLimit, Request};
+use axum::middleware::Next;
+use axum::{Json, Router, http::{StatusCode, header}, middleware, response::{IntoResponse, Response}, routing::{delete, get, post, put}, BoxError};
+use axum_extra::extract::CookieJar;
+use lib_axum_extract::{AppJson, AppPath, AppQuery};
+use lib_np_common::time_util;
+use serde::{Deserialize, Serialize};
+use std::{env, fs};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
+use std::thread::sleep;
+use std::time::Duration;
+use axum::error_handling::HandleErrorLayer;
+use tower::ServiceBuilder;
+use tower::timeout::error::Elapsed;
+
+/// 导入set_html_routes函数
+include!(concat!(env!("OUT_DIR"), "/resource_routes.rs.block"));
+
+/// 从查询参数中提取id
+#[derive(Deserialize, Serialize, Debug)]
+pub struct IdQuery {
+    /// 当参数没有传时,使用默认值
+    #[serde(default)]
+    pub id: i64,
+}
+
+/// 从查询参数中获取一个参数
+#[derive(Deserialize, Serialize, Debug)]
+pub struct SingleQuery<T> {
+    pub value: T,
+}
+
+pub fn ready() {
+    tokio::spawn(init_router());
+}
+
+async fn init_router() {
+    // let app = set_html_routes(Router::new())
+    let app = Router::new()
+        // .route("/", get(super::controller::index::index))
+        .route("/do_collect", get(do_collect))
+        .route("/keep_live_on", get(keep_live_on))
+        .route("/keep_live_off", get(keep_live_on_off))
+        .route("/image_resize", get(image_resize))
+        // .route(
+        //     "/api/login/do_login",
+        //     post(super::controller::login::do_login),
+        // )
+        // .route("/api/login/forget", get(super::controller::login::forget))
+        // .route("/api/common/global", get(super::controller::common::global))
+        // .nest(
+        //     "/api",
+        //     Router::new()
+        //         .route("/login/logout", delete(super::controller::login::logout))
+        //         .route("/common/restart", put(super::controller::common::restart))
+        //         .route(
+        //             "/common/dropdown/{tag}",
+        //             get(super::controller::common::dropdown),
+        //         )
+        //         .route("/chart/real_len", get(super::controller::chart::real_len))
+        //         .route("/chart/data_len", get(super::controller::chart::data_len))
+        //         // .route(
+        //         //     "/index/nps_status",
+        //         //     get(super::controller::index::get_nps_status),
+        //         // )
+        //         .route("/client/list", get(super::controller::client::list))
+        //         .route("/client/detail", get(super::controller::client::detail))
+        //         .route("/client/edit", post(super::controller::client::edit))
+        //         .route("/client/delete", delete(super::controller::client::delete))
+        //         .route(
+        //             "/client/toggle_enable",
+        //             put(super::controller::client::toggle_enable),
+        //         )
+        //         .route("/channel/list", get(super::controller::channel::list))
+        //         .route("/channel/detail", get(super::controller::channel::detail))
+        //         .route("/channel/edit", post(super::controller::channel::edit))
+        //         .route(
+        //             "/channel/delete",
+        //             delete(super::controller::channel::delete),
+        //         )
+        //         .route(
+        //             "/channel/toggle_enable",
+        //             put(super::controller::channel::toggle_enable),
+        //         )
+        //         .route("/forward/list", get(super::controller::forward::list))
+        //         .route("/forward/detail", get(super::controller::forward::detail))
+        //         .route("/forward/edit", post(super::controller::forward::edit))
+        //         .route(
+        //             "/forward/delete",
+        //             delete(super::controller::forward::delete),
+        //         )
+        //         .route(
+        //             "/forward/toggle_enable",
+        //             put(super::controller::forward::toggle_enable),
+        //         )
+        //         .route("/bridge/list", get(super::controller::bridge::list))
+        //         .route("/bridge/broken", put(super::controller::bridge::broken))
+        //         // .route("/", get(async || -> Response {
+        //         //     static_file_res("content", "mime.as_ref().to_string()")
+        //         //     // // 你可以按需增加更多头：Cache-Control / ETag / Last-Modified 等
+        //         //     // // 下面演示一个简单的缓存头（可按需调整策略）
+        //         //     // let headers = [
+        //         //     //     (header::CONTENT_TYPE, "mime.as_ref().to_string()".to_string()),
+        //         //     //     (
+        //         //     //         header::CACHE_CONTROL,
+        //         //     //         "public, max-age=86400, immutable".to_string(),// 1 天缓存，且内容不变（适合版本化资源）
+        //         //     //     ),
+        //         //     // ];
+        //         //     // (StatusCode::OK, headers, "content".to_string()).into_response()
+        //         //  }))
+        //         // .route("/static/{*path}", get(super::static_file::handler))
+        //         .route("/query", get(query_test))
+        //         .route("/path/{id}", get(path_test))
+        //         .route("/json", post(json))
+        //         .layer(middleware::from_fn(auth_login)),
+        // )
+        // .nest(
+        //     "/admin",
+        //     Router::new()
+        //         .route(
+        //             "/common/subsidy_type_dropdown",
+        //             get(super::admin::common::subsidy_type_dropdown),
+        //         )
+        //         .route(
+        //             "/common/address_dropdown_by_parent_id/{id}",
+        //             get(super::admin::common::address_dropdown_by_parent_id),
+        //         )
+        //         .route("/login/init", post(super::admin::login::init))
+        //         .route("/login/do_login", post(super::admin::login::do_login))
+        //         .route("/admin/init/{id}", get(super::admin::admin::init))
+        //         .route("/admin/info/{id}", get(super::admin::admin::info))
+        //         .route("/admin/delete/{id}", delete(super::admin::admin::delete))
+        //         .route("/admin/edit", post(super::admin::admin::edit))
+        //         .route("/admin/list", get(super::admin::admin::list))
+        //         .route("/user/list", get(super::admin::user::list))
+        //         .route("/user/edit", post(super::admin::user::edit))
+        //         .route("/user/info/{id}", get(super::admin::user::info))
+        //         .route("/address/info/{id}", get(super::admin::address::info))
+        //         .route("/address/edit", post(super::admin::address::edit))
+        //         .route(
+        //             "/address/delete/{id}",
+        //             delete(super::admin::address::delete),
+        //         )
+        //         .route("/fid/list", get(super::admin::fid::list))
+        //         .route("/fid/info/{id}", get(super::admin::fid::info))
+        //         .route("/fid/edit", post(super::admin::fid::edit))
+        //         .route("/fid/delete/{id}", delete(super::admin::fid::delete))
+        //         .route("/farming_type/list", get(super::admin::farming_type::list))
+        //         .route(
+        //             "/farming_type/info/{id}",
+        //             get(super::admin::farming_type::info),
+        //         )
+        //         .route(
+        //             "/farming_type/dropdown",
+        //             get(super::admin::farming_type::dropdown),
+        //         )
+        //         .route("/role/edit", post(super::admin::role::edit))
+        //         .route("/role/list", get(super::admin::role::list))
+        //         .route("/role/info/{id}", get(super::admin::role::info))
+        //         .route("/role/dropdown", get(super::admin::role::dropdown))
+        //         .route("/role/delete/{id}", delete(super::admin::role::delete))
+        //         .route(
+        //             "/system_config/edit",
+        //             post(super::admin::system_config::edit),
+        //         )
+        //         .route(
+        //             "/system_config/info",
+        //             get(super::admin::system_config::info),
+        //         )
+        //         .route(
+        //             "/admin_message/list",
+        //             get(super::admin::admin_message::list),
+        //         )
+        //         .route(
+        //             "/admin_message/count",
+        //             get(super::admin::admin_message::count),
+        //         )
+        //         .route(
+        //             "/admin_message/delete/{id}",
+        //             delete(super::admin::admin_message::delete),
+        //         )
+        //         .route(
+        //             "/admin_message/read/{id}",
+        //             put(super::admin::admin_message::read),
+        //         )
+        //         .route(
+        //             "/admin_message/read_all",
+        //             put(super::admin::admin_message::read_all),
+        //         ),
+        // )
+        // //限制文件上传大小
+        // .layer(DefaultBodyLimit::max(20000 * 1024 * 1024))
+        // .layer(ServiceBuilder::new()
+        //     // `timeout` will produce an error if the handler takes
+        //     // too long so we must handle those
+        //     .layer(HandleErrorLayer::new(handle_timeout_error))
+        //     .timeout(Duration::from_secs(3))
+        // )
+        ;
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", application::ARGS.web_port))
+        .await
+        .unwrap();
+    let _ = axum::serve(listener, app)
+        // .with_graceful_shutdown(async move {
+        //     application::SHUTDOWN_NOTIFY.notified().await;
+        //
+        //     // 标记axum已经退出
+        //     application::IS_AXUM_DROP.store(true, Ordering::Relaxed);
+        // })
+        // .await
+        ;
+}
+//
+// async fn handle_timeout_error(err: BoxError) -> (StatusCode, String) {
+//     if err.is::<Elapsed>() {
+//         (
+//             StatusCode::REQUEST_TIMEOUT,
+//             "Request took too long".to_string(),
+//         )
+//     } else {
+//         (
+//             StatusCode::INTERNAL_SERVER_ERROR,
+//             format!("Unhandled internal error: {err}"),
+//         )
+//     }
+// }
+
+// /// 验证是否已经登录
+// pub async fn auth_login(jar: CookieJar, req: Request, next: Next) -> Result<Response, StatusCode> {
+//     // 从 Cookie 获取 session / token
+//     let Some(cookie) = jar.get("token") else {
+//         return Err(StatusCode::UNAUTHORIZED);
+//     };
+//     let token = cookie.value();
+//     if token != web::API_TOKEN.load().to_string() {
+//         return Err(StatusCode::UNAUTHORIZED);
+//     }
+//     let now = time_util::current_millis();
+//
+//     //验证已经登录时间
+//     if now - web::LOGIN_TIME.load(Ordering::Relaxed) > web::MAX_LOGIN_TIME {
+//         return Err(StatusCode::UNAUTHORIZED);
+//     }
+//
+//     //验证Session时间
+//     if now - web::LAST_USE_TIME.load(Ordering::Relaxed) > web::LOGIN_SESSION_TIME {
+//         return Err(StatusCode::UNAUTHORIZED);
+//     }
+//
+//     //更新最后把使用时间
+//     web::LAST_USE_TIME.store(now, Ordering::Relaxed);
+//     Ok(next.run(req).await)
+// }
+//
+// /// 处理静态文件请求
+// pub async fn handler(content: &str) -> Response {
+//     // let content = "std::str::from_utf8(res_embed.data.as_ref())".to_string();
+//
+//     // 你可以按需增加更多头：Cache-Control / ETag / Last-Modified 等
+//     // 下面演示一个简单的缓存头（可按需调整策略）
+//     let headers = [
+//         (
+//             header::CONTENT_TYPE,
+//             "mime.as_ref().to_string()".to_string(),
+//         ),
+//         (
+//             header::CACHE_CONTROL,
+//             "public, max-age=86400, immutable".to_string(), // 1 天缓存，且内容不变（适合版本化资源）
+//         ),
+//     ];
+//     (StatusCode::OK, headers, content.to_string()).into_response()
+// }
+
+async fn do_collect() -> &'static str {
+    unsafe {
+        crate::mi_collect(true);
+    }
+    "mi_collect_success"
+}
+
+async fn keep_live_on() -> &'static str {
+    // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+    "Hello, World!"
+}
+
+async fn keep_live_on_off() -> impl IntoResponse {
+    ([(header::CONNECTION, "close")], "hello")
+}
+
+
+async fn image_resize() -> &'static str {
+    image_util::resize(
+        PathBuf::from("/Users/zhoulq/dev/java/idea/FarmingServer/test2/input.jpg"),
+        300,
+    )
+    .unwrap()
+    .jpeg(
+        PathBuf::from("/Users/zhoulq/dev/java/idea/FarmingServer/test2/output_resize.jpg"),
+        80,
+    )
+    .unwrap();
+    image_util::crop(
+        PathBuf::from("/Users/zhoulq/dev/java/idea/FarmingServer/test2/input.jpg"),
+        300,
+        300,
+    )
+    .unwrap()
+    .jpeg(
+        PathBuf::from("/Users/zhoulq/dev/java/idea/FarmingServer/test2/output_crop.jpg"),
+        80,
+    )
+    .unwrap();
+    "图片处理完成"
+}
+
+// #[derive(Deserialize, Serialize, Debug)]
+// pub struct QueryParams {
+//     pub name: String,
+//     pub age: u32,
+// }
+// async fn query_test(AppQuery(q): AppQuery<QueryParams>) -> Response {
+//     (StatusCode::INTERNAL_SERVER_ERROR, Json(q)).into_response()
+// }
+//
+// async fn json(AppJson(q): AppJson<QueryParams>) -> Response {
+//     (StatusCode::INTERNAL_SERVER_ERROR, Json(q)).into_response()
+// }
+// async fn path_test(AppPath(id): AppPath<i64>) -> Response {
+//     (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", id)).into_response()
+// }

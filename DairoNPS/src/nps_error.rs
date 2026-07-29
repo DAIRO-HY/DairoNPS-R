@@ -22,6 +22,9 @@ pub enum NpsError {
 
     #[error("其他错误")]
     OtherError(&'static str),
+
+    #[error("其他错误")]
+    String(String),
 }
 
 // impl std::error::Error for NpsError {}

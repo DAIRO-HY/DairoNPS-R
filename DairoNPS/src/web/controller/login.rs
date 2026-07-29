@@ -1,21 +1,21 @@
 use crate::extension::string::StringExtension;
-use crate::extension::ResponseEmptyExt;
-use crate::web::extract::AppForm;
 use crate::{biz_error, biz_errorf, web};
 use axum::response::{IntoResponse, Response};
-use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::CookieJar;
+use axum_extra::extract::cookie::Cookie;
+use lib_axum_extract::response::{AppResponse, ResponseExt};
 use lib_np_common::time_util;
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use validator::Validate;
+use axum_request_macros::RequestForm;
 
 /// 登录API
-pub async fn do_login(jar: CookieJar, AppForm(form): AppForm<LoginForm>) -> Response {
+pub async fn do_login(jar: CookieJar, form: LoginForm) -> AppResponse {
     let account_path = Path::new(web::ACCOUNT_PATH);
     if !fs::exists(account_path).unwrap() {
         //文件不存在
@@ -60,7 +60,7 @@ pub async fn do_login(jar: CookieJar, AppForm(form): AppForm<LoginForm>) -> Resp
         .build();
 
     let jar = jar.add(cookie);
-    jar.into_response()
+    Ok(jar.into_response())
 }
 
 /// 退出登录
@@ -79,7 +79,7 @@ pub async fn forget() -> String {
 }
 
 /// 登录表单数据结构
-#[derive(Deserialize, Serialize, Debug, Validate)]
+#[derive(Deserialize, Serialize, Debug, RequestForm, Validate)]
 pub struct LoginForm {
     //管理员登录名
     #[validate(length(min = 1, message = "用户名不能为空"))]

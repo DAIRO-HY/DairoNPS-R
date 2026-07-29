@@ -1,7 +1,7 @@
 use crate::dao::traffic_stats_dao;
-use crate::extension::ResponseEmptyExt;
+use lib_axum_extract::response::{AppResponse, ResponseExt};
 use crate::extension::number::{Div, NumberExtension};
-use crate::web::extract::AppQuery;
+use lib_axum_extract::AppQuery;
 use crate::{forward, nps};
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
@@ -74,7 +74,7 @@ async fn get_real_len(param: model::ChartParam) -> String {
 }
 
 ///　获取指定时间段的流量数据
-pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Response {
+pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> AppResponse {
     //时间间隔
     let time_jg = param.end_time - param.start_time;
 
@@ -100,7 +100,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
 
     let data_len_list = if param.client_id > 0 {
         traffic_stats_dao::select_io_len_by_client(
-            &lib_db::get(),
+            &mut lib_db::get_context(),
             param.client_id,
             param.start_time,
             param.end_time,
@@ -109,7 +109,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         .unwrap()
     } else if param.channel_id > 0 {
         traffic_stats_dao::select_io_len_by_channel(
-            &lib_db::get(),
+            &mut lib_db::get_context(),
             param.channel_id,
             param.start_time,
             param.end_time,
@@ -118,7 +118,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         .unwrap()
     }  else if param.forward_id > 0 {
         traffic_stats_dao::select_io_len_by_forward(
-            &lib_db::get(),
+            &mut lib_db::get_context(),
             param.forward_id,
             param.start_time,
             param.end_time,
@@ -126,7 +126,7 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
         .await
         .unwrap()
     } else {
-        traffic_stats_dao::select_io_len(&lib_db::get(), param.start_time, param.end_time)
+        traffic_stats_dao::select_io_len(&mut lib_db::get_context(), param.start_time, param.end_time)
             .await
             .unwrap()
     };

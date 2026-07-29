@@ -1,6 +1,6 @@
 -- 系统配置
-CREATE TABLE IF NOT EXISTS system_config
+CREATE TABLE IF NOT EXISTS  system_config
 (
-    in_len  INTEGER NOT NULL DEFAULT 0, -- 入网流量
-    out_len INTEGER NOT NULL DEFAULT 0  -- 出网流量
+    subsidyEnable   INTEGER NOT NULL, -- 启动补贴申请功能
+    subsidyCloseMsg VARCHAR(3000) NOT NULL -- 补贴功能关闭时提示消息
 );

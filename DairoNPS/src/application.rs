@@ -1,9 +1,35 @@
-use crate::nps;
+use crate::util::server_image;
+use crate::{application, nps};
 use clap::Parser;
-use std::env;
+use axum_multipart_file;
+use std::path::Path;
 use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::{env, fs};
 use tokio::sync::Notify;
+
+/// 用一个用户允许登录的客户端数量限制
+pub const USER_TOKEN_LIMIT: usize = 10;
+
+/// 用户微信登录时的默认密码
+pub const DEFAULT_PWD: &'static str = "123456";
+
+/// 数据存放文件夹
+pub const DATA_PATH: &'static str = "./data";
+
+/// 临时文件存放目录
+pub const DATA_TEMP_PATH: &'static str = "./data/temp";
+
+/// 数据库存放文件夹
+pub const SQLITE_PATH: &'static str = "./data/farming.sqlite";
+
+/// 图片存储文件夹
+pub const IMAGE_PATH: &'static str = "./data/image";
+
+/// 用一个用户允许登录的客户端数量限制
+pub const ADMIN_TOKEN_LIMIT: usize = 10;
+
+pub const MAX_ERROR_COUNT: u8 = 10; //密码错误次数上限
 
 /// 心跳间隔时间
 pub const HEART_TIME: u64 = 3000;
@@ -28,6 +54,17 @@ pub static IS_NPS_SERVER_DROP: AtomicBool = AtomicBool::new(false);
 
 /// 用来接收关闭通知的全局异步通知器
 pub static ARGS: LazyLock<Argument> = LazyLock::new(|| Argument::try_parse().unwrap());
+
+pub fn init() {
+    //创建文件临时目录
+    let _ = fs::create_dir_all(Path::new(DATA_TEMP_PATH));
+
+    //创建图片临时目录
+    let _ = fs::create_dir_all(format!("{}/temp", IMAGE_PATH));
+
+    //设置文件上传临时目录
+    axum_multipart_file::set_temp_path(DATA_TEMP_PATH)
+}
 
 /// 重启函数，设置标记并退出程序
 pub async fn restart() {
@@ -76,7 +113,7 @@ pub async fn restart() {
 #[command(name = "DairoNPS", version, about = "DairoNPS")]
 pub struct Argument {
     /// WEB管理端口
-    #[arg(long, env = "DAIRO_NPS_WEB_PORT", default_value = "1880")]
+    #[arg(long, env = "DAIRO_NPS_WEB_PORT", default_value = "8081")]
     pub web_port: u16,
 
     /// 服务端监听TCP端口,客户端通过此端口进行连接
@@ -113,7 +150,11 @@ pub struct Argument {
     pub read_cache_size: usize,
 
     /// 每隔一段时间回收长时间不用的连接池（毫秒）
-    #[arg(long, env = "DAIRO_NPS_RECYCLE_POOL_TIME_OUT", default_value = "180000")]
+    #[arg(
+        long,
+        env = "DAIRO_NPS_RECYCLE_POOL_TIME_OUT",
+        default_value = "180000"
+    )]
     pub recycle_pool_time_out: u64,
 
     /// 数据流量收集统计间隔，单位毫秒
@@ -121,6 +162,14 @@ pub struct Argument {
     pub data_collect_interval: u64,
 
     /// 数据流量收集插入数据库间隔，单位毫秒
-    #[arg(long, env = "DAIRO_NPS_DATA_COLLECT_INSERT_INTERVAL", default_value = "6000")]
+    #[arg(
+        long,
+        env = "DAIRO_NPS_DATA_COLLECT_INSERT_INTERVAL",
+        default_value = "6000"
+    )]
     pub data_collect_insert_interval: u64,
+
+    /// 日志级别
+    #[arg(long, env = "DAIRO_NPS_LOG_LEVEL", default_value = "debug")]
+    pub log_level: String,
 }

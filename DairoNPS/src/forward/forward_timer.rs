@@ -80,17 +80,18 @@ async fn collect_data(
     }
     drop(forward_live_map);
     if *pre_insert_time > application::ARGS.data_collect_insert_interval {
-        let mut tx = lib_db::get().begin().await?;
+        let mut ctx = lib_db::get_context();
+        ctx.begin().await?;
 
         //批量循环插入数据
         for it in &*insert_cache_list {
-            traffic_stats_dao::insert(&mut *tx, it).await?
+            traffic_stats_dao::insert(&mut ctx, it).await?
         }
 
         //-------------------------------------统计端口转发流量------------------------------------------
         for (forward_id, data_len) in pre_len_map {
             forward_dao::set_data_len(
-                &mut *tx,
+                &mut ctx,
                 *forward_id,
                 data_len.in_len as i64,
                 data_len.out_len as i64,
@@ -103,10 +104,10 @@ async fn collect_data(
             .iter()
             .map(|it|DataIOLen::from(it.in_len as u64,it.out_len as u64))
             .fold(DataIOLen::default(), |pre, (it)|  pre + it);
-        system_config_dao::update_data_io(&mut *tx, total.in_len as i64, total.out_len as i64)
-            .await?;
+        // system_config_dao::update_data_io(&mut *tx, total.in_len as i64, total.out_len as i64)
+        //     .await?;
 
-        tx.commit().await?;
+        ctx.commit().await?;
         insert_cache_list.clear();
         *pre_insert_time = 0;
     }

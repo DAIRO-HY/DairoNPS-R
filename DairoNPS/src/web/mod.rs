@@ -3,10 +3,15 @@ use std::sync::{Arc, LazyLock};
 use arc_swap::ArcSwap;
 
 pub mod router;
+pub mod image;
 pub mod controller;
+pub mod admin;
+pub mod app;
 pub mod macros;
-pub mod extract;
 pub mod model;
+pub mod app_auth_middle;
+pub mod admin_auth_middle;
+pub mod admin_role_middle;
 
 /// 账号信息保存目录
 pub const ACCOUNT_PATH: &str = "./account.txt";

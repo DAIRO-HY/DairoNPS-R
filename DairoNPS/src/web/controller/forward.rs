@@ -1,29 +1,22 @@
+use lib_axum_extract::response::AppError;
 use crate::dao::forward_dao::Forward;
 use crate::dao::{forward_dao, traffic_stats_dao};
-use crate::extension::ResponseEmptyExt;
+use lib_axum_extract::response::{AppResponse, ResponseExt};
 use crate::extension::number::NumberExtension;
 use crate::forward::tcp_accept;
-use crate::web::extract::{AppForm, AppQuery};
+use lib_axum_extract::AppQuery;
 use crate::web::router::IdQuery;
-use crate::{biz_error, biz_errorf};
 use axum::{
     Json,
     response::{IntoResponse, Response},
 };
 use std::collections::HashMap;
 use validator::Validate;
+use crate::biz_error;
 
 ///  转发列表
-pub async fn list() -> Response {
-    let conn = lib_db::get();
-    let forward_id_name_map = forward_dao::select_all(&conn)
-        .await
-        .unwrap_or_default()
-        .into_iter()
-        .rev()
-        .map(|it| (it.id, it.name))
-        .collect::<HashMap<_, _>>();
-    let list = forward_dao::select_all(&conn)
+pub async fn list() -> AppResponse {
+    let list = forward_dao::select_all(&mut lib_db::get_context())
         .await
         .unwrap_or_default()
         .into_iter()
@@ -38,14 +31,14 @@ pub async fn list() -> Response {
             error: it.error,
         })
         .collect::<Vec<_>>();
-    Json(list).into_response()
+    Response::json(list)
 }
 
 /// 隧道详情获取API
-pub async fn detail(AppQuery(query): AppQuery<IdQuery>) -> Response {
+pub async fn detail(AppQuery(query): AppQuery<IdQuery>) -> AppResponse {
     let conn = lib_db::get();
     let detail = if query.id > 0 {
-        let Ok(channel) = forward_dao::select_one(&conn, query.id).await else {
+        let Ok(channel) = forward_dao::select_one(&mut lib_db::get_context(), query.id).await else {
             return biz_error!("未找到隧道信息");
         };
         model::ForwardDetail {
@@ -68,23 +61,23 @@ pub async fn detail(AppQuery(query): AppQuery<IdQuery>) -> Response {
     } else {
         model::ForwardDetail::default()
     };
-    Json(detail).into_response()
+    Response::json(detail)
 }
 
 // Edit 提交表单API
-pub async fn edit(AppForm(form): AppForm<model::ForwardEdit>) -> Response {
+pub async fn edit(form: model::ForwardEdit) -> AppResponse {
     if let Err(e) = form.validate() {
         //验证表单数据是否合法
         return Response::field_errors(e);
     }
-    let conn = lib_db::get();
+    let mut ctx = lib_db::get_context();
     let mut forward = if form.id == 0 {
         Forward {
             is_enabled: true,
             ..Default::default()
         }
     } else {
-        if let Ok(it) = forward_dao::select_one(&conn, form.id).await {
+        if let Ok(it) = forward_dao::select_one(&mut ctx, form.id).await {
             it
         } else {
             return biz_error!("未找到端口转发信息");
@@ -99,12 +92,12 @@ pub async fn edit(AppForm(form): AppForm<model::ForwardEdit>) -> Response {
 
     let mut err = None;
     if form.id == 0 {
-        match forward_dao::insert(&conn, &forward).await {
+        match forward_dao::insert(&mut ctx, &forward).await {
             Err(e) => err = Some(e),
             Ok(id) => forward.id = id,
         }
     } else {
-        err = forward_dao::update(&conn, &forward).await.err();
+        err = forward_dao::update(&mut ctx, &forward).await.err();
     }
     if let Some(e) = err {
         let err_msg = e.to_string();
@@ -114,7 +107,7 @@ pub async fn edit(AppForm(form): AppForm<model::ForwardEdit>) -> Response {
                 "该服务器端口已被其他隧道占用，请换一个端口。",
             );
         }
-        return biz_error!(e.to_string());
+        return biz_error!(err_msg);
     }
     if forward.is_enabled {
         //当前隧道有效并且当前客户端在线，则开启隧道监听
@@ -124,19 +117,16 @@ pub async fn edit(AppForm(form): AppForm<model::ForwardEdit>) -> Response {
 }
 
 /// 通过id删除一个隧道
-pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
-    let conn = lib_db::get();
-    let mut tx = conn.begin().await.unwrap();
-    if let Err(e) = forward_dao::delete(&mut *tx, query.id).await {
-        return biz_errorf!("删除失败:{}", e);
-    }
-    traffic_stats_dao::delete_by_forward_id(&mut *tx, query.id)
-        .await
-        .unwrap();
+pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> AppResponse {
+    let mut ctx = lib_db::get_context();
+    ctx.begin().await?;
+    forward_dao::delete(&mut ctx, query.id).await?;
+    traffic_stats_dao::delete_by_forward_id(&mut ctx, query.id)
+        .await?;
 
     //提交事务
-    let _ = tx.commit().await;
-    drop(conn);
+    ctx.commit().await?;
+    drop(ctx);
 
     // //关闭代理监听
     // udp_proxy.ShutdownByChannel(channel.Id)
@@ -146,9 +136,9 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
 
 /// 修改可用状态
 pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
-    let conn = lib_db::get();
-    let mut forward = forward_dao::select_one(&conn, query.id).await.unwrap();
-    forward_dao::toggle_enable(&conn, query.id, !forward.is_enabled)
+    let mut ctx = lib_db::get_context();
+    let mut forward = forward_dao::select_one(&mut ctx, query.id).await.unwrap();
+    forward_dao::toggle_enable(&mut ctx, query.id, !forward.is_enabled)
         .await
         .unwrap();
     if forward.is_enabled {
@@ -163,6 +153,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
 mod model {
     use serde::{Deserialize, Serialize};
     use validator::Validate;
+    use axum_request_macros::RequestForm;
 
     #[derive(Debug, Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -194,7 +185,7 @@ mod model {
         pub out_len: String,
     }
 
-    #[derive(Debug, Default, Serialize, Deserialize, Validate)]
+    #[derive(Debug, Default, Serialize, Deserialize, RequestForm, Validate)]
     #[serde(rename_all = "camelCase")]
     pub struct ForwardEdit {
         pub id: i64,

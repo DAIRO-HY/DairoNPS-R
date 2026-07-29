@@ -94,17 +94,18 @@ async fn collect_data(
     }
     drop(channel_live_map);
     if *pre_insert_time > application::ARGS.data_collect_insert_interval {
-        let mut tx = lib_db::get().begin().await?;
+        let mut ctx = lib_db::get_context();
+        ctx.begin().await?;
 
         //批量循环插入数据
         for it in &*insert_cache_list {
-            traffic_stats_dao::insert(&mut *tx, it).await?
+            traffic_stats_dao::insert(&mut ctx, it).await?
         }
 
         //-------------------------------------统计隧道流量------------------------------------------
         for (channel_id, data_len) in pre_channel_len_map {
             channel_dao::set_data_len(
-                &mut *tx,
+                &mut ctx,
                 *channel_id,
                 data_len.in_len as i64,
                 data_len.out_len as i64,
@@ -126,7 +127,7 @@ async fn collect_data(
             });
         for (client_id, data_len) in &client_2_len {
             client_dao::set_data_len(
-                &mut *tx,
+                &mut ctx,
                 *client_id,
                 data_len.in_len as i64,
                 data_len.out_len as i64,
@@ -138,10 +139,10 @@ async fn collect_data(
         let total = client_2_len
             .into_iter()
             .fold(DataIOLen::default(), |pre, (_, it)| pre + it);
-        system_config_dao::update_data_io(&mut *tx, total.in_len as i64, total.out_len as i64)
-            .await?;
+        // system_config_dao::update_data_io(&mut *tx, total.in_len as i64, total.out_len as i64)
+        //     .await?;
 
-        tx.commit().await?;
+        ctx.commit().await?;
         insert_cache_list.clear();
         *pre_insert_time = 0;
         //println!("-->执行了一次统计")
@@ -221,6 +222,6 @@ async fn delete_expired_traffic_stats() {
             .unwrap()
             .as_secs();
         let target_date = now - application::ARGS.traffic_stats_expired;
-        let _ = traffic_stats_dao::delete_expired(&lib_db::get(),target_date as i64).await;
+        let _ = traffic_stats_dao::delete_expired(&mut lib_db::get_context(),target_date as i64).await;
     }
 }

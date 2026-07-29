@@ -11,7 +11,7 @@ use lib_np_common::data_io_len::AtomicDataIOLen;
 // 开始客户端的所有监听
 pub async fn ready() -> Result<(), NpsError> {
     //获取所有启用的端口转发信息
-    let active_list = forward_dao::select_enabled(&lib_db::get()).await?;
+    let active_list = forward_dao::select_enabled(&mut lib_db::get_context()).await?;
     for it in active_list {
         //只监听TCP隧道
         accept_forward(it).await?;
@@ -86,13 +86,13 @@ async fn start(
     let tcp_listener = match TcpListener::bind(format!("0.0.0.0:{}", forward.server_port)).await {
         Ok(v) => v,
         Err(e) => {
-            forward_dao::set_error(&lib_db::get(), forward.id, format!("监听端口失败:{:?}", e)).await?;
+            forward_dao::set_error(&mut lib_db::get_context(), forward.id, format!("监听端口失败:{:?}", e).as_str()).await?;
             return Ok(());
         }
     };
 
     //清除错误消息
-    forward_dao::clear_error(&lib_db::get(), forward.id).await?;
+    forward_dao::clear_error(&mut lib_db::get_context(), forward.id).await?;
     loop {
         let (proxy_tcp, addr) = tcp_listener.accept().await?;
         tcp_bridge::ready(tcp_bridge::TcpBridgeParam {
