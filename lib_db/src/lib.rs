@@ -73,6 +73,10 @@ async fn upgrade() -> Result<(), Box<dyn Error>> {
     create_table(&mut ctx).await?;
     if version < 1{
 
+        //第一次创建数据库时往系统配置表插入一条数据
+        sqlx::query("insert into system_config(in_len,out_len)values(0,0)")
+            .execute(&mut **tx)
+            .await?;
     }
 
     //设置数据库版本号(版本号没变时不写库,否则build.rs监听的数据库文件每次都会变,导致每次编译都重跑build.rs)
