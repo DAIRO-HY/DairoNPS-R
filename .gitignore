@@ -10,3 +10,5 @@
 /document/docker-build/data/
 /build/
 /push_github_tag.log
+/data/account.txt
+/data/dairo-nps.sqlite
