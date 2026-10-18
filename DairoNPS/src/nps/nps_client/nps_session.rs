@@ -35,8 +35,13 @@ pub async fn hold_on(client: Client, npc_tcp: TcpStream) -> Result<(), NpsError>
         },
     );
 
-    // //开启该客户端下所有隧道监听
-    tcp_proxy::ready_client(client_id).await?;
+    //开启该客户端下所有隧道监听
+    //客户端会话初始化失败时，如果直接抛出异常，会留下一条永远删不掉的记录。并且，之后调用 shutdown(id) 会一直等这条记录被删，永远等不到
+    //所以，一但客户端被添加到 CLIENT_LIVE_MAP 中，就不要直接抛出错误
+    if let Err(e) = tcp_proxy::ready_client(client_id).await{
+        remove_session(client_id).await;
+        return Err(e);
+    }
     let rs = start(client_id, npc_tcp, closer, heart_time, receiver).await;
 
     //会话结束后,移除会话

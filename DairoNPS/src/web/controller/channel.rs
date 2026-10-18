@@ -148,7 +148,7 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
             .contains_key(&channel.client_id)
     {
         //当前隧道有效并且当前客户端在线，则开启隧道监听
-        tcp_proxy::ready_channel(channel).await.unwrap(); //开启隧道监听
+        tcp_proxy::ready_channel(channel); //开启隧道监听
     }
     Ok(())
 }
@@ -198,7 +198,7 @@ pub async fn toggle_enable(id: i64) {
             channel.is_enabled = true;
 
             //如果当前客户端在线
-            tcp_proxy::ready_channel(channel).await.unwrap(); //开启隧道监听
+            tcp_proxy::ready_channel(channel); //开启隧道监听
         }
     };
 }

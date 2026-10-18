@@ -16,14 +16,14 @@ pub async fn ready_client(client_id: i64) -> Result<(), NpsError> {
     for it in active_list {
         if it.mode == 1 {
             //只监听TCP隧道
-            ready_channel(it).await?;
+            ready_channel(it);
         }
     }
     Ok(())
 }
 
 // 开始监听某个隧道
-pub async fn ready_channel(channel: Channel) -> Result<(), NpsError> {
+pub fn ready_channel(channel: Channel){
     tokio::spawn(async move {
         let channel_id = channel.id;
         spawn_start(channel).await;
@@ -31,7 +31,6 @@ pub async fn ready_channel(channel: Channel) -> Result<(), NpsError> {
         //监听结束后,移除隧道监听信息
         nps::CHANNEL_LIVE_MAP.lock().await.remove(&channel_id);
     });
-    Ok(())
 }
 
 async fn spawn_start(channel: Channel) {
