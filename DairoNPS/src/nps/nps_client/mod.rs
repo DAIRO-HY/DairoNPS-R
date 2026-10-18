@@ -103,7 +103,7 @@ async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result
 
     //得到客户端key
     let key = headers[0];
-    let client = match client_dao::select_by_key(&lib_db::get(), key).await {
+    let client = match client_dao::select_by_key(&mut lib_db::get_context(), key).await {
         Ok(v) => v,
         Err(Error::RowNotFound) => {
             // println!("客户端：{}获取失败", key);
@@ -129,7 +129,7 @@ async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result
     //得到客户端版本号
     let client_version = headers[1].to_string();
     let _ = client_dao::set_connection_info(
-        &lib_db::get(),
+        &mut lib_db::get_context(),
         client_id,
         addr.ip().to_string(),
         client_version,

@@ -123,4 +123,8 @@ pub struct Argument {
     /// 数据流量收集插入数据库间隔，单位毫秒
     #[arg(long, env = "DAIRO_NPS_DATA_COLLECT_INSERT_INTERVAL", default_value = "6000")]
     pub data_collect_insert_interval: u64,
+
+    /// 数据库文件路径
+    #[arg(long, env = "DAIRO_NPS_DB_PATH", default_value = "./data/dairo-nps.sqlite")]
+    pub db_path: String,
 }

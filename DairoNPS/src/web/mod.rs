@@ -12,7 +12,7 @@ pub mod model;
 pub mod form;
 
 /// 账号信息保存目录
-pub const ACCOUNT_PATH: &str = "./account.txt";
+pub const ACCOUNT_PATH: &str = "./data/account.txt";
 
 /// 登录保留最大时间,过期强制重新登录
 pub const MAX_LOGIN_TIME:u64 = 8 * 60 * 60 * 1000;

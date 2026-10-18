@@ -13,15 +13,15 @@ use validator::Validate;
 ///  隧道列表
 #[GET("/api/channel/list")]
 pub async fn list() -> Vec<model::ChannelList> {
-    let conn = lib_db::get();
-    let client_id_name_map = client_dao::select_all(&conn)
+    let mut ctx = lib_db::get_context();
+    let client_id_name_map = client_dao::select_all(&mut ctx)
         .await
         .unwrap_or_default()
         .into_iter()
         .rev()
         .map(|it| (it.id, it.name))
         .collect::<HashMap<_, _>>();
-    let list = channel_dao::select_all(&conn)
+    let list = channel_dao::select_all(&mut ctx)
         .await
         .unwrap_or_default()
         .into_iter()
@@ -49,15 +49,15 @@ pub async fn list() -> Vec<model::ChannelList> {
 /// 隧道详情获取API
 #[GET("/api/channel/detail")]
 pub async fn detail(id: i64, client_id: i64) -> Result<model::ChannelDetail, BizError> {
-    let conn = lib_db::get();
+    let mut ctx = lib_db::get_context();
     let detail = if id > 0 {
-        let Ok(channel) = channel_dao::select_one(&conn, id).await else {
+        let Ok(channel) = channel_dao::select_one(&mut ctx, id).await else {
             return Err(biz_error!("未找到隧道信息"));
         };
         model::ChannelDetail {
             id: channel.id,
             client_id: channel.client_id,
-            client_name: "待实现".to_string(), //client_dao::select_one(&conn, client.client_id).unwrap_or(Client::default()).name,
+            client_name: "待实现".to_string(), //client_dao::select_one(&mut ctx, client.client_id).unwrap_or(Client::default()).name,
             name: channel.name,
             mode: channel.mode,
             server_port: channel.server_port,
@@ -93,14 +93,14 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
         //验证表单数据是否合法
         return Err(BizError::fields(e));
     }
-    let conn = lib_db::get();
+    let mut ctx = lib_db::get_context();
     let mut channel = if form.id == 0 {
         Channel {
             is_enabled: true,
             ..Default::default()
         }
     } else {
-        if let Ok(it) = channel_dao::select_one(&conn, form.id).await {
+        if let Ok(it) = channel_dao::select_one(&mut ctx, form.id).await {
             it
         } else {
             return Err(biz_error!("未找到隧道信息"));
@@ -124,12 +124,12 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
 
     let mut err = None;
     if form.id == 0 {
-        match channel_dao::insert(&conn, &channel).await {
+        match channel_dao::insert(&mut ctx, &channel).await {
             Err(e) => err = Some(e),
             Ok(id) => channel.id = id,
         }
     } else {
-        err = channel_dao::update(&conn, &channel).await.err();
+        err = channel_dao::update(&mut ctx, &channel).await.err();
     }
     if let Some(e) = err {
         let err_msg = e.to_string();
@@ -156,18 +156,21 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
 /// 通过id删除一个隧道
 #[DELETE("/api/channel/delete")]
 pub async fn delete(id: i64) -> Result<(), BizError> {
-    let conn = lib_db::get();
-    let mut tx = conn.begin().await.unwrap();
-    if let Err(e) = channel_dao::delete(&mut *tx, id).await {
+    let mut ctx = lib_db::get_context();
+    ctx.begin().await.unwrap();
+    let rs = async {
+        channel_dao::delete(&mut ctx, id).await?;
+        traffic_stats_dao::delete_by_channel_id(&mut ctx, id).await
+    }
+    .await;
+    if let Err(e) = rs {
+        let _ = ctx.rollback().await;
         return Err(biz_errorf!("删除失败:{}", e));
     }
-    traffic_stats_dao::delete_by_channel_id(&mut *tx, id)
-        .await
-        .unwrap();
 
     //提交事务
-    let _ = tx.commit().await;
-    drop(conn);
+    let _ = ctx.commit().await;
+    drop(ctx);
 
     // //关闭代理监听
     // udp_proxy.ShutdownByChannel(channel.Id)
@@ -178,9 +181,9 @@ pub async fn delete(id: i64) -> Result<(), BizError> {
 /// 修改可用状态
 #[PUT("/api/channel/toggle_enable")]
 pub async fn toggle_enable(id: i64) {
-    let conn = lib_db::get();
-    let mut channel = channel_dao::select_one(&conn, id).await.unwrap();
-    channel_dao::toggle_enable(&conn, id, !channel.is_enabled)
+    let mut ctx = lib_db::get_context();
+    let mut channel = channel_dao::select_one(&mut ctx, id).await.unwrap();
+    channel_dao::toggle_enable(&mut ctx, id, !channel.is_enabled)
         .await
         .unwrap();
     if channel.is_enabled {

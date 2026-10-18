@@ -94,54 +94,62 @@ async fn collect_data(
     }
     drop(channel_live_map);
     if *pre_insert_time > application::ARGS.data_collect_insert_interval {
-        let mut tx = lib_db::get().begin().await?;
+        let mut ctx = lib_db::get_context();
+        ctx.begin().await?;
+        let rs: Result<(), sqlx::Error> = async {
+            //批量循环插入数据
+            for it in &*insert_cache_list {
+                traffic_stats_dao::insert(&mut ctx, it).await?
+            }
 
-        //批量循环插入数据
-        for it in &*insert_cache_list {
-            traffic_stats_dao::insert(&mut *tx, it).await?
-        }
-
-        //-------------------------------------统计隧道流量------------------------------------------
-        for (channel_id, data_len) in pre_channel_len_map {
-            channel_dao::set_data_len(
-                &mut *tx,
-                *channel_id,
-                data_len.in_len as i64,
-                data_len.out_len as i64,
-            )
-            .await?;
-        }
-
-        //-------------------------------------统计客户端流量------------------------------------------
-        //按客户端对应的本次变化数据大小
-        let client_2_len = insert_cache_list
-            .iter()
-            // .map(|it| (it.client_id, it.channel_id))
-            .into_grouping_map_by(|it| it.client_id)
-            .fold(DataIOLen::default(), |pre, _, it| {
-                DataIOLen::from(
-                    pre.in_len + it.in_len as u64,
-                    pre.out_len + it.out_len as u64,
+            //-------------------------------------统计隧道流量------------------------------------------
+            for (channel_id, data_len) in pre_channel_len_map {
+                channel_dao::set_data_len(
+                    &mut ctx,
+                    *channel_id,
+                    data_len.in_len as i64,
+                    data_len.out_len as i64,
                 )
-            });
-        for (client_id, data_len) in &client_2_len {
-            client_dao::set_data_len(
-                &mut *tx,
-                *client_id,
-                data_len.in_len as i64,
-                data_len.out_len as i64,
-            )
-            .await?;
+                .await?;
+            }
+
+            //-------------------------------------统计客户端流量------------------------------------------
+            //按客户端对应的本次变化数据大小
+            let client_2_len = insert_cache_list
+                .iter()
+                // .map(|it| (it.client_id, it.channel_id))
+                .into_grouping_map_by(|it| it.client_id)
+                .fold(DataIOLen::default(), |pre, _, it| {
+                    DataIOLen::from(
+                        pre.in_len + it.in_len as u64,
+                        pre.out_len + it.out_len as u64,
+                    )
+                });
+            for (client_id, data_len) in &client_2_len {
+                client_dao::set_data_len(
+                    &mut ctx,
+                    *client_id,
+                    data_len.in_len as i64,
+                    data_len.out_len as i64,
+                )
+                .await?;
+            }
+
+            //-------------------------------------统计总流量------------------------------------------
+            let total = client_2_len
+                .into_iter()
+                .fold(DataIOLen::default(), |pre, (_, it)| pre + it);
+            system_config_dao::update_data_io(&mut ctx, total.in_len as i64, total.out_len as i64)
+                .await?;
+
+            Ok(())
         }
-
-        //-------------------------------------统计总流量------------------------------------------
-        let total = client_2_len
-            .into_iter()
-            .fold(DataIOLen::default(), |pre, (_, it)| pre + it);
-        system_config_dao::update_data_io(&mut *tx, total.in_len as i64, total.out_len as i64)
-            .await?;
-
-        tx.commit().await?;
+        .await;
+        if let Err(e) = rs {
+            ctx.rollback().await?;
+            return Err(e);
+        }
+        ctx.commit().await?;
         insert_cache_list.clear();
         *pre_insert_time = 0;
         //println!("-->执行了一次统计")
@@ -221,6 +229,6 @@ async fn delete_expired_traffic_stats() {
             .unwrap()
             .as_secs();
         let target_date = now - application::ARGS.traffic_stats_expired;
-        let _ = traffic_stats_dao::delete_expired(&lib_db::get(),target_date as i64).await;
+        let _ = traffic_stats_dao::delete_expired(&mut lib_db::get_context(),target_date as i64).await;
     }
 }

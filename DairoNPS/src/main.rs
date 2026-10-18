@@ -18,7 +18,7 @@ use sqlx::{Column, Executor, Statement, TypeInfo};
 #[tokio::main]
 async fn main() -> tokio::io::Result<()> {
     println!("args: {:?}", application::ARGS);
-    lib_db::init().await;
+    lib_db::init(&application::ARGS.db_path).await;
     web::server::ready();
 
     //开启内网穿透监听

@@ -12,15 +12,15 @@ use validator::Validate;
 ///  转发列表
 #[GET("/api/forward/list")]
 pub async fn list() -> Vec<model::ForwardList> {
-    let conn = lib_db::get();
-    let forward_id_name_map = forward_dao::select_all(&conn)
+    let mut ctx = lib_db::get_context();
+    let forward_id_name_map = forward_dao::select_all(&mut ctx)
         .await
         .unwrap_or_default()
         .into_iter()
         .rev()
         .map(|it| (it.id, it.name))
         .collect::<HashMap<_, _>>();
-    let list = forward_dao::select_all(&conn)
+    let list = forward_dao::select_all(&mut ctx)
         .await
         .unwrap_or_default()
         .into_iter()
@@ -41,9 +41,9 @@ pub async fn list() -> Vec<model::ForwardList> {
 /// 隧道详情获取API
 #[GET("/api/forward/detail")]
 pub async fn detail(id: i64) -> Result<model::ForwardDetail, BizError> {
-    let conn = lib_db::get();
+    let mut ctx = lib_db::get_context();
     let detail = if id > 0 {
-        let Ok(channel) = forward_dao::select_one(&conn, id).await else {
+        let Ok(channel) = forward_dao::select_one(&mut ctx, id).await else {
             return Err(biz_error!("未找到隧道信息"));
         };
         model::ForwardDetail {
@@ -76,14 +76,14 @@ pub async fn edit(form: form::ForwardEdit) -> Result<(), BizError> {
         //验证表单数据是否合法
         return Err(BizError::fields(e));
     }
-    let conn = lib_db::get();
+    let mut ctx = lib_db::get_context();
     let mut forward = if form.id == 0 {
         Forward {
             is_enabled: true,
             ..Default::default()
         }
     } else {
-        if let Ok(it) = forward_dao::select_one(&conn, form.id).await {
+        if let Ok(it) = forward_dao::select_one(&mut ctx, form.id).await {
             it
         } else {
             return Err(biz_error!("未找到端口转发信息"));
@@ -98,12 +98,12 @@ pub async fn edit(form: form::ForwardEdit) -> Result<(), BizError> {
 
     let mut err = None;
     if form.id == 0 {
-        match forward_dao::insert(&conn, &forward).await {
+        match forward_dao::insert(&mut ctx, &forward).await {
             Err(e) => err = Some(e),
             Ok(id) => forward.id = id,
         }
     } else {
-        err = forward_dao::update(&conn, &forward).await.err();
+        err = forward_dao::update(&mut ctx, &forward).await.err();
     }
     if let Some(e) = err {
         let err_msg = e.to_string();
@@ -125,18 +125,21 @@ pub async fn edit(form: form::ForwardEdit) -> Result<(), BizError> {
 /// 通过id删除一个隧道
 #[DELETE("/api/forward/delete")]
 pub async fn delete(id: i64) -> Result<(), BizError> {
-    let conn = lib_db::get();
-    let mut tx = conn.begin().await.unwrap();
-    if let Err(e) = forward_dao::delete(&mut *tx, id).await {
+    let mut ctx = lib_db::get_context();
+    ctx.begin().await.unwrap();
+    let rs = async {
+        forward_dao::delete(&mut ctx, id).await?;
+        traffic_stats_dao::delete_by_forward_id(&mut ctx, id).await
+    }
+    .await;
+    if let Err(e) = rs {
+        let _ = ctx.rollback().await;
         return Err(biz_errorf!("删除失败:{}", e));
     }
-    traffic_stats_dao::delete_by_forward_id(&mut *tx, id)
-        .await
-        .unwrap();
 
     //提交事务
-    let _ = tx.commit().await;
-    drop(conn);
+    let _ = ctx.commit().await;
+    drop(ctx);
 
     // //关闭代理监听
     // udp_proxy.ShutdownByChannel(channel.Id)
@@ -147,9 +150,9 @@ pub async fn delete(id: i64) -> Result<(), BizError> {
 /// 修改可用状态
 #[PUT("/api/forward/toggle_enable")]
 pub async fn toggle_enable(id: i64) {
-    let conn = lib_db::get();
-    let mut forward = forward_dao::select_one(&conn, id).await.unwrap();
-    forward_dao::toggle_enable(&conn, id, !forward.is_enabled)
+    let mut ctx = lib_db::get_context();
+    let mut forward = forward_dao::select_one(&mut ctx, id).await.unwrap();
+    forward_dao::toggle_enable(&mut ctx, id, !forward.is_enabled)
         .await
         .unwrap();
     if forward.is_enabled {

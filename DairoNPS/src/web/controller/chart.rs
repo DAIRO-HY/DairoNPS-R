@@ -88,7 +88,7 @@ pub async fn data_len(param: Query<model::DataLenQuery>) -> model::DataLenInfo {
 
     let data_len_list = if param.client_id > 0 {
         traffic_stats_dao::select_io_len_by_client(
-            &lib_db::get(),
+            &mut lib_db::get_context(),
             param.client_id,
             param.start_time,
             param.end_time,
@@ -97,7 +97,7 @@ pub async fn data_len(param: Query<model::DataLenQuery>) -> model::DataLenInfo {
         .unwrap()
     } else if param.channel_id > 0 {
         traffic_stats_dao::select_io_len_by_channel(
-            &lib_db::get(),
+            &mut lib_db::get_context(),
             param.channel_id,
             param.start_time,
             param.end_time,
@@ -106,7 +106,7 @@ pub async fn data_len(param: Query<model::DataLenQuery>) -> model::DataLenInfo {
         .unwrap()
     }  else if param.forward_id > 0 {
         traffic_stats_dao::select_io_len_by_forward(
-            &lib_db::get(),
+            &mut lib_db::get_context(),
             param.forward_id,
             param.start_time,
             param.end_time,
@@ -114,7 +114,7 @@ pub async fn data_len(param: Query<model::DataLenQuery>) -> model::DataLenInfo {
         .await
         .unwrap()
     } else {
-        traffic_stats_dao::select_io_len(&lib_db::get(), param.start_time, param.end_time)
+        traffic_stats_dao::select_io_len(&mut lib_db::get_context(), param.start_time, param.end_time)
             .await
             .unwrap()
     };

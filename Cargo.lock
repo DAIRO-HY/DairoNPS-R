@@ -26,7 +26,6 @@ dependencies = [
  "itertools",
  "lib_db",
  "lib_np_common",
- "lib_source_gen",
  "maplit",
  "md5",
  "mime_guess",
@@ -37,6 +36,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "sqlx-context",
+ "sqlx-dsl-dao",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -1478,17 +1479,14 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "lib_db"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "chrono",
- "mime_guess",
- "prettyplease",
- "regex",
+ "md5",
  "rust-embed",
- "serde",
- "sqlparser",
+ "serde_json",
  "sqlx",
- "syn 2.0.117",
+ "sqlx-context",
 ]
 
 [[package]]
@@ -2441,6 +2439,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sqlx-context"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a93a92ed60e36e35755a6c49f91f9f89ab15e5a789f971b316ab814f4e51146c"
+dependencies = [
+ "futures-core",
+ "sqlx",
+]
+
+[[package]]
 name = "sqlx-core"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2450,6 +2458,7 @@ dependencies = [
  "async-std",
  "base64",
  "bytes",
+ "chrono",
  "crc",
  "crossbeam-queue",
  "either",
@@ -2474,6 +2483,19 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "sqlx-dsl-dao"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "780bd50f78e67a16df29d49d4b0c920a85d798f77a7cb537321026b773183ff2"
+dependencies = [
+ "chrono",
+ "prettyplease",
+ "serde",
+ "sqlx",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -2526,6 +2548,7 @@ dependencies = [
  "bitflags 2.11.0",
  "byteorder",
  "bytes",
+ "chrono",
  "crc",
  "digest 0.10.7",
  "dotenvy",
@@ -2567,6 +2590,7 @@ dependencies = [
  "base64",
  "bitflags 2.11.0",
  "byteorder",
+ "chrono",
  "crc",
  "dotenvy",
  "etcetera",
@@ -2601,6 +2625,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2d12fe70b2c1b4401038055f90f151b78208de1f9f89a7dbfd41587a10c3eea"
 dependencies = [
  "atoi",
+ "chrono",
  "flume",
  "futures-channel",
  "futures-core",

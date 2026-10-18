@@ -5,8 +5,12 @@ edition = "2024"
 
 # build.rs 专用的依赖
 [build-dependencies]
+
+#build.rs里的异步运行时,与运行期统一使用tokio
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 lib_db = { path = "../lib_db" }
-lib_source_gen = { path = "../lib_source_gen" }
+sqlx-dsl-dao = "0.0.1"
+#lib_source_gen = { path = "../lib_source_gen" }
 pollster = "0.3"
 
 #注解路由代码生成（0.0.5未发布前使用本地路径）
@@ -14,7 +18,7 @@ hyperoute-codegen = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperou
 
 [dependencies]
 lib_db = { path = "../lib_db" }
-lib_source_gen = { path = "../lib_source_gen" }
+#lib_source_gen = { path = "../lib_source_gen" }
 lib_np_common = { path = "../lib_np_common" }
 md5 = "0.8"
 thiserror = "2"
@@ -33,6 +37,9 @@ bytes = "1"
 dashmap = "6"
 #rusqlite = { version = "0.38", features = ["bundled"] }
 rust-embed = "8" #嵌入文件
+
+#数据库操作上下文:持有连接池,以及可选的当前事务。
+sqlx-context = "0.0.1"
 
 #注解路由（0.0.5未发布前使用本地路径）
 hyperoute-core = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-core", version = "0.0.5" }

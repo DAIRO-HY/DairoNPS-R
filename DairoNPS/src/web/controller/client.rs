@@ -19,7 +19,7 @@ pub async fn list() -> Vec<model::ClitentList> {
         .keys()
         .map(|it| it.clone())
         .collect(); //收集在线状态的客户端id
-    let list = client_dao::select_all(&lib_db::get())
+    let list = client_dao::select_all(&mut lib_db::get_context())
         .await
         .unwrap_or_default()
         .into_iter()
@@ -43,7 +43,7 @@ pub async fn list() -> Vec<model::ClitentList> {
 #[GET("/api/client/detail")]
 pub async fn detail(id: i64) -> Result<model::ClientDetail, BizError> {
     let detail = if id > 0 {
-        let Ok(client) = client_dao::select_one(&lib_db::get(), id).await else {
+        let Ok(client) = client_dao::select_one(&mut lib_db::get_context(), id).await else {
             return Err(biz_error!("未找到客户端信息"));
         };
         model::ClientDetail {
@@ -88,14 +88,14 @@ pub async fn edit(form: form::ClientEdit) -> Result<(), BizError> {
         return Err(BizError::fields(e));
     }
 
-    let conn = lib_db::get();
+    let mut ctx = lib_db::get_context();
     let mut client = if form.id == 0 {
         Client {
             is_enabled: true,
             ..Default::default()
         }
     } else {
-        if let Ok(it) = client_dao::select_one(&conn, form.id).await {
+        if let Ok(it) = client_dao::select_one(&mut ctx, form.id).await {
             it
         } else {
             return Err(biz_error!("未找到客户端信息"));
@@ -111,11 +111,11 @@ pub async fn edit(form: form::ClientEdit) -> Result<(), BizError> {
 
     let mut err = None;
     if form.id == 0 {
-        if let Err(e) = client_dao::insert(&conn, client).await {
+        if let Err(e) = client_dao::insert(&mut ctx, client).await {
             err = Some(e);
         }
     } else {
-        err = client_dao::update(&conn, client).await.err();
+        err = client_dao::update(&mut ctx, client).await.err();
     }
     if let Some(e) = err {
         let err_msg = e.to_string();
@@ -133,7 +133,7 @@ pub async fn edit(form: form::ClientEdit) -> Result<(), BizError> {
 /// 通过id删除一个客户端
 #[DELETE("/api/client/delete")]
 pub async fn delete(id: i64) {
-    client_dao::delete(&lib_db::get(), id)
+    client_dao::delete(&mut lib_db::get_context(), id)
         .await
         .unwrap();
     nps_session::shutdown(id)
@@ -144,8 +144,8 @@ pub async fn delete(id: i64) {
 /// 修改可用状态
 #[PUT("/api/client/toggle_enable")]
 pub async fn toggle_enable(id: i64) {
-    let conn = lib_db::get();
-    let client = client_dao::select_one(&conn, id).await.unwrap();
+    let mut ctx = lib_db::get_context();
+    let client = client_dao::select_one(&mut ctx, id).await.unwrap();
     let to = if client.is_enabled {
         //关闭客户端
         nps_session::shutdown(id)
@@ -155,7 +155,7 @@ pub async fn toggle_enable(id: i64) {
     } else {
         true
     };
-    client_dao::toggle_enable(&conn, id, to)
+    client_dao::toggle_enable(&mut ctx, id, to)
         .await
         .unwrap();
 }

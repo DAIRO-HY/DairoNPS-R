@@ -21,7 +21,7 @@ pub async fn restart() {
 #[GET("/api/common/dropdown/{tag}")]
 pub async fn dropdown(tag: String) -> Vec<model::Dropdown> {
     let list = match tag.as_str() {
-        "client" => client_dao::select_all(&lib_db::get()).await
+        "client" => client_dao::select_all(&mut lib_db::get_context()).await
             .unwrap_or_default()
             .into_iter()
             .map(|item| model::Dropdown {
@@ -29,7 +29,7 @@ pub async fn dropdown(tag: String) -> Vec<model::Dropdown> {
                 value: item.id.to_string(),
             })
             .collect::<Vec<_>>(),
-        "channel" => channel_dao::select_all(&lib_db::get()).await
+        "channel" => channel_dao::select_all(&mut lib_db::get_context()).await
             .unwrap_or_default()
             .into_iter()
             .map(|item| model::Dropdown {

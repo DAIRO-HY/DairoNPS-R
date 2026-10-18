@@ -1,10 +1,14 @@
+use std::collections::HashMap;
 use hyperoute_codegen::{Embed, ParamNaming, StaticDir};
-use lib_source_gen::*;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-fn main() {
+#[tokio::main]
+async fn main() {
+
+    // 生成 DAO 相关的代码块
+    generate_dao().await;
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let src_dir = manifest_dir.join("src");
 
@@ -29,21 +33,31 @@ fn main() {
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("routes.rs");
     fs::write(&out_path, code).unwrap();
 
-    pollster::block_on(async {
-
-        //初始化数据库,这个数据用来支持sqlx宏编译检查sql语句的正确性，必须在编译阶段就初始化数据库，否则sqlx会报错
-        lib_db::init().await;
-
-        // 生成 DAO 相关的代码块
-        make_dao::make("sqlite://dairo-nps.sqlite?mode=rwc", "assets/mapper").await;
-    });
-
     // 追踪输入文件变化
     println!("cargo:rerun-if-changed=src/web/controller");
     println!("cargo:rerun-if-changed=src/web/filter");
     println!("cargo:rerun-if-changed=assets/resources/");
-    println!("cargo:rerun-if-changed=assets/sql/");
-    println!("cargo:rerun-if-changed=assets/mapper/");
-    println!("cargo:rerun-if-changed=dairo-nps.sqlite");
 
 }
+
+// 生成 DAO 相关的代码块
+async fn generate_dao() {
+
+    // -------------------------------------Dao自动生成------------------START
+
+    //初始化数据库,这个数据用来支持sqlx宏编译检查sql语句的正确性，必须在编译阶段就初始化数据库，否则sqlx会报错
+    lib_db::init("../data/dairo-nps.sqlite").await;
+
+    // 字段名 -> Rust类型 的覆盖规则(本项目自定义的字段命名约定)
+    let type_overrides = HashMap::from([]);
+
+    // 生成 DAO 相关的代码块
+    sqlx_dsl_dao::generate(lib_db::get(), "./assets/dsl", &type_overrides).await;
+
+    // -------------------------------------Dao自动生成------------------END
+
+    println!("cargo:rerun-if-changed=assets/ddl/");
+    println!("cargo:rerun-if-changed=assets/dsl/");
+    println!("cargo:rerun-if-changed=../data/dairo-nps.sqlite");
+}
+

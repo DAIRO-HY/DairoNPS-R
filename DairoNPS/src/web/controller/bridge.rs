@@ -14,10 +14,9 @@ use validator::Validate;
 /// 客户端列表
 #[GET("/api/bridge/list")]
 pub async fn list(value: String) -> Vec<BridgeList> {
-    let db = &lib_db::get();
     let now = time_util::current_millis();
     let nps_list = || async {
-        let client_id_name: HashMap<i64, String> = client_dao::select_all(db)
+        let client_id_name: HashMap<i64, String> = client_dao::select_all(&mut lib_db::get_context())
             .await
             .unwrap_or_default()
             .iter()
@@ -25,7 +24,7 @@ pub async fn list(value: String) -> Vec<BridgeList> {
             .collect();
 
         //隧道id对应的名称
-        let channel_id_name: HashMap<i64, String> = channel_dao::select_all(db)
+        let channel_id_name: HashMap<i64, String> = channel_dao::select_all(&mut lib_db::get_context())
             .await
             .unwrap_or_default()
             .iter()
@@ -66,7 +65,7 @@ pub async fn list(value: String) -> Vec<BridgeList> {
 
     let forward_list = || async {
         //端口转发id对应的名称
-        let forward_id_name: HashMap<i64, String> = forward_dao::select_all(db)
+        let forward_id_name: HashMap<i64, String> = forward_dao::select_all(&mut lib_db::get_context())
             .await
             .unwrap_or_default()
             .iter()

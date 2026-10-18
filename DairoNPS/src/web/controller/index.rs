@@ -22,7 +22,7 @@ pub async fn get_nps_status() -> Stream {
 // 页面初始化
 async fn get_data() -> model::NPSStatus {
     //系统配置
-    let system_config = system_config_dao::get(&lib_db::get()).await.unwrap_or_default();
+    let system_config = system_config_dao::get(&mut lib_db::get_context()).await.unwrap_or_default();
 
     //系统总流量
     let system_len = DataIOLen::from(system_config.in_len,system_config.out_len);
