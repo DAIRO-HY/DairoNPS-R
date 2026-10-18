@@ -1,4 +1,4 @@
-use hyperoute_codegen::{Embed, StaticDir};
+use hyperoute_codegen::{Embed, ParamNaming, StaticDir};
 use lib_source_gen::*;
 use std::env;
 use std::fs;
@@ -12,6 +12,8 @@ fn main() {
     let routes = hyperoute_codegen::Scanner::new()
         .dir(src_dir.join("web/controller"), "crate::web::controller")
         .dir(src_dir.join("web/filter"), "crate::web::filter")
+        // 普通参数同时接收驼峰（clientId）和Rust原名（client_id）
+        .param_naming(ParamNaming::CamelCase)
         .static_dir(
             StaticDir::new("/", manifest_dir.join("assets/resources"))
                 // 始终打包进二进制，发布时只有一个文件

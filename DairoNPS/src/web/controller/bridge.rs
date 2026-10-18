@@ -3,9 +3,7 @@ use crate::extension::number::NumberExtension;
 use crate::nps::TCPBridging;
 use lib_np_common::time_util;
 use crate::web::controller::bridge::model::BridgeList;
-use crate::web::model::SingleQuery;
 use crate::{forward, nps};
-use hyperoute_core::Query;
 use hyperoute_macro::{GET, PUT};
 use rand::distr::SampleString;
 use std::cmp::Ordering::{Equal, Greater, Less};
@@ -15,7 +13,7 @@ use validator::Validate;
 
 /// 客户端列表
 #[GET("/api/bridge/list")]
-pub async fn list(param: Query<SingleQuery<String>>) -> Vec<BridgeList> {
+pub async fn list(value: String) -> Vec<BridgeList> {
     let db = &lib_db::get();
     let now = time_util::current_millis();
     let nps_list = || async {
@@ -102,9 +100,9 @@ pub async fn list(param: Query<SingleQuery<String>>) -> Vec<BridgeList> {
     };
 
     let mut list = Vec::new();
-    if param.value == "nps" {
+    if value == "nps" {
         list.extend(nps_list().await);
-    } else if param.value == "forward" {
+    } else if value == "forward" {
         list.extend(forward_list().await);
     } else {
         list.extend(nps_list().await);
@@ -124,10 +122,10 @@ pub async fn list(param: Query<SingleQuery<String>>) -> Vec<BridgeList> {
 
 /// 强制中断
 #[PUT("/api/bridge/broken")]
-pub async fn broken(param: Query<SingleQuery<u64>>) {
-    if let Some(bridging) = nps::CHANNEL_BRIDGING_MAP.get(&param.value) {
+pub async fn broken(value: u64) {
+    if let Some(bridging) = nps::CHANNEL_BRIDGING_MAP.get(&value) {
         bridging.closer.notify_waiters();
-    } else if let Some(bridging) = forward::FORWARD_BRIDGING_MAP.get(&param.value) {
+    } else if let Some(bridging) = forward::FORWARD_BRIDGING_MAP.get(&value) {
         bridging.closer.notify_waiters();
     } else {
     }

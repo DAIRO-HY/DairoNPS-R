@@ -9,8 +9,8 @@ lib_db = { path = "../lib_db" }
 lib_source_gen = { path = "../lib_source_gen" }
 pollster = "0.3"
 
-#注解路由代码生成（0.0.4未发布前使用本地路径）
-hyperoute-codegen = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-codegen", version = "0.0.4" }
+#注解路由代码生成（0.0.5未发布前使用本地路径）
+hyperoute-codegen = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-codegen", version = "0.0.5" }
 
 [dependencies]
 lib_db = { path = "../lib_db" }
@@ -34,9 +34,9 @@ dashmap = "6"
 #rusqlite = { version = "0.38", features = ["bundled"] }
 rust-embed = "8" #嵌入文件
 
-#注解路由（0.0.4未发布前使用本地路径）
-hyperoute-core = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-core", version = "0.0.4" }
-hyperoute-macro = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-macro", version = "0.0.4" }
+#注解路由（0.0.5未发布前使用本地路径）
+hyperoute-core = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-core", version = "0.0.5" }
+hyperoute-macro = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-macro", version = "0.0.5" }
 hyper = { version = "1", features = ["full"] }
 http-body-util = "0.1"
 tokio-stream = "0.1"

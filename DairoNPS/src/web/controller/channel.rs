@@ -5,9 +5,7 @@ use crate::extension::number::NumberExtension;
 use crate::nps::nps_proxy::tcp_proxy;
 use crate::web::biz_error::BizError;
 use crate::web::form;
-use crate::web::model::IdQuery;
 use crate::{biz_error, biz_errorf, nps};
-use hyperoute_core::Query;
 use hyperoute_macro::{DELETE, GET, POST, PUT};
 use std::collections::HashMap;
 use validator::Validate;
@@ -50,10 +48,10 @@ pub async fn list() -> Vec<model::ChannelList> {
 
 /// 隧道详情获取API
 #[GET("/api/channel/detail")]
-pub async fn detail(query: Query<model::DetailQuery>) -> Result<model::ChannelDetail, BizError> {
+pub async fn detail(id: i64, client_id: i64) -> Result<model::ChannelDetail, BizError> {
     let conn = lib_db::get();
-    let detail = if query.id > 0 {
-        let Ok(channel) = channel_dao::select_one(&conn, query.id).await else {
+    let detail = if id > 0 {
+        let Ok(channel) = channel_dao::select_one(&conn, id).await else {
             return Err(biz_error!("未找到隧道信息"));
         };
         model::ChannelDetail {
@@ -80,7 +78,7 @@ pub async fn detail(query: Query<model::DetailQuery>) -> Result<model::ChannelDe
         }
     } else {
         model::ChannelDetail {
-            client_id: query.client_id,
+            client_id,
             mode: 1,
             ..model::ChannelDetail::default()
         }
@@ -157,13 +155,13 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
 
 /// 通过id删除一个隧道
 #[DELETE("/api/channel/delete")]
-pub async fn delete(query: Query<IdQuery>) -> Result<(), BizError> {
+pub async fn delete(id: i64) -> Result<(), BizError> {
     let conn = lib_db::get();
     let mut tx = conn.begin().await.unwrap();
-    if let Err(e) = channel_dao::delete(&mut *tx, query.id).await {
+    if let Err(e) = channel_dao::delete(&mut *tx, id).await {
         return Err(biz_errorf!("删除失败:{}", e));
     }
-    traffic_stats_dao::delete_by_channel_id(&mut *tx, query.id)
+    traffic_stats_dao::delete_by_channel_id(&mut *tx, id)
         .await
         .unwrap();
 
@@ -173,21 +171,21 @@ pub async fn delete(query: Query<IdQuery>) -> Result<(), BizError> {
 
     // //关闭代理监听
     // udp_proxy.ShutdownByChannel(channel.Id)
-    tcp_proxy::shutdown_by_channel(query.id).await;
+    tcp_proxy::shutdown_by_channel(id).await;
     Ok(())
 }
 
 /// 修改可用状态
 #[PUT("/api/channel/toggle_enable")]
-pub async fn toggle_enable(query: Query<IdQuery>) {
+pub async fn toggle_enable(id: i64) {
     let conn = lib_db::get();
-    let mut channel = channel_dao::select_one(&conn, query.id).await.unwrap();
-    channel_dao::toggle_enable(&conn, query.id, !channel.is_enabled)
+    let mut channel = channel_dao::select_one(&conn, id).await.unwrap();
+    channel_dao::toggle_enable(&conn, id, !channel.is_enabled)
         .await
         .unwrap();
     if channel.is_enabled {
         //关闭代理监听
-        tcp_proxy::shutdown_by_channel(query.id).await;
+        tcp_proxy::shutdown_by_channel(id).await;
     } else {
         if nps::CLIENT_LIVE_MAP
             .lock()
@@ -206,12 +204,6 @@ pub mod model {
     use serde::{Deserialize, Serialize};
     use validator::Validate;
 
-    #[derive(Debug, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct ChannelListQuery {
-        pub client_id: i64,
-    }
-
     #[derive(Debug, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ChannelList {
@@ -227,14 +219,6 @@ pub mod model {
         pub out_len: String,
         pub security_state: i64,
         pub error: Option<String>,
-    }
-
-    /// 隧道详细信息获取时的请求参数
-    #[derive(Debug, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct DetailQuery {
-        pub id: i64,
-        pub client_id: i64,
     }
 
     #[derive(Debug, Serialize, Default)]

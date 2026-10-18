@@ -3,9 +3,7 @@ use crate::dao::client_dao::Client;
 use crate::extension::number::NumberExtension;
 use crate::web::biz_error::BizError;
 use crate::web::form;
-use crate::web::model::IdQuery;
 use crate::{biz_error, nps};
-use hyperoute_core::Query;
 use hyperoute_macro::{DELETE, GET, POST, PUT};
 use rand::distr::{Alphanumeric, SampleString};
 use std::collections::HashSet;
@@ -43,9 +41,9 @@ pub async fn list() -> Vec<model::ClitentList> {
 
 /// 获取客户端详情API
 #[GET("/api/client/detail")]
-pub async fn detail(id: Query<IdQuery>) -> Result<model::ClientDetail, BizError> {
-    let detail = if id.id > 0 {
-        let Ok(client) = client_dao::select_one(&lib_db::get(), id.id).await else {
+pub async fn detail(id: i64) -> Result<model::ClientDetail, BizError> {
+    let detail = if id > 0 {
+        let Ok(client) = client_dao::select_one(&lib_db::get(), id).await else {
             return Err(biz_error!("未找到客户端信息"));
         };
         model::ClientDetail {
@@ -134,30 +132,30 @@ pub async fn edit(form: form::ClientEdit) -> Result<(), BizError> {
 
 /// 通过id删除一个客户端
 #[DELETE("/api/client/delete")]
-pub async fn delete(query: Query<IdQuery>) {
-    client_dao::delete(&lib_db::get(), query.id)
+pub async fn delete(id: i64) {
+    client_dao::delete(&lib_db::get(), id)
         .await
         .unwrap();
-    nps_session::shutdown(query.id)
+    nps_session::shutdown(id)
         .await
         .unwrap();
 }
 
 /// 修改可用状态
 #[PUT("/api/client/toggle_enable")]
-pub async fn toggle_enable(query: Query<IdQuery>) {
+pub async fn toggle_enable(id: i64) {
     let conn = lib_db::get();
-    let client = client_dao::select_one(&conn, query.id).await.unwrap();
+    let client = client_dao::select_one(&conn, id).await.unwrap();
     let to = if client.is_enabled {
         //关闭客户端
-        nps_session::shutdown(query.id)
+        nps_session::shutdown(id)
             .await
             .unwrap();
         false
     } else {
         true
     };
-    client_dao::toggle_enable(&conn, query.id, to)
+    client_dao::toggle_enable(&conn, id, to)
         .await
         .unwrap();
 }

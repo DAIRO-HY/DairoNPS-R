@@ -4,9 +4,7 @@ use crate::extension::number::NumberExtension;
 use crate::forward::tcp_accept;
 use crate::web::biz_error::BizError;
 use crate::web::form;
-use crate::web::model::IdQuery;
 use crate::{biz_error, biz_errorf};
-use hyperoute_core::Query;
 use hyperoute_macro::{DELETE, GET, POST, PUT};
 use std::collections::HashMap;
 use validator::Validate;
@@ -42,10 +40,10 @@ pub async fn list() -> Vec<model::ForwardList> {
 
 /// 隧道详情获取API
 #[GET("/api/forward/detail")]
-pub async fn detail(query: Query<IdQuery>) -> Result<model::ForwardDetail, BizError> {
+pub async fn detail(id: i64) -> Result<model::ForwardDetail, BizError> {
     let conn = lib_db::get();
-    let detail = if query.id > 0 {
-        let Ok(channel) = forward_dao::select_one(&conn, query.id).await else {
+    let detail = if id > 0 {
+        let Ok(channel) = forward_dao::select_one(&conn, id).await else {
             return Err(biz_error!("未找到隧道信息"));
         };
         model::ForwardDetail {
@@ -126,13 +124,13 @@ pub async fn edit(form: form::ForwardEdit) -> Result<(), BizError> {
 
 /// 通过id删除一个隧道
 #[DELETE("/api/forward/delete")]
-pub async fn delete(query: Query<IdQuery>) -> Result<(), BizError> {
+pub async fn delete(id: i64) -> Result<(), BizError> {
     let conn = lib_db::get();
     let mut tx = conn.begin().await.unwrap();
-    if let Err(e) = forward_dao::delete(&mut *tx, query.id).await {
+    if let Err(e) = forward_dao::delete(&mut *tx, id).await {
         return Err(biz_errorf!("删除失败:{}", e));
     }
-    traffic_stats_dao::delete_by_forward_id(&mut *tx, query.id)
+    traffic_stats_dao::delete_by_forward_id(&mut *tx, id)
         .await
         .unwrap();
 
@@ -142,21 +140,21 @@ pub async fn delete(query: Query<IdQuery>) -> Result<(), BizError> {
 
     // //关闭代理监听
     // udp_proxy.ShutdownByChannel(channel.Id)
-    // tcp_proxy_manager::shutdown_by_channel(query.id).await;
+    // tcp_proxy_manager::shutdown_by_channel(id).await;
     Ok(())
 }
 
 /// 修改可用状态
 #[PUT("/api/forward/toggle_enable")]
-pub async fn toggle_enable(query: Query<IdQuery>) {
+pub async fn toggle_enable(id: i64) {
     let conn = lib_db::get();
-    let mut forward = forward_dao::select_one(&conn, query.id).await.unwrap();
-    forward_dao::toggle_enable(&conn, query.id, !forward.is_enabled)
+    let mut forward = forward_dao::select_one(&conn, id).await.unwrap();
+    forward_dao::toggle_enable(&conn, id, !forward.is_enabled)
         .await
         .unwrap();
     if forward.is_enabled {
         //关闭代理监听
-        tcp_accept::shutdown(query.id).await;
+        tcp_accept::shutdown(id).await;
     } else {
         forward.is_enabled = true;
         tcp_accept::accept_forward(forward).await.unwrap();
