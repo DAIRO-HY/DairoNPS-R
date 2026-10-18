@@ -1,22 +1,20 @@
 use crate::dao::client_dao;
 use crate::dao::client_dao::Client;
-use crate::extension::ResponseEmptyExt;
 use crate::extension::number::NumberExtension;
-use crate::web::extract::{AppForm, AppQuery};
-use crate::web::router::IdQuery;
+use crate::web::biz_error::BizError;
+use crate::web::form;
+use crate::web::model::IdQuery;
 use crate::{biz_error, nps};
-use axum::{
-    Json,
-    extract::Query,
-    response::{IntoResponse, Response},
-};
+use hyperoute_core::Query;
+use hyperoute_macro::{DELETE, GET, POST, PUT};
 use rand::distr::{Alphanumeric, SampleString};
 use std::collections::HashSet;
 use validator::Validate;
 use crate::nps::nps_client::nps_session;
 
 /// 客户端列表
-pub async fn list() -> Response {
+#[GET("/api/client/list")]
+pub async fn list() -> Vec<model::ClitentList> {
     let online_client_set: HashSet<i64> = nps::CLIENT_LIVE_MAP
         .lock()
         .await
@@ -40,14 +38,15 @@ pub async fn list() -> Response {
             is_online: online_client_set.contains(&it.id),
         })
         .collect::<Vec<_>>();
-    Json(list).into_response()
+    list
 }
 
 /// 获取客户端详情API
-pub async fn detail(AppQuery(id): AppQuery<IdQuery>) -> Response {
+#[GET("/api/client/detail")]
+pub async fn detail(id: Query<IdQuery>) -> Result<model::ClientDetail, BizError> {
     let detail = if id.id > 0 {
         let Ok(client) = client_dao::select_one(&lib_db::get(), id.id).await else {
-            return biz_error!("未找到客户端信息");
+            return Err(biz_error!("未找到客户端信息"));
         };
         model::ClientDetail {
             id: client.id,
@@ -80,14 +79,15 @@ pub async fn detail(AppQuery(id): AppQuery<IdQuery>) -> Response {
             ..Default::default()
         }
     };
-    Json(detail).into_response()
+    Ok(detail)
 }
 
 // 提交表单API
-pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
+#[POST("/api/client/edit")]
+pub async fn edit(form: form::ClientEdit) -> Result<(), BizError> {
     if let Err(e) = form.validate() {
         //验证表单数据是否合法
-        return Response::field_errors(e);
+        return Err(BizError::fields(e));
     }
 
     let conn = lib_db::get();
@@ -100,7 +100,7 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
         if let Ok(it) = client_dao::select_one(&conn, form.id).await {
             it
         } else {
-            return biz_error!("未找到客户端信息");
+            return Err(biz_error!("未找到客户端信息"));
         }
     };
 
@@ -122,18 +122,19 @@ pub async fn edit(AppForm(form): AppForm<model::ClientEdit>) -> Response {
     if let Some(e) = err {
         let err_msg = e.to_string();
         if err_msg == "UNIQUE constraint failed: client.key" {
-            return Response::field_error("key", "该秘钥已被其他客户端使用，请换一个秘钥。");
+            return Err(BizError::field("key", "该秘钥已被其他客户端使用，请换一个秘钥。"));
         }
-        return biz_error!(e.to_string());
+        return Err(biz_error!(e.to_string()));
     }
 
     //通知关闭该客户端会话
     nps_session::shutdown(form.id).await.unwrap();
-    Response::empty()
+    Ok(())
 }
 
 /// 通过id删除一个客户端
-pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
+#[DELETE("/api/client/delete")]
+pub async fn delete(query: Query<IdQuery>) {
     client_dao::delete(&lib_db::get(), query.id)
         .await
         .unwrap();
@@ -143,7 +144,8 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) {
 }
 
 /// 修改可用状态
-pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
+#[PUT("/api/client/toggle_enable")]
+pub async fn toggle_enable(query: Query<IdQuery>) {
     let conn = lib_db::get();
     let client = client_dao::select_one(&conn, query.id).await.unwrap();
     let to = if client.is_enabled {
@@ -160,7 +162,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
         .unwrap();
 }
 
-mod model {
+pub mod model {
     use serde::{Deserialize, Serialize};
     use validator::Validate;
 
@@ -225,25 +227,4 @@ mod model {
         pub remark: Option<String>,
     }
 
-    // 客户端编辑信息
-    #[derive(Deserialize, Debug, Validate)]
-    #[serde(rename_all = "camelCase")]
-    pub struct ClientEdit {
-        // id
-        pub id: i64,
-
-        // 名称
-        #[validate(length(min = 1, max = 32, message = "名称不能为空;长度不能超过32位"))]
-        pub name: String,
-
-        // 乐观排他用的版本号
-        pub version: i64,
-
-        // 连接认证秘钥
-        #[validate(length(min = 1, max = 32, message = "认证秘钥不能为空;长度不能超过32位"))]
-        pub key: String,
-
-        // 一些备注信息,错误信息等
-        pub remark: Option<String>,
-    }
 }

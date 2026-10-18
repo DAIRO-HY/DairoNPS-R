@@ -20,8 +20,8 @@ pub static IS_NEED_RESTART: AtomicBool = AtomicBool::new(false);
 /// 标记是否正在重启
 pub static IS_RESTARTING: AtomicBool = AtomicBool::new(false);
 
-/// 标记是否是axum触发的退出
-pub static IS_AXUM_DROP: AtomicBool = AtomicBool::new(false);
+/// 标记Web服务监听是否已经退出
+pub static IS_WEB_DROP: AtomicBool = AtomicBool::new(false);
 
 /// 标记是否退出了NPS服务端监听
 pub static IS_NPS_SERVER_DROP: AtomicBool = AtomicBool::new(false);
@@ -44,8 +44,8 @@ pub async fn restart() {
             //等待所有隧道代理监听停止,否则可能导致下次监听同一端口失败
             continue;
         }
-        if !IS_AXUM_DROP.load(Ordering::Acquire) {
-            //等待axum触发的退出完成,否则可能导致下次监听同一端口失败
+        if !IS_WEB_DROP.load(Ordering::Acquire) {
+            //等待Web服务监听退出完成,否则可能导致下次监听同一端口失败
             continue;
         }
         if !IS_NPS_SERVER_DROP.load(Ordering::Acquire) {

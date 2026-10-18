@@ -1,10 +1,8 @@
 use crate::extension::string::StringExtension;
-use crate::extension::ResponseEmptyExt;
-use crate::web::extract::AppForm;
+use crate::web::biz_error::BizError;
 use crate::{biz_error, biz_errorf, web};
-use axum::response::{IntoResponse, Response};
-use axum_extra::extract::cookie::Cookie;
-use axum_extra::extract::CookieJar;
+use hyperoute_core::Raw;
+use hyperoute_macro::{DELETE, GET, POST};
 use lib_np_common::time_util;
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
@@ -15,7 +13,8 @@ use std::sync::Arc;
 use validator::Validate;
 
 /// 登录API
-pub async fn do_login(jar: CookieJar, AppForm(form): AppForm<LoginForm>) -> Response {
+#[POST("/api/login/do_login")]
+pub async fn do_login(form: LoginForm) -> Result<Raw, BizError> {
     let account_path = Path::new(web::ACCOUNT_PATH);
     if !fs::exists(account_path).unwrap() {
         //文件不存在
@@ -23,21 +22,21 @@ pub async fn do_login(jar: CookieJar, AppForm(form): AppForm<LoginForm>) -> Resp
         fs::write(&account_path, content.as_bytes()).unwrap();
     }
     if web::LOGIN_ERROR_COUNT.load(Ordering::Relaxed) > 10 {
-        return biz_error!("用户名或密码错误次数超过限制，请联系管理员。");
+        return Err(biz_error!("用户名或密码错误次数超过限制，请联系管理员。"));
     }
     if let Err(e) = form.validate() {
         //验证表单数据是否合法
-        return Response::field_errors(e);
+        return Err(BizError::fields(e));
     }
     let account_account = fs::read_to_string(&account_path).unwrap();
     let account: Vec<&str> = account_account.split("\n").collect();
     if account.len() != 2 {
-        return biz_errorf!("文件:{}内容不合法,请删除后再重试!", web::ACCOUNT_PATH);
+        return Err(biz_errorf!("文件:{}内容不合法,请删除后再重试!", web::ACCOUNT_PATH));
     }
 
     if form.name != account[0] || form.pwd.md5() != account[1] {
         web::LOGIN_ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
-        return biz_error!("用户名或密码错误");
+        return Err(biz_error!("用户名或密码错误"));
     }
 
     // 登录成功，重置错误次数
@@ -51,24 +50,18 @@ pub async fn do_login(jar: CookieJar, AppForm(form): AppForm<LoginForm>) -> Resp
     web::LAST_USE_TIME.store(time_util::current_millis(), Ordering::Relaxed);
     web::API_TOKEN.store(Arc::new(token.clone()));
 
-    // 写入 Cookie
-    let cookie = Cookie::build(("token", token))
-        .path("/") // 全站生效
-        .http_only(true) // 防止 JS 读取（安全）
-        //.secure(true)            // HTTPS 才建议开启
-        //.max_age(time::Duration::hours(1))
-        .build();
-
-    let jar = jar.add(cookie);
-    jar.into_response()
+    // 写入 Cookie，全站生效，HttpOnly防止 JS 读取（安全）
+    Ok(Raw::new("").header("set-cookie", format!("token={}; Path=/; HttpOnly", token)))
 }
 
 /// 退出登录
+#[DELETE("/api/login/logout")]
 pub async fn logout() {
     web::API_TOKEN.store(Arc::new(Default::default()));
 }
 
 /// 忘记密码
+#[GET("/api/login/forget")]
 pub async fn forget() -> String {
     let account_path = Path::new(web::ACCOUNT_PATH);
     if fs::exists(account_path).unwrap() {
@@ -83,11 +76,11 @@ pub async fn forget() -> String {
 pub struct LoginForm {
     //管理员登录名
     #[validate(length(min = 1, message = "用户名不能为空"))]
-    name: String,
+    pub name: String,
 
     //管理员登录密码
     #[validate(length(min = 1, message = "密码不能为空"))]
-    pwd: String,
+    pub pwd: String,
 }
 
 /// 登录状态信息结构体

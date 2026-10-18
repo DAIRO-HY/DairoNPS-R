@@ -1,36 +1,22 @@
 use crate::dao::system_config_dao;
-use crate::extension::ResponseEmptyExt;
 use crate::extension::number::NumberExtension;
+use crate::web::sse;
 use crate::{forward, nps};
-use axum::response::sse::{Event, Sse};
-use axum::response::{IntoResponse, Response};
-use futures::{Stream, TryFutureExt};
-use std::{convert::Infallible, time::Duration};
+use hyperoute_core::Stream;
+use hyperoute_macro::GET;
+use std::time::Duration;
 use std::sync::atomic::Ordering;
-use tokio_stream::StreamExt;
 use lib_np_common::data_io_len::DataIOLen;
 use crate::forward::forward_timer;
 use crate::nps::nps_timer;
 
-pub async fn index() -> &'static str {
-    "Hello, Index!"
-}
-pub async fn test() -> Response {
-    let data = get_data().await;
-    Response::json(data)
-}
-
 ///　获取系统运行状态
-pub async fn get_nps_status() -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let stream = tokio_stream::iter(0..).then(|i| async move {
-        if i > 0 {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
+#[GET("/api/index/nps_status")]
+pub async fn get_nps_status() -> Stream {
+    sse::interval(Duration::from_secs(1), || async {
         let data = get_data().await;
-        let json = serde_json::to_string(&data).unwrap();
-        Ok(Event::default().data(json))
-    });
-    Sse::new(stream)
+        serde_json::to_string(&data).unwrap()
+    })
 }
 
 // 页面初始化
@@ -101,7 +87,7 @@ async fn get_data() -> model::NPSStatus {
     }
 }
 
-mod model {
+pub mod model {
     use serde::{Deserialize, Serialize};
 
     ///NPS运行状态

@@ -1,21 +1,20 @@
 use crate::dao::channel_dao::Channel;
 use crate::dao::client_dao;
 use crate::dao::{channel_dao, traffic_stats_dao};
-use crate::extension::ResponseEmptyExt;
 use crate::extension::number::NumberExtension;
 use crate::nps::nps_proxy::tcp_proxy;
-use crate::web::extract::{AppForm, AppQuery};
-use crate::web::router::IdQuery;
+use crate::web::biz_error::BizError;
+use crate::web::form;
+use crate::web::model::IdQuery;
 use crate::{biz_error, biz_errorf, nps};
-use axum::{
-    Json,
-    response::{IntoResponse, Response},
-};
+use hyperoute_core::Query;
+use hyperoute_macro::{DELETE, GET, POST, PUT};
 use std::collections::HashMap;
 use validator::Validate;
 
 ///  隧道列表
-pub async fn list() -> Response {
+#[GET("/api/channel/list")]
+pub async fn list() -> Vec<model::ChannelList> {
     let conn = lib_db::get();
     let client_id_name_map = client_dao::select_all(&conn)
         .await
@@ -46,15 +45,16 @@ pub async fn list() -> Response {
             error: it.error,
         })
         .collect::<Vec<_>>();
-    Json(list).into_response()
+    list
 }
 
 /// 隧道详情获取API
-pub async fn detail(AppQuery(query): AppQuery<model::DetailQuery>) -> Response {
+#[GET("/api/channel/detail")]
+pub async fn detail(query: Query<model::DetailQuery>) -> Result<model::ChannelDetail, BizError> {
     let conn = lib_db::get();
     let detail = if query.id > 0 {
         let Ok(channel) = channel_dao::select_one(&conn, query.id).await else {
-            return biz_error!("未找到隧道信息");
+            return Err(biz_error!("未找到隧道信息"));
         };
         model::ChannelDetail {
             id: channel.id,
@@ -85,14 +85,15 @@ pub async fn detail(AppQuery(query): AppQuery<model::DetailQuery>) -> Response {
             ..model::ChannelDetail::default()
         }
     };
-    Json(detail).into_response()
+    Ok(detail)
 }
 
 // Edit 提交表单API
-pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
+#[POST("/api/channel/edit")]
+pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
     if let Err(e) = form.validate() {
         //验证表单数据是否合法
-        return Response::field_errors(e);
+        return Err(BizError::fields(e));
     }
     let conn = lib_db::get();
     let mut channel = if form.id == 0 {
@@ -104,7 +105,7 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
         if let Ok(it) = channel_dao::select_one(&conn, form.id).await {
             it
         } else {
-            return biz_error!("未找到隧道信息");
+            return Err(biz_error!("未找到隧道信息"));
         }
     };
 
@@ -120,7 +121,7 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
     channel.version = form.version;
 
     if channel.security_state == 1 && !channel.is_stats_traffic{
-        return biz_error!("加密传输模式必须开启流量统计");
+        return Err(biz_error!("加密传输模式必须开启流量统计"));
     }
 
     let mut err = None;
@@ -135,12 +136,12 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
     if let Some(e) = err {
         let err_msg = e.to_string();
         if err_msg == "UNIQUE constraint failed: channel.server_port" {
-            return Response::field_error(
+            return Err(BizError::field(
                 "serverPort",
                 "该服务器端口已被其他隧道占用，请换一个端口。",
-            );
+            ));
         }
-        return biz_error!(e.to_string());
+        return Err(biz_error!(e.to_string()));
     }
     if channel.is_enabled
         && nps::CLIENT_LIVE_MAP
@@ -151,15 +152,16 @@ pub async fn edit(AppForm(form): AppForm<model::ChannelEdit>) -> Response {
         //当前隧道有效并且当前客户端在线，则开启隧道监听
         tcp_proxy::ready_channel(channel).await.unwrap(); //开启隧道监听
     }
-    Response::empty()
+    Ok(())
 }
 
 /// 通过id删除一个隧道
-pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
+#[DELETE("/api/channel/delete")]
+pub async fn delete(query: Query<IdQuery>) -> Result<(), BizError> {
     let conn = lib_db::get();
     let mut tx = conn.begin().await.unwrap();
     if let Err(e) = channel_dao::delete(&mut *tx, query.id).await {
-        return biz_errorf!("删除失败:{}", e);
+        return Err(biz_errorf!("删除失败:{}", e));
     }
     traffic_stats_dao::delete_by_channel_id(&mut *tx, query.id)
         .await
@@ -172,11 +174,12 @@ pub async fn delete(AppQuery(query): AppQuery<IdQuery>) -> Response {
     // //关闭代理监听
     // udp_proxy.ShutdownByChannel(channel.Id)
     tcp_proxy::shutdown_by_channel(query.id).await;
-    Response::empty()
+    Ok(())
 }
 
 /// 修改可用状态
-pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
+#[PUT("/api/channel/toggle_enable")]
+pub async fn toggle_enable(query: Query<IdQuery>) {
     let conn = lib_db::get();
     let mut channel = channel_dao::select_one(&conn, query.id).await.unwrap();
     channel_dao::toggle_enable(&conn, query.id, !channel.is_enabled)
@@ -199,7 +202,7 @@ pub async fn toggle_enable(AppQuery(query): AppQuery<IdQuery>) {
     };
 }
 
-mod model {
+pub mod model {
     use serde::{Deserialize, Serialize};
     use validator::Validate;
 
@@ -258,24 +261,4 @@ mod model {
         pub version: i64,
     }
 
-    #[derive(Debug, Default, Serialize, Deserialize, Validate)]
-    #[serde(rename_all = "camelCase")]
-    pub struct ChannelEdit {
-        pub id: i64,
-        pub client_id: i64,
-
-        #[validate(length(min = 1, max = 32, message = "名称不能为空;长度不能超过32位"))]
-        pub name: String,
-        pub mode: i64,
-        pub server_port: i64,
-        pub target_port: String,
-        pub security_state: i64,
-
-        ///是否统计流量
-        pub is_stats_traffic: bool,
-        pub remark: Option<String>,
-
-        // 乐观排他用的版本号
-        pub version: i64,
-    }
 }

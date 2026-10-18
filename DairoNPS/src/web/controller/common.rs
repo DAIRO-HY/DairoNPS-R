@@ -1,30 +1,25 @@
-use axum::Json;
-use axum::{
-    Router,
-    extract::Path,
-    response::{IntoResponse, Response}
-};
-
 use crate::dao::{channel_dao, client_dao};
-use crate::web::extract::AppPath;
 use crate::application;
+use hyperoute_macro::{GET, PUT};
 
 /// 获取全局数据API
-pub async fn global() -> impl IntoResponse {
-    Json(model::GlobalData {
+#[GET("/api/common/global")]
+pub async fn global() -> model::GlobalData {
+    model::GlobalData {
         is_need_restart: application::IS_NEED_RESTART.load(std::sync::atomic::Ordering::Acquire),
         is_restarting: application::IS_RESTARTING.load(std::sync::atomic::Ordering::Acquire),
-    })
-    .into_response()
+    }
 }
 
 /// 获取全局数据API
+#[PUT("/api/common/restart")]
 pub async fn restart() {
     application::restart().await;
 }
 
 /// 这个模块定义了一个公共的控制器函数 `dropdown`，它根据路径参数 `tag` 的值来查询数据库中的不同表（如 `client` 或 `channel`），并返回一个包含标签和值的下拉列表数据结构。
-pub async fn dropdown(AppPath(tag): AppPath<String>) -> impl IntoResponse {
+#[GET("/api/common/dropdown/{tag}")]
+pub async fn dropdown(tag: String) -> Vec<model::Dropdown> {
     let list = match tag.as_str() {
         "client" => client_dao::select_all(&lib_db::get()).await
             .unwrap_or_default()
@@ -44,10 +39,10 @@ pub async fn dropdown(AppPath(tag): AppPath<String>) -> impl IntoResponse {
             .collect::<Vec<_>>(),
         _ => Vec::default(),
     };
-    Json(list)
+    list
 }
 
-mod model {
+pub mod model {
     use serde::Serialize;
 
     #[derive(Debug, Serialize)]

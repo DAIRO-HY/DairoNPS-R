@@ -1,32 +1,19 @@
 use crate::dao::traffic_stats_dao;
-use crate::extension::ResponseEmptyExt;
 use crate::extension::number::{Div, NumberExtension};
-use crate::web::extract::AppQuery;
+use crate::web::sse;
 use crate::{forward, nps};
-use axum::response::sse::{Event, Sse};
-use axum::response::{IntoResponse, Response};
 use chrono::DateTime;
-use futures::{Stream, TryFutureExt};
+use hyperoute_core::{Query, Stream};
+use hyperoute_macro::GET;
 use itertools::Itertools;
-use std::{convert::Infallible, time::Duration};
-use tokio_stream::StreamExt;
+use std::time::Duration;
 use lib_np_common::data_io_len::DataIOLen;
 
 ///　实时获取当前流量大小
-pub async fn real_len(
-    AppQuery(param): AppQuery<model::ChartParam>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let stream = tokio_stream::iter(0..).then(move |i| {
-        let param = param.clone();
-        async move {
-            if i > 0 {
-                tokio::time::sleep(Duration::from_secs(1)).await;
-            }
-            let data = get_real_len(param).await;
-            Ok(Event::default().data(data))
-        }
-    });
-    Sse::new(stream)
+#[GET("/api/chart/real_len")]
+pub async fn real_len(param: Query<model::ChartParam>) -> Stream {
+    let param = param.into_inner();
+    sse::interval(Duration::from_secs(1), move || get_real_len(param.clone()))
 }
 
 /// 获取当前流量数据
@@ -74,7 +61,8 @@ async fn get_real_len(param: model::ChartParam) -> String {
 }
 
 ///　获取指定时间段的流量数据
-pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Response {
+#[GET("/api/chart/data_len")]
+pub async fn data_len(param: Query<model::DataLenQuery>) -> model::DataLenInfo {
     //时间间隔
     let time_jg = param.end_time - param.start_time;
 
@@ -216,15 +204,15 @@ pub async fn data_len(AppQuery(param): AppQuery<model::DataLenQuery>) -> Respons
             _ => {}
         }
     }
-    Response::json(model::DataLenInfo {
+    model::DataLenInfo {
         labels,
         in_lens,
         out_lens,
         unit: unit.to_string(),
-    })
+    }
 }
 
-mod model {
+pub mod model {
     use serde::Deserialize;
     use serde::Serialize;
 

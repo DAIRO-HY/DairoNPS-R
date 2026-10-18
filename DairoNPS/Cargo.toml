@@ -9,13 +9,16 @@ lib_db = { path = "../lib_db" }
 lib_source_gen = { path = "../lib_source_gen" }
 pollster = "0.3"
 
+#注解路由代码生成（0.0.4未发布前使用本地路径）
+hyperoute-codegen = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-codegen", version = "0.0.4" }
+
 [dependencies]
 lib_db = { path = "../lib_db" }
 lib_source_gen = { path = "../lib_source_gen" }
 lib_np_common = { path = "../lib_np_common" }
 md5 = "0.8"
 thiserror = "2"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["full"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros"] }
 
 #用来解析启动参数
@@ -30,16 +33,13 @@ bytes = "1"
 dashmap = "6"
 #rusqlite = { version = "0.38", features = ["bundled"] }
 rust-embed = "8" #嵌入文件
-axum = { version = "0.8", features = [
-    "macros",      # 可选：便捷宏（如 routing 宏）
-    "http1",       # 一般需要
-    "http2",       # 若要 h2
-    "json",        # 用到 Json 提取/响应
-    "multipart",   # 用到 Multipart
-] }
+
+#注解路由（0.0.4未发布前使用本地路径）
+hyperoute-core = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-core", version = "0.0.4" }
+hyperoute-macro = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-macro", version = "0.0.4" }
+hyper = { version = "1", features = ["full"] }
+http-body-util = "0.1"
 tokio-stream = "0.1"
-axum-extra = { version = "0.12", features = ["cookie"] }
-futures = "0.3"
 
 #表单验证
 validator = { version = "0.20", features = ["derive"] }

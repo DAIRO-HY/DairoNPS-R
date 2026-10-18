@@ -1,16 +1,12 @@
 use crate::dao::{channel_dao, client_dao, forward_dao};
-use crate::extension::ResponseEmptyExt;
 use crate::extension::number::NumberExtension;
 use crate::nps::TCPBridging;
 use lib_np_common::time_util;
 use crate::web::controller::bridge::model::BridgeList;
-use crate::web::extract::AppQuery;
-use crate::web::router::SingleQuery;
+use crate::web::model::SingleQuery;
 use crate::{forward, nps};
-use axum::{
-    Json,
-    response::{IntoResponse, Response},
-};
+use hyperoute_core::Query;
+use hyperoute_macro::{GET, PUT};
 use rand::distr::SampleString;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::collections::HashMap;
@@ -18,7 +14,8 @@ use std::sync::atomic::Ordering;
 use validator::Validate;
 
 /// 客户端列表
-pub async fn list(AppQuery(param): AppQuery<SingleQuery<String>>) -> Response {
+#[GET("/api/bridge/list")]
+pub async fn list(param: Query<SingleQuery<String>>) -> Vec<BridgeList> {
     let db = &lib_db::get();
     let now = time_util::current_millis();
     let nps_list = || async {
@@ -122,21 +119,21 @@ pub async fn list(AppQuery(param): AppQuery<SingleQuery<String>>) -> Response {
             Equal
         }
     });
-    Json(list).into_response()
+    list
 }
 
 /// 强制中断
-pub async fn broken(AppQuery(param): AppQuery<SingleQuery<u64>>) -> Response {
+#[PUT("/api/bridge/broken")]
+pub async fn broken(param: Query<SingleQuery<u64>>) {
     if let Some(bridging) = nps::CHANNEL_BRIDGING_MAP.get(&param.value) {
         bridging.closer.notify_waiters();
     } else if let Some(bridging) = forward::FORWARD_BRIDGING_MAP.get(&param.value) {
         bridging.closer.notify_waiters();
     } else {
     }
-    Response::empty()
 }
 
-mod model {
+pub mod model {
     use serde::{Deserialize, Serialize};
     use validator::Validate;
 
