@@ -16,6 +16,9 @@ pub async fn auth_login(req: Request, next: Next) -> Result<Response, BizError> 
     let Some(token) = get_cookie(&req, "token") else {
         return Err(BizError::unauthorized());
     };
+    if token.is_empty() {//token为空,说明没有登录
+        return Err(BizError::unauthorized());
+    }
     if token != web::API_TOKEN.load().as_str() {
         return Err(BizError::unauthorized());
     }
