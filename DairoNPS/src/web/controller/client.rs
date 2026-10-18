@@ -107,7 +107,6 @@ pub async fn edit(form: form::ClientEdit) -> Result<(), BizError> {
     client.version = form.version; //乐观排他用的版本号
     client.key = form.key; //连接认证秘钥
     client.remark = form.remark; //一些备注信息,错误信息等
-    client.is_enabled = true; //启用状态
 
     let mut err = None;
     if form.id == 0 {
