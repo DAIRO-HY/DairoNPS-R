@@ -141,6 +141,9 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
     if let Some(e) = err {
         return Err(biz_error!(e.to_string()));
     }
+
+    //先关闭正在运行的TCP监听,否则隧道从TCP改成其他模式时,原来的TCP监听会一直存在
+    tcp_proxy::shutdown_by_channel(channel.id).await;
     if channel.is_enabled
         && nps::CLIENT_LIVE_MAP
             .lock()
@@ -148,7 +151,7 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
             .contains_key(&channel.client_id)
     {
         //当前隧道有效并且当前客户端在线，则开启隧道监听
-        tcp_proxy::ready_channel(channel); //开启隧道监听
+        ready_channel(channel);
     }
     Ok(())
 }
@@ -201,9 +204,20 @@ pub async fn toggle_enable(id: i64) {
             channel.is_enabled = true;
 
             //如果当前客户端在线
-            tcp_proxy::ready_channel(channel); //开启隧道监听
+            ready_channel(channel);
         }
     };
+}
+
+/// 按隧道模式开启隧道监听
+fn ready_channel(channel: Channel) {
+    match channel.mode {
+        //TCP隧道
+        1 => tcp_proxy::ready_channel(channel),
+
+        //UDP隧道暂未实现
+        _ => {}
+    }
 }
 
 pub mod model {
