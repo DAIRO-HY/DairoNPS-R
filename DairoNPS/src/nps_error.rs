@@ -20,6 +20,9 @@ pub enum NpsError {
     #[error("无效的Header")]
     InvalidHeader(String),
 
+    #[error("读取数据超时")]
+    TimeoutError,
+
     #[error("其他错误")]
     OtherError(&'static str),
 }
@@ -35,5 +38,11 @@ impl From<std::io::Error> for NpsError {
 impl From<sqlx::Error> for NpsError {
     fn from(err: sqlx::Error) -> Self {
         NpsError::SqlxError(err)
+    }
+}
+
+impl From<tokio::time::error::Elapsed> for NpsError {
+    fn from(_: tokio::time::error::Elapsed) -> Self {
+        NpsError::TimeoutError
     }
 }

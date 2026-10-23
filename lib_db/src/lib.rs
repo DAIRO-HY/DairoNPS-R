@@ -91,7 +91,6 @@ async fn upgrade() -> Result<(), Box<dyn Error>> {
 // 创建表(按外键依赖顺序排列)
 async fn create_table(ctx: &mut DbContext) -> Result<(), Box<dyn Error>> {
     for sql_file in [
-        "xxx.sql",
         "client.sql",
         "channel.sql",
         "traffic_stats.sql",

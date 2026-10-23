@@ -13,6 +13,10 @@ use std::sync::atomic::Ordering;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
+use tokio::time::{timeout, Duration};
+
+/// 握手阶段读取数据的超时时间,避免恶意连接只连不发,一直占用资源
+pub const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(3);
 
 // NPS模块开启
 pub fn ready() {
@@ -67,11 +71,8 @@ async fn start() -> Result<(), NpsError> {
  * @param socketClient 与客户端的连接
  */
 async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<(), NpsError> {
-    //读取连接的第一个数据,设置超时,避免恶意连接
-    // tcp.SetReadDeadline(time.Now().Add(3 * time.Second))
-
-    //读取第一个标记字节,通过该自己判断该连接类型
-    let flag = tcp_stream.read_u8().await?;
+    //读取第一个标记字节,通过该自己判断该连接类型(设置超时,避免恶意连接)
+    let flag = timeout(HANDSHAKE_TIMEOUT, tcp_stream.read_u8()).await??;
     // println!("接收到客户端连接请求,标记:{}", flag);
     match flag {
         //标记该连接为:服务器端往客户端发送指令的连接
@@ -89,10 +90,15 @@ async fn handle_accept(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<()
 
 // 验证客户端回话
 async fn validate_session(mut tcp_stream: TcpStream, addr: SocketAddr) -> Result<(), NpsError> {
-    //得到头部部分数据长度
-    let info_len = tcp_stream.read_u8().await?;
-    let mut header_data = vec![0u8; info_len as usize];
-    tcp_stream.read_exact(&mut header_data).await?;
+    //读取头部数据(设置超时,避免恶意连接)
+    let header_data = timeout(HANDSHAKE_TIMEOUT, async {
+        //得到头部部分数据长度
+        let info_len = tcp_stream.read_u8().await?;
+        let mut header_data = vec![0u8; info_len as usize];
+        tcp_stream.read_exact(&mut header_data).await?;
+        Ok::<_, std::io::Error>(header_data)
+    })
+    .await??;
     let header = String::from_utf8_lossy(&header_data).into_owned();
 
     //客户端key|版本号

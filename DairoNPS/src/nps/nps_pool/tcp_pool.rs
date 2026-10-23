@@ -1,3 +1,4 @@
+use crate::nps::nps_client;
 use crate::nps::nps_client::nps_session;
 use crate::nps_error::NpsError;
 use crate::{application, nps};
@@ -24,7 +25,8 @@ pub async fn get_pool_count(client_id: &i64) -> usize {
 
 // 添加TCP连接池
 pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
-    let client_id = tcp.read_i64().await?;
+    //读取客户端ID(设置超时,避免恶意连接)
+    let client_id = tokio::time::timeout(nps_client::HANDSHAKE_TIMEOUT, tcp.read_i64()).await??;
     let mut client_live_map = nps::CLIENT_LIVE_MAP.lock().await;
 
     //得到客户端连接池列表
