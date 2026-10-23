@@ -7,7 +7,7 @@ use std::sync::LazyLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
-use lib_np_common::data_io_len::DataIOLen;
+use lib_np_common::data_io_len::{DataIOLen, PreDataIOLen};
 use lib_np_common::time_util;
 
 /// 准备用来存入数据库的数据缓存，避免频繁操作数据库
@@ -23,7 +23,7 @@ pub fn init() {
 /// 统计端口转发数据总量
 async fn collect_data_len() {
     //上一次统计到的隧道数据长度
-    let mut pre_len_map: HashMap<i64, DataIOLen> = HashMap::new();
+    let mut pre_len_map: HashMap<i64, PreDataIOLen> = HashMap::new();
 
     // 记录距离上次统计间隔时间
     let mut pre_insert_time: u64 = 0;
@@ -40,7 +40,7 @@ async fn collect_data_len() {
 
 /// 收集流量数据
 async fn collect_data(
-    pre_len_map: &mut HashMap<i64, DataIOLen>,
+    pre_len_map: &mut HashMap<i64, PreDataIOLen>,
     pre_insert_time: &mut u64,
 ) -> Result<(), sqlx::Error> {
     let mut insert_cache_list = INSERT_CACHE_LIST.lock().await;
@@ -50,22 +50,22 @@ async fn collect_data(
     let now = time_util::current_secs() as i64;
     let forward_live_map = forward::FORWARD_LIVE_MAP.lock().await;
     for (forward_id, forward_live) in forward_live_map.iter() {
-        let mut pre_len = match pre_len_map.get_mut(forward_id) {
-            Some(it) => it,
-            None => {
-                //如果该隧道不存在，则添加
-                pre_len_map.insert(*forward_id, DataIOLen::default());
-                pre_len_map.get_mut(forward_id).unwrap()
-            }
-        };
-        if *pre_len == forward_live.data_len.load() {
+        let pre = pre_len_map
+            .entry(*forward_id)
+            .or_insert_with(|| PreDataIOLen::new(&forward_live.data_len, &forward_live.start_len));
+        if !pre.data_len.is_same(&forward_live.data_len) {
+            //监听重启过(编辑/切换),从本次监听的起点开始统计,否则会和上次监听的数据相减
+            *pre = PreDataIOLen::new(&forward_live.data_len, &forward_live.start_len);
+        }
+        let pre_len = &mut pre.len;
+
+        //每隔STATS_INTERVAL毫秒统计一次数据总量
+        let current_data_io = forward_live.data_len.load();
+        if *pre_len == current_data_io {
             //如果数据总量没有变化，跳过
             // println!("-->数据总量没有变化，跳过");
             continue;
         }
-
-        //每隔STATS_INTERVAL毫秒统计一次数据总量
-        let current_data_io = forward_live.data_len.load();
         insert_cache_list.push(TrafficStats {
             forward_id: *forward_id,
             client_id: 0,
@@ -78,6 +78,9 @@ async fn collect_data(
         //更新上次统计数量
         *pre_len = current_data_io;
     }
+
+    //移除已经停止监听的端口转发
+    pre_len_map.retain(|forward_id, _| forward_live_map.contains_key(forward_id));
     drop(forward_live_map);
     if *pre_insert_time > application::ARGS.data_collect_insert_interval {
         let mut ctx = lib_db::get_context();
@@ -89,7 +92,17 @@ async fn collect_data(
             }
 
             //-------------------------------------统计端口转发流量------------------------------------------
-            for (forward_id, data_len) in pre_len_map {
+            //按端口转发对应的本次变化数据大小
+            let forward_2_len = insert_cache_list
+                .iter()
+                .into_grouping_map_by(|it| it.forward_id)
+                .fold(DataIOLen::default(), |pre, _, it| {
+                    DataIOLen::from(
+                        pre.in_len + it.in_len as u64,
+                        pre.out_len + it.out_len as u64,
+                    )
+                });
+            for (forward_id, data_len) in &forward_2_len {
                 forward_dao::set_data_len(
                     &mut ctx,
                     *forward_id,

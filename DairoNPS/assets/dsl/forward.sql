@@ -13,12 +13,12 @@ update forward set is_enabled = :is_enabled where id = :id;
 
 -- ------------------------------
 
--- 同步入出网流量
+-- 累加入出网流量(参数为本次增量)
 -- @name set_data_len
 -- @param id:i64
 -- @param in_len:i64
 -- @param out_len:i64
-update forward set in_len = :in_len, out_len = :out_len where id = :id;
+update forward set in_len = in_len + :in_len, out_len = out_len + :out_len where id = :id;
 
 -- ------------------------------
 

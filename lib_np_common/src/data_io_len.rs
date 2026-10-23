@@ -64,6 +64,11 @@ impl AtomicDataIOLen {
         self.out_len.load(Ordering::Relaxed)
     }
 
+    /// 判断是否为同一个计数器实例(比较的是实例本身,而不是数值)
+    pub fn is_same(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.in_len, &other.in_len)
+    }
+
     // 获取当前出站流量总和
     pub fn load(&self) -> DataIOLen {
         DataIOLen {
@@ -102,6 +107,25 @@ impl Add for DataIOLen {
         DataIOLen {
             in_len: self.in_len + other.in_len,
             out_len: self.out_len + other.out_len,
+        }
+    }
+}
+
+/// 统计任务记录的上次统计信息
+#[derive(Clone, Debug)]
+pub struct PreDataIOLen {
+    /// 对应的监听计数器实例,用来判断监听是否重启过
+    pub data_len: AtomicDataIOLen,
+
+    /// 上次统计到的数据长度
+    pub len: DataIOLen,
+}
+impl PreDataIOLen {
+    /// 从监听计数器创建,上次统计值为监听开始时的起点
+    pub fn new(data_len: &AtomicDataIOLen, start_len: &DataIOLen) -> Self {
+        Self {
+            data_len: data_len.clone(),
+            len: start_len.clone(),
         }
     }
 }

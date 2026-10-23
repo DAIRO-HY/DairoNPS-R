@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, Notify};
-use lib_np_common::data_io_len::AtomicDataIOLen;
+use lib_np_common::data_io_len::{AtomicDataIOLen, DataIOLen};
 
 /// 客户端连接池
 pub static CLIENT_LIVE_MAP: LazyLock<Mutex<HashMap<i64, ClientLive>>> =
@@ -37,6 +37,9 @@ pub struct ChannelLive {
 
     /// 当前流量总和
     pub data_len: AtomicDataIOLen,
+
+    /// 监听开始时的流量总和(统计任务以此为起点计算增量)
+    pub start_len: DataIOLen,
 
     /// 关闭通知
     pub closer: Arc<Notify>,

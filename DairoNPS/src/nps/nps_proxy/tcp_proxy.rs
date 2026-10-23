@@ -7,7 +7,7 @@ use crate::{application, nps};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use tokio::{net::TcpListener, select, sync::Notify};
-use lib_np_common::data_io_len::AtomicDataIOLen;
+use lib_np_common::data_io_len::{AtomicDataIOLen, DataIOLen};
 
 // 开始客户端的所有监听
 pub async fn ready_client(client_id: i64) -> Result<(), NpsError> {
@@ -49,6 +49,7 @@ async fn spawn_start(channel: Channel) {
         nps::ChannelLive {
             client_id,
             data_len: data_len.clone(),
+            start_len: DataIOLen::from(channel.in_len, channel.out_len),
             closer: channel_closer.clone(),
             bridge_count: bridge_count.clone(),
         },

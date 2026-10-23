@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 use std::sync::atomic::{AtomicU64, AtomicUsize};
 use tokio::sync::{Mutex, Notify};
-use lib_np_common::data_io_len::AtomicDataIOLen;
+use lib_np_common::data_io_len::{AtomicDataIOLen, DataIOLen};
 
 pub mod tcp_accept;
 pub mod tcp_bridge;
@@ -22,6 +22,9 @@ pub static FORWARD_BRIDGING_MAP: LazyLock<DashMap<u64, TCPBridging>> =
 pub struct ForwardLive {
     /// 当前流量总和
     pub data_len: AtomicDataIOLen,
+
+    /// 监听开始时的流量总和(统计任务以此为起点计算增量)
+    pub start_len: DataIOLen,
 
     /// 关闭通知
     pub closer: Arc<Notify>,
