@@ -1,10 +1,10 @@
 use rust_embed::RustEmbed;
 use sqlx::sqlite::SqlitePoolOptions;
-use sqlx::{Pool, Row, Sqlite, SqlitePool, Transaction, TypeInfo, ValueRef};
+use sqlx::SqlitePool;
+use sqlx_context::DbContext;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use sqlx_context::DbContext;
 
 #[derive(RustEmbed)]
 #[folder = "../DairoNPS/assets/ddl/"]

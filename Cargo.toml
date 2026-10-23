@@ -1,4 +1,4 @@
 [workspace]
-members = ["DairoNPS", "DairoNPC", "lib_np_common", "lib_npc", "lib_source_gen", "lib_db", "lib_npc_ios", "lib_npc_android"]
+members = ["DairoNPS", "DairoNPC", "lib_np_common", "lib_npc", "lib_db", "lib_npc_ios", "lib_npc_android"]
 #edition 2024的resolver:构建依赖(build.rs)与运行依赖的feature互不合并
 resolver = "3"

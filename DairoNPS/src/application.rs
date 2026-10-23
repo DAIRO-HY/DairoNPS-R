@@ -28,7 +28,7 @@ pub static IS_WEB_DROP: AtomicBool = AtomicBool::new(false);
 pub static IS_NPS_SERVER_DROP: AtomicBool = AtomicBool::new(false);
 
 /// 用来接收关闭通知的全局异步通知器
-pub static ARGS: LazyLock<Argument> = LazyLock::new(|| Argument::try_parse().unwrap());
+pub static ARGS: LazyLock<Argument> = LazyLock::new(|| Argument::parse());
 
 /// 开发时使用和编译期相同的数据目录(由build.rs注入)
 #[cfg(debug_assertions)]
@@ -75,7 +75,7 @@ pub async fn restart() {
     println!("准备重启...");
     let exe = env::current_exe().expect("获取程序路径失败");
     let mut args: Vec<String> = env::args().skip(1).collect();
-    let arg = Argument::try_parse().unwrap();
+    let arg = Argument::parse();
     if !arg.is_restart_mode {
         //防止重复添加重启参数
         args.push("--is-restart-mode".to_string());
