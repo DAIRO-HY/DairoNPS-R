@@ -24,13 +24,15 @@ pub async fn auth_login(req: Request, next: Next) -> Result<Response, BizError> 
     }
     let now = time_util::current_millis();
 
+    //登录/使用时间可能是其他请求在取now之后写入的(比now大),直接相减会溢出,所以用saturating_sub
+
     //验证已经登录时间
-    if now - web::LOGIN_TIME.load(Ordering::Relaxed) > web::MAX_LOGIN_TIME {
+    if now.saturating_sub(web::LOGIN_TIME.load(Ordering::Relaxed)) > web::MAX_LOGIN_TIME {
         return Err(BizError::unauthorized());
     }
 
     //验证Session时间
-    if now - web::LAST_USE_TIME.load(Ordering::Relaxed) > web::LOGIN_SESSION_TIME {
+    if now.saturating_sub(web::LAST_USE_TIME.load(Ordering::Relaxed)) > web::LOGIN_SESSION_TIME {
         return Err(BizError::unauthorized());
     }
 

@@ -57,8 +57,8 @@ pub async fn list(value: String) -> Vec<BridgeList> {
                 ip: it.ip.clone(),
                 in_len: it.data_len.load_in().data_size(),
                 out_len: it.data_len.load_out().data_size(),
-                alive_time: (now - it.create_time).time_format(),
-                idle_time: (now - it.last_rw_time.load(Ordering::Relaxed)).time_format(),
+                alive_time: now.saturating_sub(it.create_time).time_format(),
+                idle_time: now.saturating_sub(it.last_rw_time.load(Ordering::Relaxed)).time_format(),
             })
             .collect::<Vec<_>>()
     };
@@ -92,8 +92,8 @@ pub async fn list(value: String) -> Vec<BridgeList> {
                 ip: it.ip.clone(),
                 in_len: it.data_len.load_in().data_size(),
                 out_len: it.data_len.load_out().data_size(),
-                alive_time: (now - it.create_time).time_format(),
-                idle_time: (now - it.last_rw_time.load(Ordering::Relaxed)).time_format(),
+                alive_time: now.saturating_sub(it.create_time).time_format(),
+                idle_time: now.saturating_sub(it.last_rw_time.load(Ordering::Relaxed)).time_format(),
             })
             .collect::<Vec<_>>()
     };

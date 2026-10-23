@@ -180,7 +180,8 @@ async fn close_not_heart_client() {
             .await
             .iter()
             .filter_map(|(client_id, it)| -> Option<i64> {
-                if (now - it.heart_time.load(Ordering::Relaxed)) > application::HEART_TIME * 2 {
+                //心跳时间可能是在取now之后写入的(比now大),直接相减会溢出,所以用saturating_sub
+                if now.saturating_sub(it.heart_time.load(Ordering::Relaxed)) > application::HEART_TIME * 2 {
                     //指定时间内没有心跳
                     Some(client_id.clone())
                 } else {
@@ -206,7 +207,8 @@ async fn tcp_pool_timeout_check() {
         for (client_id, client_live) in client_map.iter_mut() {
             client_live.tcp_pool.retain_mut(|it| {
                 //连接池超过指定时间,关闭连接
-                if now - it.create_time > application::ARGS.recycle_pool_time_out {
+                //连接可能是在取now之后加入连接池的(创建时间比now大),直接相减会溢出,所以用saturating_sub
+                if now.saturating_sub(it.create_time) > application::ARGS.recycle_pool_time_out {
                     //连接池超过指定时间,关闭连接
                     return false;
                 }
@@ -241,7 +243,7 @@ async fn delete_expired_traffic_stats() {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let target_date = now - application::ARGS.traffic_stats_expired;
+        let target_date = now.saturating_sub(application::ARGS.traffic_stats_expired);
         let _ = traffic_stats_dao::delete_expired(&mut lib_db::get_context(),target_date as i64).await;
     }
 }
