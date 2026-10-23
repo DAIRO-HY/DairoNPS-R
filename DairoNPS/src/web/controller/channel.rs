@@ -54,10 +54,14 @@ pub async fn detail(id: i64, client_id: i64) -> Result<model::ChannelDetail, Biz
         let Ok(channel) = channel_dao::select_one(&mut ctx, id).await else {
             return Err(biz_error!("未找到隧道信息"));
         };
+
+        let client = client_dao::select_one(&mut ctx, channel.client_id)
+            .await
+            .unwrap_or_default();
         model::ChannelDetail {
             id: channel.id,
             client_id: channel.client_id,
-            client_name: "待实现".to_string(), //client_dao::select_one(&mut ctx, client.client_id).unwrap_or(Client::default()).name,
+            client_name: client.name,
             name: channel.name,
             mode: channel.mode,
             server_port: channel.server_port,
@@ -76,13 +80,25 @@ pub async fn detail(id: i64, client_id: i64) -> Result<model::ChannelDetail, Biz
             version: channel.version,
         }
     } else {
+        let client = client_dao::select_one(&mut ctx, client_id)
+            .await
+            .unwrap_or_default();
         model::ChannelDetail {
             client_id,
+            client_name: client.name,
             mode: 1,
             ..model::ChannelDetail::default()
         }
     };
     Ok(detail)
+}
+
+/// 获取客户端名称,客户端不存在时返回空字符串
+async fn select_client_name(ctx: &mut sqlx_context::DbContext, client_id: i64) -> String {
+    client_dao::select_one(ctx, client_id)
+        .await
+        .map(|it| it.name)
+        .unwrap_or_default()
 }
 
 // Edit 提交表单API
@@ -255,5 +271,4 @@ pub mod model {
         // 乐观排他用的版本号
         pub version: i64,
     }
-
 }
