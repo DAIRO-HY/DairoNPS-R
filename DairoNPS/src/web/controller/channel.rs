@@ -156,6 +156,14 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
 /// 通过id删除一个隧道
 #[DELETE("/api/channel/delete")]
 pub async fn delete(id: i64) -> Result<(), BizError> {
+    //关闭隧道监听(先关监听,统计任务就不会再产生这个隧道的新数据)
+    tcp_proxy::shutdown_by_channel(id).await;
+
+    //移除还没写入数据库的流量统计缓存,否则删除后还会写入孤儿数据
+    nps::nps_timer::INSERT_CACHE_LIST
+        .lock()
+        .await
+        .retain(|it| it.channel_id != id);
     let mut ctx = lib_db::get_context();
     ctx.begin().await.unwrap();
     let rs = async {
@@ -170,11 +178,6 @@ pub async fn delete(id: i64) -> Result<(), BizError> {
 
     //提交事务
     let _ = ctx.commit().await;
-    drop(ctx);
-
-    // //关闭代理监听
-    // udp_proxy.ShutdownByChannel(channel.Id)
-    tcp_proxy::shutdown_by_channel(id).await;
     Ok(())
 }
 

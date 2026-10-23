@@ -1,15 +1,14 @@
 use crate::dao::forward_dao::Forward;
 use crate::dao::{forward_dao, traffic_stats_dao};
 use crate::extension::number::NumberExtension;
-use crate::forward::tcp_accept;
 use crate::web::biz_error::BizError;
 use crate::web::form;
-use crate::{biz_error, biz_errorf};
+use crate::{biz_error, biz_errorf, forward};
 use hyperoute_macro::{DELETE, GET, POST, PUT};
 use std::collections::HashMap;
 use validator::Validate;
 
-///  转发列表
+/// 端口转发列表
 #[GET("/api/forward/list")]
 pub async fn list() -> Vec<model::ForwardList> {
     let mut ctx = lib_db::get_context();
@@ -38,7 +37,7 @@ pub async fn list() -> Vec<model::ForwardList> {
     list
 }
 
-/// 隧道详情获取API
+/// 端口转发详情获取API
 #[GET("/api/forward/detail")]
 pub async fn detail(id: i64) -> Result<model::ForwardDetail, BizError> {
     let mut ctx = lib_db::get_context();
@@ -117,14 +116,22 @@ pub async fn edit(form: form::ForwardEdit) -> Result<(), BizError> {
     }
     if forward.is_enabled {
         //当前隧道有效并且当前客户端在线，则开启隧道监听
-        tcp_accept::accept_forward(forward).await.unwrap();
+        forward::tcp_accept::accept_forward(forward).await.unwrap();
     }
     Ok(())
 }
 
-/// 通过id删除一个隧道
+/// 通过id删除一个端口转发
 #[DELETE("/api/forward/delete")]
 pub async fn delete(id: i64) -> Result<(), BizError> {
+    //关闭端口转发监听(先关监听,统计任务就不会再产生这个端口转发的新数据)
+    forward::tcp_accept::shutdown(id).await;
+
+    //移除还没写入数据库的流量统计缓存,否则删除后还会写入孤儿数据
+    forward::forward_timer::INSERT_CACHE_LIST
+        .lock()
+        .await
+        .retain(|it| it.forward_id != id);
     let mut ctx = lib_db::get_context();
     ctx.begin().await.unwrap();
     let rs = async {
@@ -139,11 +146,6 @@ pub async fn delete(id: i64) -> Result<(), BizError> {
 
     //提交事务
     let _ = ctx.commit().await;
-    drop(ctx);
-
-    // //关闭代理监听
-    // udp_proxy.ShutdownByChannel(channel.Id)
-    // tcp_proxy_manager::shutdown_by_channel(id).await;
     Ok(())
 }
 
@@ -156,11 +158,11 @@ pub async fn toggle_enable(id: i64) {
         .await
         .unwrap();
     if forward.is_enabled {
-        //关闭代理监听
-        tcp_accept::shutdown(id).await;
+        //关闭端口转发监听
+        forward::tcp_accept::shutdown(id).await;
     } else {
         forward.is_enabled = true;
-        tcp_accept::accept_forward(forward).await.unwrap();
+        forward::tcp_accept::accept_forward(forward).await.unwrap();
     };
 }
 
