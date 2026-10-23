@@ -15,7 +15,6 @@ use lib_np_common::data_io_len::AtomicDataIOLen;
 pub struct TcpBridgeParam {
     pub ip: String,             // 代理客户端ip地址
     pub channel_id: i64,        // 隧道ID
-    pub is_stats_traffic: bool, //是否实时统计流量
     pub target_port: String,    //目标端口
     pub security_state: i64,    //是否加密传输
     pub proxy_tcp: TcpStream,   //代码tcp
@@ -79,11 +78,6 @@ async fn start(mut param: TcpBridgeParam, bridge_tag: u64) -> Result<(), NpsErro
     param.client_tcp.write_u8(target_info.len() as u8).await?;
     param.client_tcp.write_all(target_info.as_bytes()).await?;
 
-    if !param.is_stats_traffic {
-        // 不需要实时统计流量
-        return copy(param).await;
-    }
-
     //统计当前桥接流量
     let data_len = AtomicDataIOLen::new();
     let bridge_closer = Arc::new(Notify::new());
@@ -134,18 +128,6 @@ async fn start(mut param: TcpBridgeParam, bridge_tag: u64) -> Result<(), NpsErro
             Ok(())
         }
     }
-}
-
-/// 不需要实时统计流量，高性能模式
-async fn copy(
-    mut param: TcpBridgeParam
-) -> Result<(), NpsError> {
-    let (in_len, out_len) = io::copy_bidirectional(&mut param.client_tcp, &mut param.proxy_tcp).await?;
-            param.data_len.add_in(in_len);
-            param.data_len.add_out(out_len);
-            // println!("-->in_len:{}", in_len);
-            // println!("-->out_len:{}", out_len);
-            Ok(())
 }
 
 async fn proxy_to_client(

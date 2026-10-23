@@ -99,7 +99,6 @@ async fn start(
         tcp_bridge::ready(tcp_bridge::TcpBridgeParam {
             ip: addr.ip().to_string(),
             forward_id: forward.id,
-            is_stats_traffic: forward.is_stats_traffic,
             target_addr: forward.target_port.clone(),
             proxy_tcp,
             data_len: data_len.clone(),

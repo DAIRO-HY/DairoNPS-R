@@ -39,8 +39,6 @@ pub struct ChannelEdit {
     pub target_port: String,
     pub security_state: i64,
 
-    ///是否统计流量
-    pub is_stats_traffic: bool,
     pub remark: Option<String>,
 
     // 乐观排他用的版本号
@@ -57,7 +55,5 @@ pub struct ForwardEdit {
     pub server_port: i64,
     pub target_port: String,
 
-    ///是否统计流量
-    pub is_stats_traffic: bool,
     pub remark: Option<String>,
 }

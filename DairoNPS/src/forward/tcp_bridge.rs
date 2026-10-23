@@ -13,7 +13,6 @@ use tokio::{io, select, try_join};
 pub struct TcpBridgeParam {
     pub ip: String, // 代理客户端ip地址
     pub forward_id: i64,
-    pub is_stats_traffic: bool,
     pub target_addr: String,
     pub proxy_tcp: TcpStream,
     pub data_len: AtomicDataIOLen,
@@ -54,7 +53,6 @@ pub async fn ready(param: TcpBridgeParam) {
         start_spawn(
             param.proxy_tcp,
             &param.target_addr,
-            param.is_stats_traffic,
             param.data_len,
             bridge_data_len,
             last_rw_time,
@@ -74,7 +72,6 @@ pub async fn ready(param: TcpBridgeParam) {
 async fn start_spawn(
     proxy_tcp: TcpStream,
     target_addr: &str,
-    is_stats_traffic: bool,
     forward_data_len: AtomicDataIOLen,
     bridge_data_len: AtomicDataIOLen,
     last_rw_time: Arc<AtomicU64>,
@@ -91,7 +88,6 @@ async fn start_spawn(
         result = start(
             proxy_tcp,
             &target_addr,
-            is_stats_traffic,
             forward_data_len,
             bridge_data_len,
             last_rw_time) => {
@@ -108,7 +104,6 @@ async fn start_spawn(
 async fn start(
     mut proxy_tcp: TcpStream,
     target_addr: &str,
-    is_stats_traffic: bool,
     forward_data_len: AtomicDataIOLen,
     bridge_data_len: AtomicDataIOLen,
     last_rw_time: Arc<AtomicU64>,
@@ -123,13 +118,6 @@ async fn start(
             return Err(NpsError::IoError(e));
         }
     };
-    // if !is_stats_traffic {
-    //     //不需要统计流量
-    //     let (in_len, out_len) = io::copy_bidirectional(&mut proxy_tcp, &mut target_tcp).await?;
-    //     forward_data_len.add_in(in_len);
-    //     forward_data_len.add_out(out_len);
-    //     return Ok(());
-    // }
 
     let (proxy_reader, proxy_writer) = io::split(proxy_tcp);
     let (target_reader, target_writer) = io::split(target_tcp);

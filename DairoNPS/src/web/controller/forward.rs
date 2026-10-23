@@ -58,7 +58,6 @@ pub async fn detail(id: i64) -> Result<model::ForwardDetail, BizError> {
                 "关闭"
             }
             .to_string(),
-            is_stats_traffic: channel.is_stats_traffic,
             in_len: channel.in_len.data_size(),
             out_len: channel.out_len.data_size(),
         }
@@ -92,7 +91,6 @@ pub async fn edit(form: form::ForwardEdit) -> Result<(), BizError> {
     forward.name = form.name;
     forward.server_port = form.server_port;
     forward.target_port = form.target_port;
-    forward.is_stats_traffic = form.is_stats_traffic;
     forward.remark = form.remark;
 
     //检查端口是否已被占用
@@ -197,8 +195,6 @@ pub mod model {
         pub created_at: String,
         pub is_enabled: String,
 
-        ///是否统计流量
-        pub is_stats_traffic: bool,
         pub in_len: String,
         pub out_len: String,
     }

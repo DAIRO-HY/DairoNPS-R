@@ -70,7 +70,6 @@ pub async fn detail(id: i64, client_id: i64) -> Result<model::ChannelDetail, Biz
                 "关闭"
             }
             .to_string(),
-            is_stats_traffic: channel.is_stats_traffic,
             in_len: channel.in_len.data_size(),
             out_len: channel.out_len.data_size(),
             security_state: channel.security_state,
@@ -114,13 +113,8 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
     channel.server_port = form.server_port;
     channel.target_port = form.target_port;
     channel.security_state = form.security_state;
-    channel.is_stats_traffic = form.is_stats_traffic;
     channel.remark = form.remark;
     channel.version = form.version;
-
-    if channel.security_state == 1 && !channel.is_stats_traffic{
-        return Err(biz_error!("加密传输模式必须开启流量统计"));
-    }
 
     //检查端口是否已被占用
     match channel.mode {
@@ -257,9 +251,6 @@ pub mod model {
         pub in_len: String,
         pub out_len: String,
         pub security_state: i64,
-
-        ///是否统计流量
-        pub is_stats_traffic: bool,
 
         // 乐观排他用的版本号
         pub version: i64,

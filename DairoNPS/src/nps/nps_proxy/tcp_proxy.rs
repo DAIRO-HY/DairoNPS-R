@@ -104,7 +104,6 @@ async fn start(
             tcp_bridge::TcpBridgeParam {
                 ip: addr.ip().to_string(),
                 channel_id: channel.id,
-                is_stats_traffic: channel.is_stats_traffic,
                 target_port: channel.target_port.clone(),
                 security_state: channel.security_state,
                 proxy_tcp,
