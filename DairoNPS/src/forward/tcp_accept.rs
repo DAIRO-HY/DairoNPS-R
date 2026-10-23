@@ -14,13 +14,13 @@ pub async fn ready() -> Result<(), NpsError> {
     let active_list = forward_dao::select_enabled(&mut lib_db::get_context()).await?;
     for it in active_list {
         //只监听TCP隧道
-        accept_forward(it).await?;
+        accept_forward(it);
     }
     Ok(())
 }
 
 // 开始监听某个隧道
-pub async fn accept_forward(forward: Forward) -> Result<(), NpsError> {
+pub fn accept_forward(forward: Forward){
     tokio::spawn(async move {
         let forward_id = forward.id;
         spawn_start(forward).await;
@@ -28,7 +28,6 @@ pub async fn accept_forward(forward: Forward) -> Result<(), NpsError> {
         //接受到accept结束的通知,说明监听已经停止,可以安全地删除关闭通知器
         forward::FORWARD_LIVE_MAP.lock().await.remove(&forward_id);
     });
-    Ok(())
 }
 
 async fn spawn_start(forward: Forward) {

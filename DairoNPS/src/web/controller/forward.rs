@@ -117,7 +117,7 @@ pub async fn edit(form: form::ForwardEdit) -> Result<(), BizError> {
     }
     if forward.is_enabled {
         //当前隧道有效并且当前客户端在线，则开启隧道监听
-        forward::tcp_accept::accept_forward(forward).await.unwrap();
+        forward::tcp_accept::accept_forward(forward);
     }
     Ok(())
 }
@@ -163,7 +163,7 @@ pub async fn toggle_enable(id: i64) {
         forward::tcp_accept::shutdown(id).await;
     } else {
         forward.is_enabled = true;
-        forward::tcp_accept::accept_forward(forward).await.unwrap();
+        forward::tcp_accept::accept_forward(forward);
     };
 }
 
