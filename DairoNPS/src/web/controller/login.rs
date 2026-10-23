@@ -15,18 +15,18 @@ use validator::Validate;
 /// 登录API
 #[POST("/api/login/do_login")]
 pub async fn do_login(form: LoginForm) -> Result<Raw, BizError> {
-    let account_path = Path::new(web::ACCOUNT_PATH);
-    if !fs::exists(account_path).unwrap() {
-        //文件不存在
-        let content = format!("{}\n{}", form.name, form.pwd.md5());
-        fs::write(&account_path, content.as_bytes()).unwrap();
-    }
     if web::LOGIN_ERROR_COUNT.load(Ordering::Relaxed) > 10 {
         return Err(biz_error!("用户名或密码错误次数超过限制，请联系管理员。"));
     }
     if let Err(e) = form.validate() {
         //验证表单数据是否合法
         return Err(BizError::fields(e));
+    }
+    let account_path = Path::new(web::ACCOUNT_PATH);
+    if !fs::exists(account_path).unwrap() {
+        //文件不存在
+        let content = format!("{}\n{}", form.name, form.pwd.md5());
+        fs::write(&account_path, content.as_bytes()).unwrap();
     }
     let account_account = fs::read_to_string(&account_path).unwrap();
     let account: Vec<&str> = account_account.split("\n").collect();
