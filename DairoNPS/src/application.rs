@@ -1,6 +1,7 @@
 use crate::{forward, nps};
 use clap::Parser;
 use std::env;
+use std::path::PathBuf;
 use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::sync::Notify;
@@ -28,6 +29,17 @@ pub static IS_NPS_SERVER_DROP: AtomicBool = AtomicBool::new(false);
 
 /// 用来接收关闭通知的全局异步通知器
 pub static ARGS: LazyLock<Argument> = LazyLock::new(|| Argument::try_parse().unwrap());
+
+/// 开发时使用和编译期相同的数据目录(由build.rs注入)
+#[cfg(debug_assertions)]
+const DEFAULT_DATA_DIR: &str = env!("DAIRO_NPS_DEV_DATA_DIR");
+
+/// 发布时使用程序启动目录下的data目录
+#[cfg(not(debug_assertions))]
+const DEFAULT_DATA_DIR: &str = "./data";
+
+/// 账号信息文件路径
+pub static ACCOUNT_PATH: LazyLock<PathBuf> = LazyLock::new(|| PathBuf::from(&ARGS.data_dir).join("account.txt"));
 
 /// 重启函数，设置标记并退出程序
 pub async fn restart() {
@@ -128,7 +140,7 @@ pub struct Argument {
     #[arg(long, env = "DAIRO_NPS_DATA_COLLECT_INSERT_INTERVAL", default_value = "6000")]
     pub data_collect_insert_interval: u64,
 
-    /// 数据库文件路径
-    #[arg(long, env = "DAIRO_NPS_DB_PATH", default_value = "./data/dairo-nps.sqlite")]
-    pub db_path: String,
+    /// 数据保存目录(数据库文件、账号文件都保存在这个目录下)
+    #[arg(long, env = "DAIRO_NPS_DATA_DIR", default_value = DEFAULT_DATA_DIR)]
+    pub data_dir: String,
 }

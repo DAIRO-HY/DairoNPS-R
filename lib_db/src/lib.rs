@@ -2,6 +2,7 @@ use rust_embed::RustEmbed;
 use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::{Pool, Row, Sqlite, SqlitePool, Transaction, TypeInfo, ValueRef};
 use std::error::Error;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use sqlx_context::DbContext;
 
@@ -11,6 +12,14 @@ struct Assets;
 
 // VERSION 数据库版本号
 const VERSION: i32 = 1;
+
+/// 数据库文件名
+const DB_FILE_NAME: &str = "dairo-nps.sqlite";
+
+/// 获取数据目录下的数据库文件路径
+pub fn db_path(data_dir: &str) -> PathBuf {
+    Path::new(data_dir).join(DB_FILE_NAME)
+}
 
 
 /// 全局数据库连接池
@@ -33,11 +42,12 @@ pub fn get_context() -> DbContext {
 }
 
 // 初始化数据库连接和表结构
-pub async fn init(db_path: &str) {
-    //SQLite不会自动创建目录,先确保数据库文件所在目录存在
-    if let Some(dir) = std::path::Path::new(db_path).parent() {
-        std::fs::create_dir_all(dir).unwrap();
-    }
+// - data_dir 数据目录,数据库文件保存在该目录下
+pub async fn init(data_dir: &str) {
+    //SQLite不会自动创建目录,先确保数据目录存在
+    std::fs::create_dir_all(data_dir).unwrap();
+    let db_path = db_path(data_dir);
+    let db_path = db_path.to_str().unwrap();
     DB_CONN
         .set(
             SqlitePoolOptions::new()

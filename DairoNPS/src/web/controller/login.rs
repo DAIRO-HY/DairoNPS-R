@@ -1,13 +1,12 @@
 use crate::extension::string::StringExtension;
 use crate::web::biz_error::BizError;
-use crate::{biz_error, biz_errorf, web};
+use crate::{application, biz_error, biz_errorf, web};
 use hyperoute_core::Raw;
 use hyperoute_macro::{DELETE, GET, POST};
 use lib_np_common::time_util;
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use validator::Validate;
@@ -22,7 +21,7 @@ pub async fn do_login(form: LoginForm) -> Result<Raw, BizError> {
         //验证表单数据是否合法
         return Err(BizError::fields(e));
     }
-    let account_path = Path::new(web::ACCOUNT_PATH);
+    let account_path = application::ACCOUNT_PATH.as_path();
     if !fs::exists(account_path).unwrap() {
         //文件不存在
         let content = format!("{}\n{}", form.name, form.pwd.md5());
@@ -31,7 +30,7 @@ pub async fn do_login(form: LoginForm) -> Result<Raw, BizError> {
     let account_account = fs::read_to_string(&account_path).unwrap();
     let account: Vec<&str> = account_account.split("\n").collect();
     if account.len() != 2 {
-        return Err(biz_errorf!("文件:{}内容不合法,请删除后再重试!", web::ACCOUNT_PATH));
+        return Err(biz_errorf!("文件:{}内容不合法,请删除后再重试!", account_path.display()));
     }
 
     if form.name != account[0] || form.pwd.md5() != account[1] {
@@ -63,9 +62,9 @@ pub async fn logout() {
 /// 忘记密码
 #[GET("/api/login/forget")]
 pub async fn forget() -> String {
-    let account_path = Path::new(web::ACCOUNT_PATH);
+    let account_path = application::ACCOUNT_PATH.as_path();
     if fs::exists(account_path).unwrap() {
-        format!("请删除文件:{}后重新设置登录信息!", web::ACCOUNT_PATH)
+        format!("请删除文件:{}后重新设置登录信息!", account_path.display())
     } else {
         "第一次登录时请直接输入用户名及密码,系统会根据您输入的内容自动创建用户".to_string()
     }

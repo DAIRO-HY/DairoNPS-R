@@ -45,8 +45,22 @@ async fn generate_dao() {
 
     // -------------------------------------Dao自动生成------------------START
 
+    //开发用数据目录(工作空间根目录下的data目录),数据目录只在这里定义
+    //必须用绝对路径:build.rs的工作目录是当前crate目录,而sqlx宏执行时的工作目录是工作空间根目录,用相对路径两边会指向不同的文件
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let data_dir = manifest_dir.parent().unwrap().join("data");
+    let data_dir = data_dir.to_str().unwrap();
+    let db_path = lib_db::db_path(data_dir);
+    let db_path = db_path.to_str().unwrap();
+
     //初始化数据库,这个数据用来支持sqlx宏编译检查sql语句的正确性，必须在编译阶段就初始化数据库，否则sqlx会报错
-    lib_db::init("../data/dairo-nps.sqlite").await;
+    lib_db::init(data_dir).await;
+
+    //告诉sqlx宏使用同一个数据库文件
+    println!("cargo:rustc-env=DATABASE_URL=sqlite://{}?mode=rwc", db_path);
+
+    //开发时(debug编译)程序默认使用同一个数据目录,保证编译期和运行时是同一个数据库
+    println!("cargo:rustc-env=DAIRO_NPS_DEV_DATA_DIR={}", data_dir);
 
     // 字段名 -> Rust类型 的覆盖规则(本项目自定义的字段命名约定)
     let type_overrides = HashMap::from([]);
@@ -58,6 +72,6 @@ async fn generate_dao() {
 
     println!("cargo:rerun-if-changed=assets/ddl/");
     println!("cargo:rerun-if-changed=assets/dsl/");
-    println!("cargo:rerun-if-changed=../data/dairo-nps.sqlite");
+    println!("cargo:rerun-if-changed={}", db_path);
 }
 

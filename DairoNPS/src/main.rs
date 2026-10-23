@@ -17,8 +17,14 @@ use sqlx::{Column, Executor, Statement, TypeInfo};
 
 #[tokio::main]
 async fn main() -> tokio::io::Result<()> {
-    println!("args: {:?}", application::ARGS);
-    lib_db::init(&application::ARGS.db_path).await;
+    println!("{:?}", *application::ARGS);
+
+    //数据保存目录不存在时创建
+    if let Err(e) = std::fs::create_dir_all(&application::ARGS.data_dir) {
+        eprintln!("-->创建数据保存目录:{}失败: {}", application::ARGS.data_dir, e);
+        std::process::exit(1);
+    }
+    lib_db::init(&application::ARGS.data_dir).await;
     web::server::ready();
 
     //开启内网穿透监听
