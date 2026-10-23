@@ -1,9 +1,10 @@
-use crate::dao::client_dao;
 use crate::dao::client_dao::Client;
+use crate::dao::{channel_dao, client_dao, traffic_stats_dao};
 use crate::extension::number::NumberExtension;
+use crate::nps::nps_proxy::tcp_proxy;
 use crate::web::biz_error::BizError;
 use crate::web::form;
-use crate::{biz_error, nps};
+use crate::{biz_error, biz_errorf, nps};
 use hyperoute_macro::{DELETE, GET, POST, PUT};
 use rand::distr::{Alphanumeric, SampleString};
 use std::collections::HashSet;
@@ -131,13 +132,46 @@ pub async fn edit(form: form::ClientEdit) -> Result<(), BizError> {
 
 /// 通过id删除一个客户端
 #[DELETE("/api/client/delete")]
-pub async fn delete(id: i64) {
-    client_dao::delete(&mut lib_db::get_context(), id)
+pub async fn delete(id: i64) -> Result<(), BizError> {
+    //关闭客户端会话(先关会话,统计任务就不会再产生这个客户端的新数据)
+    let _ = nps_session::shutdown(id).await;
+
+    //关闭会话只是通知了隧道监听关闭,这里要等到该客户端下所有隧道监听真正停止
+    let channel_ids: Vec<i64> = nps::CHANNEL_LIVE_MAP
+        .lock()
         .await
-        .unwrap();
-    nps_session::shutdown(id)
+        .iter()
+        .filter(|(_, channel_live)| channel_live.client_id == id)
+        .map(|(channel_id, _)| *channel_id)
+        .collect();
+    for channel_id in channel_ids {
+        tcp_proxy::shutdown_by_channel(channel_id).await;
+    }
+
+    //移除还没写入数据库的流量统计缓存,否则删除后还会写入孤儿数据
+    nps::nps_timer::INSERT_CACHE_LIST
+        .lock()
         .await
-        .unwrap();
+        .retain(|it| it.client_id != id);
+    let mut ctx = lib_db::get_context();
+    ctx.begin().await.unwrap();
+    let rs = async {
+        //删除客户端的流量统计(包含该客户端下所有隧道的流量统计)
+        traffic_stats_dao::delete_by_client_id(&mut ctx, id).await?;
+
+        //删除客户端下的所有隧道
+        channel_dao::delete_by_client_id(&mut ctx, id).await?;
+        client_dao::delete(&mut ctx, id).await
+    }
+    .await;
+    if let Err(e) = rs {
+        let _ = ctx.rollback().await;
+        return Err(biz_errorf!("删除失败:{}", e));
+    }
+
+    //提交事务
+    let _ = ctx.commit().await;
+    Ok(())
 }
 
 /// 修改可用状态

@@ -37,3 +37,10 @@ update channel set error = :error where id = :id;
 -- @name clear_error
 -- @param id:i64
 update channel set error = null where id = :id;
+
+-- ------------------------------
+
+-- 删除客户端下的所有隧道
+-- @name delete_by_client_id
+-- @param client_id:i64
+delete from channel where client_id = :client_id;
