@@ -1,4 +1,4 @@
-use crate::nps;
+use crate::{forward, nps};
 use clap::Parser;
 use std::env;
 use std::sync::LazyLock;
@@ -42,6 +42,10 @@ pub async fn restart() {
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
         if !nps::CHANNEL_LIVE_MAP.lock().await.is_empty() {
             //等待所有隧道代理监听停止,否则可能导致下次监听同一端口失败
+            continue;
+        }
+        if !forward::FORWARD_LIVE_MAP.lock().await.is_empty() {
+            //等待所有端口转发监听停止,否则可能导致下次监听同一端口失败
             continue;
         }
         if !IS_WEB_DROP.load(Ordering::Acquire) {
