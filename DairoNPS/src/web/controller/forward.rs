@@ -2,7 +2,7 @@ use crate::dao::forward_dao::Forward;
 use crate::dao::{forward_dao, traffic_stats_dao};
 use crate::extension::number::NumberExtension;
 use crate::web::biz_error::BizError;
-use crate::web::form;
+use crate::web::{form, port_check};
 use crate::{biz_error, biz_errorf, forward};
 use hyperoute_macro::{DELETE, GET, POST, PUT};
 use std::collections::HashMap;
@@ -95,6 +95,9 @@ pub async fn edit(form: form::ForwardEdit) -> Result<(), BizError> {
     forward.is_stats_traffic = form.is_stats_traffic;
     forward.remark = form.remark;
 
+    //检查端口是否已被占用
+    port_check::check_tcp_port(&mut ctx, forward.server_port, 0, forward.id).await?;
+
     let mut err = None;
     if form.id == 0 {
         match forward_dao::insert(&mut ctx, &forward).await {
@@ -106,10 +109,10 @@ pub async fn edit(form: form::ForwardEdit) -> Result<(), BizError> {
     }
     if let Some(e) = err {
         let err_msg = e.to_string();
-        if err_msg == "UNIQUE constraint failed: channel.server_port" {
+        if err_msg == "UNIQUE constraint failed: forward.server_port" {
             return Err(BizError::field(
                 "serverPort",
-                "该服务器端口已被其他隧道占用，请换一个端口。",
+                "该端口已被其他端口转发占用，请换一个端口。",
             ));
         }
         return Err(biz_error!(e.to_string()));

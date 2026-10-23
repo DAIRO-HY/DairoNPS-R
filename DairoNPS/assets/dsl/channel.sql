@@ -44,3 +44,13 @@ update channel set error = null where id = :id;
 -- @name delete_by_client_id
 -- @param client_id:i64
 delete from channel where client_id = :client_id;
+
+-- ------------------------------
+
+-- 查询使用指定端口的隧道数量(排除指定id的隧道)
+-- @name count_by_server_port
+-- @param server_port:i64
+-- @param mode:i64
+-- @param exclude_id:i64
+-- @return i64
+select count(*) from channel where server_port = :server_port and mode = :mode and id != :exclude_id;

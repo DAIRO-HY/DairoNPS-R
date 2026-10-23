@@ -10,6 +10,7 @@ pub mod biz_error;
 pub mod sse;
 pub mod model;
 pub mod form;
+pub mod port_check;
 
 /// 账号信息保存目录
 pub const ACCOUNT_PATH: &str = "./data/account.txt";

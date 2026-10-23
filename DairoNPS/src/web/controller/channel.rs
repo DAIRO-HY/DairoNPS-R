@@ -4,7 +4,7 @@ use crate::dao::{channel_dao, traffic_stats_dao};
 use crate::extension::number::NumberExtension;
 use crate::nps::nps_proxy::tcp_proxy;
 use crate::web::biz_error::BizError;
-use crate::web::form;
+use crate::web::{form, port_check};
 use crate::{biz_error, biz_errorf, nps};
 use hyperoute_macro::{DELETE, GET, POST, PUT};
 use std::collections::HashMap;
@@ -122,6 +122,13 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
         return Err(biz_error!("加密传输模式必须开启流量统计"));
     }
 
+    //检查端口是否已被占用
+    match channel.mode {
+        1 => port_check::check_tcp_port(&mut ctx, channel.server_port, channel.id, 0).await?,
+        2 => port_check::check_udp_port(&mut ctx, channel.server_port, channel.id).await?,
+        _ => return Err(biz_error!("不支持的隧道模式")),
+    }
+
     let mut err = None;
     if form.id == 0 {
         match channel_dao::insert(&mut ctx, &channel).await {
@@ -132,13 +139,6 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
         err = channel_dao::update(&mut ctx, &channel).await.err();
     }
     if let Some(e) = err {
-        let err_msg = e.to_string();
-        if err_msg == "UNIQUE constraint failed: channel.server_port" {
-            return Err(BizError::field(
-                "serverPort",
-                "该服务器端口已被其他隧道占用，请换一个端口。",
-            ));
-        }
         return Err(biz_error!(e.to_string()));
     }
     if channel.is_enabled

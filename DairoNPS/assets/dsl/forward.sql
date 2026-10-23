@@ -34,3 +34,12 @@ update forward set error = :error where id = :id;
 -- @name clear_error
 -- @param id:i64
 update forward set error = null where id = :id;
+
+-- ------------------------------
+
+-- 查询使用指定端口的端口转发数量(排除指定id的端口转发)
+-- @name count_by_server_port
+-- @param server_port:i64
+-- @param exclude_id:i64
+-- @return i64
+select count(*) from forward where server_port = :server_port and id != :exclude_id;
