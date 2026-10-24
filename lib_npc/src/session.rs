@@ -243,8 +243,9 @@ async fn receive(args: Argument, mut reader: ReadHalf<TcpStream>) -> Result<(), 
             //
             // }
             _ => {
-                //未知的标记
-                println!("-->未知的标记:{}", flag)
+                //未知的标记,无法知道后面跟着多少字节数据,继续读取会导致数据错位
+                //直接断开连接,等待心跳检测重新连接
+                return Err(NpcError::UnknowFlagError(flag));
             }
         }
     }
