@@ -3,7 +3,6 @@ use crate::npc_error::NpcError;
 use crate::{application, tcp_pool};
 use lib_np_common::{head_flag, time_util};
 use std::io::ErrorKind;
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
@@ -22,6 +21,9 @@ pub async fn open(args: Argument) {
     *application::NPC_CONNECT_MSG.lock().unwrap() = "正在连接NPS服务器...".to_string();
     check_heart(args).await;
 
+    //心跳检测已经退出,不会再创建新的连接,这时再关闭当前会话,防止stop之后会话还在运行
+    shutdown_npc().await;
+
     //重置心跳时间,方便下次能快速连接
     application::LAST_HEART_TIME.store(0, Ordering::Relaxed);
     *application::IS_OPENED.lock().unwrap() = false;
@@ -33,8 +35,7 @@ pub async fn stop() {
         return;
     }
 
-    //关闭npc服务
-    shutdown_npc().await;
+    //通知心跳检测退出,open()退出前会关闭当前会话,所以IS_OPENED变为false时会话已经关闭
     while *application::IS_OPENED.lock().unwrap() {
         println!("-->正在停止服务...");
         application::APP_CLOSER.notify_waiters();
@@ -93,8 +94,9 @@ async fn create_connection(args: Argument) {
         }
     };
 
+    //必须在spawn之前标记为运行中,否则spawn的任务还没开始执行时,shutdown_npc会认为没有会话在运行
+    *application::IS_NPC_RUNNING.lock().unwrap() = true;
     tokio::spawn(async move {
-        *application::IS_NPC_RUNNING.lock().unwrap() = true;
         spawn_start(args, nps_tcp).await;
         *application::IS_NPC_RUNNING.lock().unwrap() = false;
 
