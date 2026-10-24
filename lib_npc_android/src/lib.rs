@@ -47,13 +47,11 @@ pub extern "system" fn Java_cn_dairo_npc_NPCRustBridge_open<'local>(
             let tcp_port = tcp_port as u16;
             let udp_port = udp_port as u16;
             let key = key.to_string();
-            std::thread::spawn(move || {
-                lib_npc::start(Some(Argument {
-                    host,
-                    tcp_port,
-                    udp_port,
-                    key,
-                }));
+            lib_npc::start_in_thread(Argument {
+                host,
+                tcp_port,
+                udp_port,
+                key,
             });
             Ok(())
         })

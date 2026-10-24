@@ -58,9 +58,7 @@ pub extern "C" fn npc_open(
         udp_port: udp_port as u16,
         key,
     };
-    std::thread::spawn(|| {
-        lib_npc::start(Some(args));
-    });
+    lib_npc::start_in_thread(args);
 }
 
 #[unsafe(no_mangle)]

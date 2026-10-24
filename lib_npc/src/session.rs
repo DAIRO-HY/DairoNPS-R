@@ -10,13 +10,19 @@ use tokio::time::Duration;
 use tokio::time::sleep;
 use tokio::{io, select, try_join};
 
-// 开启客户端
-pub async fn open(args: Argument) {
-    if *application::IS_OPENED.lock().unwrap() {
-        //如果正在运行中
-        return;
+/// 标记为已开启状态,检查和设置在同一把锁内完成,防止并发调用时重复开启
+/// 返回false表示已经在运行中
+pub(crate) fn try_open() -> bool {
+    let mut is_opened = application::IS_OPENED.lock().unwrap();
+    if *is_opened {
+        return false;
     }
-    *application::IS_OPENED.lock().unwrap() = true;
+    *is_opened = true;
+    true
+}
+
+/// 开启客户端,调用前必须先通过try_open()标记为已开启状态
+pub(crate) async fn open(args: Argument) {
     println!("-->NPC服务开启成功");
     *application::NPC_CONNECT_MSG.lock().unwrap() = "正在连接NPS服务器...".to_string();
     check_heart(args).await;
