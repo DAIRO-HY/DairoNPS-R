@@ -24,8 +24,6 @@ object NPCRustBridge {
      */
     external fun close()
 
-    external fun getHello(input: String): String
-
     /**
      * 获取状态信息
      */

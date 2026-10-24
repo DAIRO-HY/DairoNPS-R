@@ -1,10 +1,9 @@
 use clap::Parser;
 use clap::builder::NonEmptyStringValueParser;
-use lib_np_common::data_io_len::AtomicDataIOLen;
 use std::string::ToString;
 use std::sync::LazyLock;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicI64, AtomicU16, AtomicU64, AtomicUsize};
+use std::sync::atomic::{AtomicI64, AtomicU16, AtomicU64};
 use tokio::sync::{Notify, RwLock};
 
 /// 程序版本
@@ -46,8 +45,6 @@ pub static SECURITY_KEY: RwLock<[u8; 256]> = RwLock::const_new([0u8; 256]);
 /// NPC运行状态信息
 pub static NPC_CONNECT_MSG: LazyLock<Mutex<String>> =
     LazyLock::new(|| Mutex::new("NPC服务未启动".to_string()));
-
-pub static DATA_IO: LazyLock<AtomicDataIOLen> = LazyLock::new(|| AtomicDataIOLen::new());
 
 /// 入网总流量
 pub static IN_LEN: AtomicU64 = AtomicU64::new(0);

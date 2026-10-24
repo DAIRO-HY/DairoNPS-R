@@ -11,14 +11,8 @@ pub enum NpcError {
     #[error("未知的Flag")]
     UnknowFlagError(u8),
 
-    #[error("发送数据失败")]
-    SendDataError,
-
     #[error("无效的Header")]
     InvalidHeader(String),
-
-    #[error("其他错误")]
-    OtherError(String),
 }
 
 /// 让别的错误自动转成你的错误（非常重要🔥）,这样你就可以直接用 ?：

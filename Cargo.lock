@@ -1486,10 +1486,8 @@ dependencies = [
 name = "lib_npc"
 version = "2.0.1"
 dependencies = [
- "arc-swap",
  "clap",
  "lib_np_common",
- "rand 0.10.3",
  "thiserror",
  "tokio",
 ]
