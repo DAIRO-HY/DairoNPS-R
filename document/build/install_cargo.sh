@@ -15,7 +15,7 @@ export CARGO_HOME=$develop_tool_dir/.cargo
 
 # 加入PATH
 export PATH=${CARGO_HOME}/bin:${PATH}
-curl https://sh.rustup.rs -sSf | sh -s -- -y     --default-toolchain 1.93.0
+curl https://sh.rustup.rs -sSf | sh -s -- -y     --default-toolchain 1.99.1
 
 cargo --version
 #--------------------------------------安装CARGO--------------------------------------START

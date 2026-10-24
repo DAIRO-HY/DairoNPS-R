@@ -11,7 +11,7 @@ dependencies = [
 
 [[package]]
 name = "DairoNPS"
-version = "2.0.1"
+version = "2.1.0"
 dependencies = [
  "arc-swap",
  "bytes",
@@ -1490,7 +1490,7 @@ dependencies = [
 
 [[package]]
 name = "lib_npc"
-version = "2.0.1"
+version = "2.1.0"
 dependencies = [
  "clap",
  "lib_np_common",

@@ -156,17 +156,13 @@ check_and_upload_file(){
 }
 
 #---------------------------------------上传编译好的二进制文件----------------------------------
-check_and_upload_file "DairoNPS-linux-386-$nps_version"
 check_and_upload_file "DairoNPS-linux-amd64-$nps_version"
-check_and_upload_file "DairoNPS-linux-arm32-v7-$nps_version"
 check_and_upload_file "DairoNPS-linux-arm64-$nps_version"
 check_and_upload_file "DairoNPS-mac-darwin-aarch64-$nps_version"
 check_and_upload_file "DairoNPS-mac-darwin-amd64-$nps_version"
 
 check_and_upload_file "DairoNPC-$npc_version.apk"
-check_and_upload_file "DairoNPC-linux-386-$npc_version"
 check_and_upload_file "DairoNPC-linux-amd64-$npc_version"
-check_and_upload_file "DairoNPC-linux-arm32-v7-$npc_version"
 check_and_upload_file "DairoNPC-linux-arm64-$npc_version"
 check_and_upload_file "DairoNPC-mac-darwin-aarch64-$npc_version"
 check_and_upload_file "DairoNPC-mac-darwin-amd64-$npc_version"

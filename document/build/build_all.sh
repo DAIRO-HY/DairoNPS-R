@@ -10,8 +10,8 @@ project_root="$(cd "$script_dir/../.." && pwd)"
 
 
 ./document/build/build_npc.sh
-#./document/build/build_npc_android.sh
-#./document/build/build_nps.sh
-#./document/build/build_github.sh
-#./document/build/build_npc_docker.sh
-#./document/build/build_nps_docker.sh
+./document/build/build_npc_android.sh
+./document/build/build_nps.sh
+./document/build/build_github.sh
+./document/build/build_npc_docker.sh
+./document/build/build_nps_docker.sh
