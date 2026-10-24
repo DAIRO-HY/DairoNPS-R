@@ -56,7 +56,7 @@ pub static IN_LEN: AtomicU64 = AtomicU64::new(0);
 pub static OUT_LEN: AtomicU64 = AtomicU64::new(0);
 
 /// 程序启动参数
-#[derive(Parser, Clone, Debug)]
+#[derive(Parser, Clone)]
 #[command(name = "npc", version, about = "示例程序")]
 pub struct Argument {
     #[arg(long, env = "DAIRO_NPC_HOST", default_value = "127.0.0.1")]
@@ -71,4 +71,29 @@ pub struct Argument {
     /// 客户端秘钥(必填),在服务端后台添加客户端时生成
     #[arg(short, long, env = "DAIRO_NPC_KEY", value_parser = NonEmptyStringValueParser::new())]
     pub key: String,
+}
+
+impl Argument {
+    /// 脱敏后的秘钥,用于打印日志,长度大于等于8时只保留首尾各2个字符,否则全部隐藏
+    pub fn masked_key(&self) -> String {
+        let chars: Vec<char> = self.key.chars().collect();
+        if chars.len() < 8 {
+            return "****".to_string();
+        }
+        let head: String = chars[..2].iter().collect();
+        let tail: String = chars[chars.len() - 2..].iter().collect();
+        format!("{}****{}", head, tail)
+    }
+}
+
+/// 手动实现Debug,防止打印日志时泄露秘钥
+impl std::fmt::Debug for Argument {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Argument")
+            .field("host", &self.host)
+            .field("tcp_port", &self.tcp_port)
+            .field("udp_port", &self.udp_port)
+            .field("key", &self.masked_key())
+            .finish()
+    }
 }

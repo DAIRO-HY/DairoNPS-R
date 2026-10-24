@@ -141,13 +141,13 @@ async fn start(args: Argument, mut nps_tcp: TcpStream) -> Result<(), NpcError> {
     match flag {
         head_flag::UNKNOW_KEY => {
             //未知的秘钥,直接返回,不再进行后续操作
-            println!("-->未知的秘钥:{}", args.key);
+            println!("-->未知的秘钥:{}", args.masked_key());
             *application::NPC_CONNECT_MSG.lock().unwrap() = "未知的秘钥".to_string();
             return Ok(());
         }
         head_flag::DISABLED_KEY => {
             //未知的秘钥,直接返回,不再进行后续操作
-            println!("-->该秘钥被禁用:{}", args.key);
+            println!("-->该秘钥被禁用:{}", args.masked_key());
             *application::NPC_CONNECT_MSG.lock().unwrap() = "该秘钥被禁用".to_string();
             return Ok(());
         }
