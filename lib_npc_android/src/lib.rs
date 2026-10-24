@@ -1,5 +1,5 @@
 use jni::objects::{JClass, JObject, JString};
-use jni::sys::jshort;
+use jni::sys::jint;
 use jni::{EnvUnowned, JValue, jni_sig, jni_str};
 use lib_npc::application::Argument;
 use std::sync::atomic::Ordering;
@@ -36,16 +36,16 @@ pub extern "system" fn Java_cn_dairo_npc_NPCRustBridge_open<'local>(
     mut unowned_env: EnvUnowned<'local>,
     _this: JClass<'local>,
     host: JString<'local>,
-    tcp_port: jshort,
-    udp_port: jshort,
+    tcp_port: jint,
+    udp_port: jint,
     key: JString<'local>,
 ) {
     unowned_env
         .with_env(|_| -> jni::errors::Result<_> {
             //JString的值必须要在这里才能被读取出来，因为一旦这个函数返回，JNI的局部引用就会被释放掉，JString对象也就无法再被访问了。
             let host = host.to_string();
-            let tcp_port = tcp_port.cast_unsigned();
-            let udp_port = udp_port.cast_unsigned();
+            let tcp_port = tcp_port as u16;
+            let udp_port = udp_port as u16;
             let key = key.to_string();
             std::thread::spawn(move || {
                 lib_npc::start(Some(Argument {

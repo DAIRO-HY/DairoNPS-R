@@ -5,13 +5,13 @@ class NPCRustBridge {
      */
     static func open(
         _ host: String,
-        _ tcpPort: Int16,
-        _ udpPort: Int16,
+        _ tcpPort: Int32,
+        _ udpPort: Int32,
         _ key: String
     ){
         host.withCString{host in
             key.withCString{key in
-                npc_open(host, Int32(tcpPort), Int32(udpPort), key)
+                npc_open(host, tcpPort, udpPort, key)
             }
         }
     }

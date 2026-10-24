@@ -138,8 +138,8 @@ class HomeViewModel(private val application: Application) : AndroidViewModel(app
         val npcSetting = this.state.value.npcSetting
         NPCRustBridge.open(
             npcSetting.host,
-            npcSetting.tcpPort.toShort(),
-            npcSetting.udpPort.toShort(),
+            npcSetting.tcpPort.toInt(),
+            npcSetting.udpPort.toInt(),
             npcSetting.key
         )
     }

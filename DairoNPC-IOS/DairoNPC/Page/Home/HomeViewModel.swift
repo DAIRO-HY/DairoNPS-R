@@ -110,8 +110,8 @@ class HomeViewModel: ObservableObject {
         let npcSetting = self.state.npcSetting
         NPCRustBridge.open(
             npcSetting.host,
-            Int16(npcSetting.tcpPort)!,
-            Int16(npcSetting.udpPort)!,
+            Int32(npcSetting.tcpPort)!,
+            Int32(npcSetting.udpPort)!,
             npcSetting.key
         )
     }

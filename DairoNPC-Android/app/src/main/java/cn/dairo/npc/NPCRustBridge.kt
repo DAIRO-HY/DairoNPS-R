@@ -14,8 +14,8 @@ object NPCRustBridge {
      */
     external fun open(
         host: String,
-        tcpPort: Short,
-        udpPort: Short,
+        tcpPort: Int,
+        udpPort: Int,
         key: String
     )
 

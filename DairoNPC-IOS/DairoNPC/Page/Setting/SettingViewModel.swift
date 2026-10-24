@@ -8,7 +8,7 @@ class SettingViewModel: ObservableObject {
             npcSetting.tcpPort = "1881"
         }
         if(npcSetting.udpPort.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty){
-            npcSetting.udpPort = "1881"
+            npcSetting.udpPort = "1882"
         }
         if(npcSetting.host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty){
             self.state.error = "服务器地址不能为空"
@@ -18,11 +18,11 @@ class SettingViewModel: ObservableObject {
             self.state.error = "秘钥不能为空"
             return
         }
-        if Int16(npcSetting.tcpPort).map({ $0 > 0 }) != true {
+        if Int32(npcSetting.tcpPort).map({ (1...65535).contains($0) }) != true {
             self.state.error = "TCP端口必须为正整数且小于65536"
             return
         }
-        if Int16(npcSetting.udpPort).map({ $0 > 0 }) != true {
+        if Int32(npcSetting.udpPort).map({ (1...65535).contains($0) }) != true {
             self.state.error = "UDP端口必须为正整数且小于65536"
             return
         }

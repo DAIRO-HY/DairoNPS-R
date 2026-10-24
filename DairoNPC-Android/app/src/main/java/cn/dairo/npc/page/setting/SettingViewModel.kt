@@ -55,11 +55,11 @@ class SettingViewModel(private val application: Application) : AndroidViewModel(
             application.toast("秘钥不能为空")
             return
         }
-        if(npcSetting.tcpPort.toShortOrNull() == null || npcSetting.tcpPort.toShort() <= 0) {
+        if(npcSetting.tcpPort.toIntOrNull() !in 1..65535) {
             application.toast("TCP端口必须为正整数且小于65536")
             return
         }
-        if(npcSetting.udpPort.toShortOrNull() == null || npcSetting.udpPort.toShort() <= 0) {
+        if(npcSetting.udpPort.toIntOrNull() !in 1..65535) {
             application.toast("UDP端口必须为正整数且小于65536")
             return
         }
