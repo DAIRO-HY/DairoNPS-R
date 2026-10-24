@@ -12,3 +12,4 @@ if not exist ./DairoNPS-R (
 cd DairoNPS-R
 cargo clean
 cargo +1.99.1 build --release --package DairoNPC
+cargo +1.99.1 build --release --package DairoNPS

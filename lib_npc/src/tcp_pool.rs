@@ -40,7 +40,7 @@ async fn spawn_start(args: Argument) {
                     println!("-->未知的标记:{}", flag);
                 }
                 Err(NpcError::PoolIsFull) => {
-                    println!("-->服务端连接池已满");
+                    // println!("-->服务端连接池已满");
                 }
                 Err(NpcError::IoError(e)) if e.kind() == ErrorKind::UnexpectedEof => {
 

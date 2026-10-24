@@ -47,6 +47,7 @@ wait_windows_start
 scp -P $WINDOWS_PORT build_npc_win.bat $WINDOWS_USER@$WINDOWS_HOST:./
 ssh -p $WINDOWS_PORT $WINDOWS_USER@$WINDOWS_HOST "build_npc_win.bat"
 scp -P $WINDOWS_PORT $WINDOWS_USER@$WINDOWS_HOST:develop/DairoNPS-R/target/release/DairoNPC.exe .
+scp -P $WINDOWS_PORT $WINDOWS_USER@$WINDOWS_HOST:develop/DairoNPS-R/target/release/DairoNPS.exe .
 
 # 编译结束之后立即关机
 #ssh -p $WINDOWS_PORT $WINDOWS_USER@$WINDOWS_HOST "shutdown /s /t 0"
