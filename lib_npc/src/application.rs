@@ -1,4 +1,5 @@
 use clap::Parser;
+use clap::builder::NonEmptyStringValueParser;
 use lib_np_common::data_io_len::AtomicDataIOLen;
 use std::string::ToString;
 use std::sync::LazyLock;
@@ -67,6 +68,7 @@ pub struct Argument {
     #[arg(short, long, env = "DAIRO_NPC_UDP_PORT", default_value = "1882")]
     pub udp_port: u16,
 
-    #[arg(short, long, env = "DAIRO_NPC_KEY", default_value = "njeHds*fs4tfsd")]
+    /// 客户端秘钥(必填),在服务端后台添加客户端时生成
+    #[arg(short, long, env = "DAIRO_NPC_KEY", value_parser = NonEmptyStringValueParser::new())]
     pub key: String,
 }
