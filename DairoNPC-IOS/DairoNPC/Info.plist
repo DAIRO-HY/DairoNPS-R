@@ -6,6 +6,8 @@
     <array>
         <string>zh_CN</string>
     </array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>用于将您局域网内的服务映射到NPS服务端</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>
