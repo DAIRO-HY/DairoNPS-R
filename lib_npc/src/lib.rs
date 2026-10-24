@@ -20,7 +20,7 @@ pub static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
 
 /// 开启服务,在iOS或Android中调用
 pub fn start(args: Option<Argument>) {
-    let args = args.unwrap_or(Argument::try_parse().unwrap());
+    let args = args.unwrap_or_else(Argument::parse);
     println!("args: {:?}", args);
     RUNTIME.block_on(async {
         session::open(args).await;
