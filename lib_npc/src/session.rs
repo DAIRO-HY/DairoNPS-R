@@ -27,8 +27,8 @@ pub(crate) async fn open(args: Argument) {
     *application::NPC_CONNECT_MSG.lock().unwrap() = "正在连接NPS服务器...".to_string();
     check_heart(args).await;
 
-    //心跳检测已经退出,不会再创建新的连接,这时再关闭当前会话,防止stop之后会话还在运行
-    shutdown_npc().await;
+    //心跳检测已经退出,不会再创建新的连接,这时再关闭所有连接,防止stop之后还有连接在运行
+    shutdown_all().await;
 
     //重置心跳时间,方便下次能快速连接
     application::LAST_HEART_TIME.store(0, Ordering::Relaxed);
@@ -258,6 +258,21 @@ async fn heart(writer: &mut WriteHalf<TcpStream>) -> Result<(), NpcError> {
 
         sleep(Duration::from_millis(application::HEART_TIME)).await;
         writer.write_u8(head_flag::MAIN_HEART_BEAT).await?
+    }
+}
+
+/// 关闭主连接、连接池和桥接,直到全部关闭
+/// 主连接断开后,连接池和桥接还可能在运行,所以不能只判断IS_NPC_RUNNING
+async fn shutdown_all() {
+    loop {
+        application::NPC_CLOSER.notify_waiters();
+        if !*application::IS_NPC_RUNNING.lock().unwrap()
+            && application::POOL_COUNT.load(Ordering::Relaxed) == 0
+            && application::BRIDGE_COUNT.load(Ordering::Relaxed) == 0
+        {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
     }
 }
 

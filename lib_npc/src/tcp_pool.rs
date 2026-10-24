@@ -13,14 +13,14 @@ use tokio::select;
 pub fn create(args: Argument, count: u8) {
     for _ in 0..count {
         let args = args.clone();
-        tokio::spawn(async move {
-            //桥接数+1
-            application::POOL_COUNT.fetch_add(1, Ordering::Relaxed);
 
+        //连接池数+1,必须在spawn之前计数,否则关闭服务时可能漏掉还没开始执行的任务
+        application::POOL_COUNT.fetch_add(1, Ordering::Relaxed);
+        tokio::spawn(async move {
             // 由于[u8]已经实现了Copy,所以这里的security_key会被复制一份,由于数据量比较小,没有必要使用Arc或者Bytes,直接复制性能会更好
             spawn_start(args).await;
 
-            //桥接数-1
+            //连接池数-1
             application::POOL_COUNT.fetch_sub(1, Ordering::Relaxed);
         });
     }

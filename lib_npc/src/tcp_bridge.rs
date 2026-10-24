@@ -24,11 +24,9 @@ pub struct TCPBridgeParam {
  * @param clientSocket 内网穿透客户端Socket
  */
 pub fn ready(param: TCPBridgeParam) {
-    //npc服务端关闭通知
+    //桥接数+1,必须在spawn之前计数,否则关闭服务时可能漏掉还没开始执行的任务
+    application::BRIDGE_COUNT.fetch_add(1, Ordering::Relaxed);
     tokio::spawn(async move {
-        //桥接数+1
-        application::BRIDGE_COUNT.fetch_add(1, Ordering::Relaxed);
-
         spawn_start(param).await;
 
         //桥接数-1
