@@ -135,7 +135,8 @@ pub async fn edit(form: form::ChannelEdit) -> Result<(), BizError> {
     //检查端口是否已被占用
     match channel.mode {
         1 => port_check::check_tcp_port(&mut ctx, channel.server_port, channel.id, 0).await?,
-        2 => port_check::check_udp_port(&mut ctx, channel.server_port, channel.id).await?,
+        //UDP隧道功能开发中,开发完成后改回: port_check::check_udp_port(&mut ctx, channel.server_port, channel.id).await?
+        2 => return Err(biz_error!("UDP隧道功能开发中,暂不支持创建UDP隧道")),
         _ => return Err(biz_error!("不支持的隧道模式")),
     }
 

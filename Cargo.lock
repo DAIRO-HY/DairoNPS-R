@@ -1155,6 +1155,8 @@ dependencies = [
 [[package]]
 name = "hyperoute-codegen"
 version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72f3e1aebd4a6b88c2b0b19ace7bd07b736967368555b24390b87651f4a4d597"
 dependencies = [
  "flate2",
  "quote",
@@ -1164,6 +1166,8 @@ dependencies = [
 [[package]]
 name = "hyperoute-core"
 version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c730db4ea5c00e3dd20ad2f159b37f7e54b80eb394085485e8d3d09d8ce511a4"
 dependencies = [
  "flate2",
  "form_urlencoded",
@@ -1185,6 +1189,8 @@ dependencies = [
 [[package]]
 name = "hyperoute-macro"
 version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd3ef31c1a8800884d726b31b7467213b1ed229515aff59cae5e57f6575a51e8"
 
 [[package]]
 name = "iana-time-zone"

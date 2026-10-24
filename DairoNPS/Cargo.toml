@@ -1,6 +1,6 @@
 [package]
 name = "DairoNPS"
-version = "2.0.1"
+version = "2.1.0"
 edition = "2024"
 
 # build.rs 专用的依赖
@@ -11,8 +11,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 lib_db = { path = "../lib_db" }
 sqlx-dsl-dao = "0.0.1"
 
-#注解路由代码生成（0.0.5未发布前使用本地路径）
-hyperoute-codegen = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-codegen", version = "0.0.5" }
+#注解路由代码生成
+hyperoute-codegen = "0.0.5"
 
 [dependencies]
 lib_db = { path = "../lib_db" }
@@ -34,9 +34,9 @@ dashmap = "6"
 #数据库操作上下文:持有连接池,以及可选的当前事务。
 sqlx-context = "0.0.1"
 
-#注解路由（0.0.5未发布前使用本地路径）
-hyperoute-core = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-core", version = "0.0.5" }
-hyperoute-macro = { path = "/Users/zhoulq/dev/java/idea/Rust/hyperoute/hyperoute-macro", version = "0.0.5" }
+#注解路由
+hyperoute-core = "0.0.5"
+hyperoute-macro = "0.0.5"
 hyper = { version = "1", features = ["full"] }
 http-body-util = "0.1"
 tokio-stream = "0.1"

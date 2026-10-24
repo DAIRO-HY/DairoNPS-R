@@ -1,5 +1,7 @@
 [package]
 name = "DairoNPC"
+
+# 真正的版本号在 lib_npc 中, 这里仅仅是为了让 cargo 能够编译通过
 version = "0.1.0"
 edition = "2024"
 
