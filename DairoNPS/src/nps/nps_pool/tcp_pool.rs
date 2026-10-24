@@ -5,6 +5,13 @@ use crate::{application, nps};
 use lib_np_common::{head_flag, time_util};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
+use tokio::time::{Duration, Instant};
+
+/// 连接池为空时,代理连接最长等待时间
+const POOL_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// 连接池为空时,重复申请创建连接池的间隔时间
+const POOL_REQUEST_INTERVAL: Duration = Duration::from_secs(1);
 
 // TCP连接池
 pub struct TCPPool {
@@ -50,6 +57,9 @@ pub async fn add(mut tcp: TcpStream) -> Result<(), NpsError> {
         tcp: tcp,
     };
     (client_live.tcp_pool).push(pool);
+
+    //唤醒一个正在等待连接池的代理连接
+    client_live.tcp_pool_notify.notify_one();
     Ok(())
 }
 
@@ -78,20 +88,43 @@ async fn get(client_id: i64) -> Option<(TcpStream, usize)> {
  * @param clientID 客户端ID
  */
 pub async fn get_and_add_pool(client_id: i64) -> Option<TcpStream> {
-    let mut pool_info: Option<(TcpStream, usize)> = None;
-    for _ in 0..5 {
-        pool_info = get(client_id).await;
-        if pool_info.is_some() {
-            break;
+    //最长等待时间
+    let deadline = Instant::now() + POOL_WAIT_TIMEOUT;
+
+    //下次申请创建连接池的时间
+    let mut next_request_time = Instant::now();
+    let (tcp, count) = loop {
+        //连接池通知器,客户端已经离线时直接返回
+        let notify = {
+            let client_live_map = nps::CLIENT_LIVE_MAP.lock().await;
+            let Some(client_live) = client_live_map.get(&client_id) else {
+                return None;
+            };
+            client_live.tcp_pool_notify.clone()
+        };
+
+        //必须在检查连接池之前就开始监听通知,否则在检查之后、等待之前加入的连接会错过通知
+        let notified = notify.notified();
+        tokio::pin!(notified);
+        notified.as_mut().enable();
+        if let Some(pool_info) = get(client_id).await {
+            break pool_info;
+        }
+        let now = Instant::now();
+        if now >= deadline {
+            return None;
+        }
+        if now >= next_request_time {
+            //连接池里没有数据，申请创建连接池
+            nps_session::send_tcp_pool_request(client_id, application::ARGS.add_pool_count)
+                .await;
+
+            //超过这个时间还没等到新的连接,可能是创建失败了,需要再申请一次
+            next_request_time = now + POOL_REQUEST_INTERVAL;
         }
 
-        //连接池里没有数据，申请创建连接池
-        nps_session::send_tcp_pool_request(client_id, application::ARGS.add_pool_count)
-            .await;
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    }
-    let Some((tcp, count)) = pool_info else {
-        return None;
+        //等待新的连接加入连接池,而不是固定等待1秒
+        let _ = tokio::time::timeout_at(next_request_time.min(deadline), notified).await;
     };
 
     //申请创建连接池

@@ -53,6 +53,9 @@ pub struct ClientLive {
     /// 与客户端的tcp连接池
     pub tcp_pool: Vec<TCPPool>,
 
+    /// 有新的连接加入连接池时的通知(用来唤醒正在等待连接池的代理连接)
+    pub tcp_pool_notify: Arc<Notify>,
+
     /// 与客户端通信的消息发送器
     pub sender: Sender<Vec<u8>>,
 

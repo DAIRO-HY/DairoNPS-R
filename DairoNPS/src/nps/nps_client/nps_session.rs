@@ -29,6 +29,7 @@ pub async fn hold_on(client: Client, npc_tcp: TcpStream) -> Result<(), NpsError>
         client_id,
         ClientLive {
             tcp_pool: Vec::new(),
+            tcp_pool_notify: Arc::new(Notify::new()),
             sender,
             heart_time: heart_time.clone(),
             closer: closer.clone(),
