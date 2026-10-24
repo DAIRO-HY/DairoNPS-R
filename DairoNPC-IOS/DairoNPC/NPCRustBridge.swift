@@ -11,7 +11,7 @@ class NPCRustBridge {
     ){
         host.withCString{host in
             key.withCString{key in
-                npc_open(host, 1881, 1881, key)
+                npc_open(host, Int32(tcpPort), Int32(udpPort), key)
             }
         }
     }
