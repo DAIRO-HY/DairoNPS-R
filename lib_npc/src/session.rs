@@ -54,7 +54,9 @@ async fn check_heart(args: Argument) {
             }
 
             _ = async{
-                if time_util::current_millis() - application::LAST_HEART_TIME.load(Ordering::Relaxed)
+                //使用saturating_sub,防止系统时间被往回调时相减溢出
+                if time_util::current_millis()
+                    .saturating_sub(application::LAST_HEART_TIME.load(Ordering::Relaxed))
                     > application::CHECK_HEART_TIME
                 {
 
